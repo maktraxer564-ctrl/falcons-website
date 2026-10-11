@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FALCONS — Панель управления v0.2</title>
+    <title>FALCONS — Панель управления</title>
 
     <style>
         :root {
@@ -24,7 +24,7 @@
         }
 
         body {
-            background-color: var(--bg-dark);
+            background: var(--bg-dark);
             color: var(--text-main);
             padding: 40px 20px;
             display: flex;
@@ -36,7 +36,7 @@
         .dashboard-container {
             width: 100%;
             max-width: 1100px;
-            background-color: var(--panel-bg);
+            background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 40px;
@@ -63,7 +63,7 @@
         .user-panel {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
             background: rgba(255, 255, 255, 0.03);
             padding: 8px 16px;
             border-radius: 30px;
@@ -78,9 +78,9 @@
             object-fit: cover;
         }
 
-        .logout-btn,
-        .login-btn {
-            background-color: var(--accent-purple);
+        .login-btn,
+        .logout-btn {
+            background: var(--accent-purple);
             color: #fff;
             border: none;
             padding: 10px 22px;
@@ -89,21 +89,19 @@
             cursor: pointer;
             text-decoration: none;
             transition: opacity 0.2s;
+            font-size: 14px;
+        }
+
+        .login-btn:hover,
+        .logout-btn:hover {
+            opacity: 0.85;
         }
 
         .logout-btn {
-            background-color: transparent;
+            background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-muted);
-        }
-
-        .logout-btn:hover {
-            border-color: #ff4757;
-            color: #ff4757;
-        }
-
-        .login-btn:hover {
-            opacity: 0.9;
+            padding: 8px 14px;
         }
 
         .stats-grid {
@@ -129,7 +127,7 @@
             left: 0;
             width: 4px;
             height: 100%;
-            background-color: var(--accent-purple);
+            background: var(--accent-purple);
         }
 
         .stat-label {
@@ -168,13 +166,13 @@
         }
 
         .status-badge {
-            background-color: rgba(46, 213, 115, 0.1);
-            color: var(--success-green);
+            background: rgba(255, 159, 67, 0.1);
+            color: #ff9f43;
             padding: 6px 14px;
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
-            border: 1px solid rgba(46, 213, 115, 0.2);
+            border: 1px solid rgba(255, 159, 67, 0.2);
         }
 
         @media (max-width: 600px) {
@@ -203,8 +201,8 @@
 </head>
 
 <body>
-    <div class="dashboard-container">
-        <div class="header-section">
+    <main class="dashboard-container">
+        <header class="header-section">
             <h1>🦅 FALCONS PANEL</h1>
 
             <div id="auth-area">
@@ -212,9 +210,9 @@
                     Войти через Discord
                 </a>
             </div>
-        </div>
+        </header>
 
-        <div class="stats-grid">
+        <section class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Участников сервера</div>
                 <div class="stat-value" id="total-members-count">0</div>
@@ -229,11 +227,13 @@
                 <div class="stat-label">Участники клана</div>
                 <div class="stat-value" id="clan-members-count">0</div>
             </div>
-        </div>
+        </section>
 
-        <div class="info-box">
+        <section class="info-box">
             <div>
-                <div class="info-title">Интеграция с Discord-ботом FLCN</div>
+                <div class="info-title">
+                    Интеграция с Discord-ботом FLCN
+                </div>
                 <div class="info-desc" id="info-desc-text">
                     Ожидание статистики от Discord-бота.
                 </div>
@@ -242,8 +242,8 @@
             <div class="status-badge" id="bot-status">
                 🟡 Ожидание данных...
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script>
         let currentUserId = null;
@@ -251,11 +251,13 @@
         async function initDashboard() {
             try {
                 const response = await fetch('/api/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
                     cache: 'no-store'
                 });
 
                 if (!response.ok) {
-                    throw new Error('API вернул ошибку: ' + response.status);
+                    throw new Error('Ошибка API: ' + response.status);
                 }
 
                 const data = await response.json();
@@ -264,6 +266,7 @@
                 if (data.authenticated && data.user) {
                     if (currentUserId !== data.user.id) {
                         currentUserId = data.user.id;
+                        authArea.replaceChildren();
 
                         const userPanel = document.createElement('div');
                         userPanel.className = 'user-panel';
@@ -278,7 +281,10 @@
 
                         const username = document.createElement('span');
                         username.style.fontWeight = '600';
-                        username.textContent = data.user.global_name || data.user.username;
+                        username.textContent =
+                            data.user.global_name ||
+                            data.user.username ||
+                            'Пользователь Discord';
 
                         const logoutButton = document.createElement('button');
                         logoutButton.className = 'logout-btn';
@@ -287,31 +293,86 @@
 
                         userPanel.appendChild(username);
                         userPanel.appendChild(logoutButton);
-
-                        authArea.innerHTML = '';
                         authArea.appendChild(userPanel);
                     }
+                } else {
+                    currentUserId = null;
+                    authArea.innerHTML = `
+                        <a href="/auth/discord" class="login-btn">
+                            Войти через Discord
+                        </a>
+                    `;
                 }
 
-                // ОБНОВЛЕНИЕ ЭКРАНА СТАТИСТИКИ (ПОЛЯ: total, online, clan)
                 if (data.stats) {
-                    document.getElementById('total-members-count').innerText = Number(data.stats.total || 0).toLocaleString();
-                    document.getElementById('online-members-count').innerText = Number(data.stats.online || 0).toLocaleString();
-                    document.getElementById('clan-members-count').innerText = Number(data.stats.clan || 0).toLocaleString();
-                    
-                    const statusBadge = document.getElementById('bot-status');
-                    const descText = document.getElementById('info-desc-text');
-                    
-                    if (data.stats.total > 0) {
-                        statusBadge.innerText = "🟢 Мост: LIVE";
-                        statusBadge.style.backgroundColor = "rgba(46, 213, 115, 0.1)";
-                        statusBadge.style.color = "var(--success-green)";
-                        descText.innerText = "Статистика успешно синхронизирована в реальном времени с сервером Discord.";
+                    const total = Number(data.stats.total) || 0;
+                    const online = Number(data.stats.online) || 0;
+                    const clan = Number(data.stats.clan) || 0;
+
+                    document.getElementById('total-members-count').textContent =
+                        total.toLocaleString('ru-RU');
+
+                    document.getElementById('online-members-count').textContent =
+                        online.toLocaleString('ru-RU');
+
+                    document.getElementById('clan-members-count').textContent =
+                        clan.toLocaleString('ru-RU');
+
+                    const statusBadge =
+                        document.getElementById('bot-status');
+                    const descText =
+                        document.getElementById('info-desc-text');
+
+                    if (total > 0) {
+                        statusBadge.textContent = '🟢 Мост: LIVE';
+                        statusBadge.style.backgroundColor =
+                            'rgba(46, 213, 115, 0.1)';
+                        statusBadge.style.color = 'var(--success-green)';
+                        statusBadge.style.borderColor =
+                            'rgba(46, 213, 115, 0.2)';
+
+                        descText.textContent =
+                            'Статистика получена от Discord-бота.';
                     } else {
-                        statusBadge.innerText = "🟡 Ожидание данных...";
-                        statusBadge.style.backgroundColor = "rgba(255, 159, 67, 0.1)";
-                        statusBadge.style.color = "#ff9f43";
-                        descText.innerText = "Бот успешно подключён, ожидает первый цикл обновления счётчиков (до 10 минут).";
+                        statusBadge.textContent = '🟡 Ожидание данных...';
+                        statusBadge.style.backgroundColor =
+                            'rgba(255, 159, 67, 0.1)';
+                        statusBadge.style.color = '#ff9f43';
+                        statusBadge.style.borderColor =
+                            'rgba(255, 159, 67, 0.2)';
+
+                        descText.textContent =
+                            'Сайт ожидает первую статистику от Discord-бота.';
                     }
                 }
             } catch (error) {
+                console.error('Ошибка загрузки панели:', error);
+                document.getElementById('info-desc-text').textContent =
+                    'Не удалось загрузить данные. Обнови страницу позже.';
+            }
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка выхода: ' + response.status);
+                }
+
+                currentUserId = null;
+                await initDashboard();
+            } catch (error) {
+                console.error('Ошибка выхода:', error);
+                alert('Не удалось выйти. Попробуй обновить страницу.');
+            }
+        }
+
+        initDashboard();
+        setInterval(initDashboard, 15000);
+    </script>
+</body>
+</html>
