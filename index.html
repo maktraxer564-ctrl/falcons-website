@@ -1,378 +1,81 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FALCONS — Панель управления</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FALCONS — Панель управления v0.2</title>
+<style>
+:root{--bg:#070811;--panel:#0c0d19;--line:#242239;--muted:#9294b3;--text:#eef0ff;--purple:#782cff;--purple2:#a35cff;--green:#21e6a0}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#20103b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.4 Inter,Segoe UI,Arial,sans-serif}button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:245px 1fr;min-height:100vh}.side{padding:22px 15px;border-right:1px solid var(--line);background:#080914;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:12px;padding:0 12px 28px}.bird{font-size:35px;color:var(--purple2);filter:drop-shadow(0 0 12px #782cff)}.brand b{font-size:22px;letter-spacing:2px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}.nav{display:grid;gap:7px}.nav button{border:0;color:#bcbdd6;background:transparent;text-align:left;padding:13px 14px;border-radius:10px;display:flex;gap:12px;align-items:center}.nav button:hover,.nav button.active{background:linear-gradient(100deg,#4e1a9e,#29144f);color:white}.ico{width:21px;text-align:center;font-size:18px}.sidefoot{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:15px;color:var(--muted);font-size:12px}.main{min-width:0}.top{height:67px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 28px;background:#090914c9}.emergency{background:#4a101e!important;border:1px solid #ff4d6d!important;color:#fff!important;font-weight:800;box-shadow:0 0 18px #ff244522}.emergency:hover{background:#70152a!important}.pill{padding:10px 13px;border:1px solid #38265a;border-radius:9px;background:#111020;color:#eee}.avatar{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#3b1769;border:1px solid #a35cff}.content{padding:27px;max-width:1600px;margin:auto}.hero{padding:26px;border-radius:16px;border:1px solid #292044;background:linear-gradient(110deg,#111020f2 0%,#151025e8 50%,#241044c9 100%);position:relative;overflow:hidden;margin-bottom:20px}.hero:after{content:'🦅';position:absolute;right:38px;top:-34px;font-size:155px;opacity:.13;transform:rotate(-12deg)}h1{margin:0 0 7px;font-size:29px}h1 span{color:var(--purple2)}p{margin:0;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:14px;margin-bottom:16px}.card{background:linear-gradient(145deg,#0e0f1c,#090a14);border:1px solid var(--line);border-radius:13px;padding:18px;min-width:0}.stat-icon{color:var(--purple2);font-size:23px}.label{color:#a6a7c3;font-size:12px;margin-top:12px}.num{font-size:28px;font-weight:700;margin:2px 0}.delta{font-size:11px;color:var(--green)}.grid{display:grid;grid-template-columns:1.35fr .9fr .8fr;gap:15px}.card h2{font-size:16px;margin:0 0 18px}.chart{height:155px;display:flex;align-items:end;gap:8px;padding:10px 5px 0;border-bottom:1px solid #29263d;background:repeating-linear-gradient(to bottom,transparent 0 37px,#211f32 38px)}.bar{flex:1;min-width:5px;background:linear-gradient(#a85aff,#5520c8);border-radius:5px 5px 0 0;box-shadow:0 0 12px #6b25ca55}.roleline{display:flex;justify-content:space-between;gap:8px;padding:7px 0;color:#bcbdd6;font-size:12px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--purple2);margin-right:8px}.server{display:flex;align-items:center;gap:10px;margin-bottom:12px}.server-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#7026df,#191127);display:grid;place-items:center;font-size:21px}.server b{display:block}.online{color:var(--green);font-size:12px}.rowitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #1d1d30}.rowitem:last-child{border-bottom:0}.sub{color:var(--muted);font-size:11px}.tag{font-size:11px;border-radius:20px;padding:5px 9px;background:#321765;color:#d8c5ff}.quick button{width:100%;text-align:left;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:11px;margin:4px 0}.quick button:hover{border-color:var(--purple2);background:#1b1031}.page{display:none}.page.active{display:block}.setting{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line)}.switch{width:42px;height:24px;border-radius:99px;border:0;background:#353448;padding:3px}.switch:after{content:'';display:block;width:18px;height:18px;border-radius:50%;background:white;transition:.2s}.switch.on{background:var(--purple)}.switch.on:after{transform:translateX(18px)}.toast{position:fixed;right:22px;bottom:22px;background:#1a1230;border:1px solid #7540c8;border-radius:10px;padding:13px 18px;display:none;box-shadow:0 10px 35px #0008}.mutednote{font-size:11px;color:#7f809d;margin-top:20px}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}.grid .servercard{grid-column:1/-1}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.brand{padding:4px 8px 12px}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.nav button{padding:10px}.sidefoot{display:none}.top{height:56px;padding:0 14px}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.grid .servercard{grid-column:auto}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
+</style></head><body>
+<div class="app"><aside class="side"><div class="brand"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div><nav class="nav" id="nav">
+<button class="active" data-page="home"><span class="ico">⌂</span>Главная</button><button data-page="members"><span class="ico">♟</span>Роли и участники</button><button data-page="tickets"><span class="ico">▤</span>Тикеты</button><button data-page="invites"><span class="ico">↗</span>Инвайты и рекрутинг</button><button data-page="apps"><span class="ico">▣</span>Заявки в клан</button><button data-page="moderation"><span class="ico">⬡</span>Модерация</button><button data-page="stats"><span class="ico">▥</span>Статистика</button><button data-page="logs"><span class="ico">◷</span>Логи</button><button data-page="settings"><span class="ico">⚙</span>Настройки</button><button data-page="roles"><span class="ico">♛</span>Роли и права</button></nav><div class="sidefoot">🦅 <b style="color:#eee">Falcons Bot</b><br><br>Прототип интерфейса · v0.2<br><span style="color:#a35cff">♥</span> Сделано для Falcons</div></aside>
+<main class="main"><header class="top"><button class="pill emergency" onclick="emergency()">🚨 АВАРИЙНЫЙ РЕЖИМ</button><button class="pill" onclick="toast('Выбор сервера появится после подключения Discord.')">▣ Falcons | Rust Clan　⌄</button><a id="discordLogin" class="pill" href="/auth/discord" style="text-decoration:none;display:inline-block">Войти через Discord</a><img id="discordAvatar" class="avatar" alt="" style="display:none;object-fit:cover"><div id="discordUser"><b>Гость</b><div class="sub">Не авторизован</div></div><button id="discordLogout" class="pill" style="display:none" onclick="fetch('/auth/logout',{method:'POST'}).then(()=>location.reload())">Выйти</button></header><div class="content">
+<section class="page active" id="home"><div class="hero"><h1>Добро пожаловать,</h1><h1><span>♛ Администратор</span></h1><p>Панель управления вашим Discord-сервером и ботом Falcons Bot</p></div><div class="stats"><div class="card"><div class="stat-icon">♟</div><div class="label">Участников сервера</div><div class="num" id="stat-total">…</div><div class="delta" id="stat-updated">Загрузка…</div></div><div class="card"><div class="stat-icon">●</div><div class="label">Онлайн сейчас</div><div class="num" id="stat-online">…</div><div class="sub">по данным бота</div></div><div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num">5</div><div class="sub">из 12 активных</div></div><div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num">8</div><div class="delta">↑ +3 за сегодня</div></div><div class="card"><div class="stat-icon">↗</div><div class="label">Приглашений</div><div class="num">312</div><div class="delta">↑ +24 за сегодня</div></div></div>
+<div class="grid"><div class="card"><h2>▥　Активность сервера</h2><div class="sub">Участники за последние 7 дней</div><div class="chart"> <div class="bar" style="height:54%"></div><div class="bar" style="height:61%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:67%"></div><div class="bar" style="height:64%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:72%"></div><div class="bar" style="height:83%"></div><div class="bar" style="height:80%"></div><div class="bar" style="height:94%"></div></div><div class="mutednote">12.04　　　 14.04　　　 16.04　　　 18.04</div></div>
+<div class="card"><h2>◉　Роли на сервере</h2><div class="roleline"><span><i class="dot"></i>Участники</span><b id="role-total">…</b></div><div class="roleline"><span><i class="dot" style="background:#5bb4ff"></i>Клан</span><b id="role-clan">…</b></div><div class="roleline"><span><i class="dot" style="background:#d8a16d"></i>Стафф</span><b>284</b></div><div class="roleline"><span><i class="dot" style="background:#f0b64b"></i>VIP</span><b>148</b></div><div class="roleline"><span><i class="dot" style="background:#b76b80"></i>Боты</span><b>102</b></div></div>
+<div class="card servercard"><h2>▣　Информация о сервере</h2><div class="server"><div class="server-icon">🦅</div><div><b>Falcons | Rust Clan</b><span class="online" id="bot-status">● Проверка связи…</span></div></div><div class="roleline"><span>ID сервера</span><b>Не подключён</b></div><div class="roleline"><span>Регион</span><b>Europe</b></div><div class="roleline"><span>Настоящие данные</span><b id="real-data" style="color:#ffbd59">Пока нет</b></div><button class="pill" style="width:100%;margin-top:8px" onclick="showPage('settings')">⚙ Настройки сервера</button></div>
+<div class="card"><h2>▤　Последние тикеты</h2><div class="rowitem"><div><b>ticket-042</b><div class="sub">Проверка заявки в клан</div></div><span class="tag">Открыт</span></div><div class="rowitem"><div><b>ticket-041</b><div class="sub">Вопрос по роли</div></div><span class="tag">В работе</span></div><div class="rowitem"><div><b>ticket-040</b><div class="sub">Жалоба на игрока</div></div><span class="tag">Открыт</span></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
+<div class="card"><h2>♛　Топ рекрутеров</h2><div class="rowitem"><b>1　k1ng</b><span>42 приглашения</span></div><div class="rowitem"><b>2　vlad.exe</b><span>37 приглашений</span></div><div class="rowitem"><b>3　grizzly</b><span>29 приглашений</span></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('invites')">Все рекрутеры →</button></div>
+<div class="card quick"><h2>ϟ　Быстрые действия</h2><button onclick="showPage('tickets')">▤　Открыть тикеты</button><button onclick="showPage('members')">♟　Роли и участники</button><button onclick="showPage('apps')">▣　Посмотреть заявки</button><button onclick="showPage('invites')">↗　Просмотр инвайтов</button></div></div><div class="mutednote">Участники, онлайн и клан — реальные данные Discord-бота. Остальные цифры и имена — демонстрационные.</div></section>
+<div class="page" id="generic"><div class="hero"><h1 id="pageTitle">Раздел</h1><p id="pageDesc">Настройки панели управления Falcons Bot</p></div><div class="card" id="pageBody"></div></div>
+</div></main></div><div class="toast" id="toast"></div>
+<script>
+const info={roles:['Роли и права доступа','Макет разграничения доступа по ролям Falcons.',['OWNER — полный доступ; назначает и снимает Dep Leader','DEP LEADER — управление работой; опасные действия требуют подтверждения Owner','TICKET STAFF — тикеты и проверка заявок; без управления настройками и правами','Owner выбирает Discord-роль для CLAN MEMBERS','Owner выбирает общую Discord-роль для STAFF и Dep Leader','Опасные действия: причина, просмотр изменений, подтверждение Owner, запись в журнал']],members:['Роли и участники','Управление ролями, доступом и никнеймами.',['Автоматическая роль новичкам','Никнейм FLCN | Steam nickname','Роли за достижения по инвайтам']],tickets:['Тикеты','Настройка панели обращений и доступа стаффа.',['Создание приватных тикетов','Кнопки «Взять» и «Закрыть»','Сохранение истории тикета','Защита от спама тикетами']],invites:['Инвайты и рекрутинг','Статистика приглашений, рекрутеры и награды.',['Отслеживание приглашений','Защита от фейковых инвайтов','Награды за 10 / 25 / 50 / 100 приглашений']],apps:['Заявки в клан','Очередь заявок и ручная проверка кандидатов.',['Статус скриншота /screen','Решение проверяющего стаффа','Выдать роль после одобрения']],moderation:['Модерация','Правила защиты сервера и наказания.',['Антиспам','Антирейд','Журнал предупреждений и банов']],stats:['Статистика','Обзор активности и состава сервера.',['Участники и онлайн','Статистика по ролям','Активность тикетов']],logs:['Логи стаффа','История действий администраторов и стаффа.',['Изменения ролей','Решения по заявкам','Наказания и настройки']],settings:['Общие настройки','Подключение и параметры панели.',['Вход через Discord','Проверка прав администратора','Резервные копии данных']]};
+function emergency(){
+  const ok = confirm('АВАРИЙНЫЙ РЕЖИМ (демо)\\n\\nВ реальной версии он заморозит опасные действия, отзовёт активные сессии стаффа и заместителей, оставив доступ Owner, и запишет событие в журнал.\\n\\nВключить демонстрационный режим?');
+  if(!ok) return;
+  document.body.insertAdjacentHTML('beforeend','<div id="emergencyBanner" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#7a1027;color:white;text-align:center;padding:12px;font-weight:800">🚨 ДЕМО: АВАРИЙНЫЙ РЕЖИМ ВКЛЮЧЁН — реальные Discord-сессии не затронуты <button onclick="this.parentElement.remove()" style="margin-left:16px;background:#fff;color:#7a1027;border:0;border-radius:6px;padding:5px 10px">Скрыть</button></div>');
+  toast('Включён только визуальный аварийный режим.');
+}
+function showPage(id){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));document.getElementById('home').classList.toggle('active',id==='home');document.getElementById('generic').classList.toggle('active',id!=='home');if(id!=='home'){let d=info[id]||info.settings;document.getElementById('pageTitle').textContent=d[0];document.getElementById('pageDesc').textContent=d[1];document.getElementById('pageBody').innerHTML=d[2].map((s,i)=>`<div class="setting"><div><b>${s}</b><div class="sub">${id==='roles'?'Пример матрицы прав — реальные права ещё не подключены':'Демо-настройка — подключение появится позже'}</div></div>${id==='roles'?'<span class="tag">'+(i===0?'OWNER':i===1?'DEP LEADER':i===2?'TICKET STAFF':'НАСТРОЙКА')+'</span>':`<button class="switch ${i===0?'on':''}" onclick="this.classList.toggle('on');toast('Изменение только в демо-прототипе')" aria-label="Переключить"></button>`}</div>`).join('')+'<p class="mutednote">Это визуальный прототип: изменения пока не сохраняются и не влияют на Discord.</p>'; }}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));let tt;function toast(s){let t=document.getElementById('toast');t.textContent=s;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2600)}
 
-    <style>
-        :root {
-            --bg-dark: #0f0f13;
-            --panel-bg: #14141c;
-            --accent-purple: #7d5fff;
-            --text-main: #f1f2f6;
-            --text-muted: #a4b0be;
-            --border-color: #2f3542;
-            --success-green: #2ed573;
-        }
+async function loadDiscordUser(){
+  try {
+    const r = await fetch('/api/me');
+    const data = await r.json();
+    if(data && data.authenticated && data.user){
+      document.getElementById('discordLogin').style.display='none';
+      const u=data.user;
+      document.getElementById('discordUser').innerHTML='<b></b><div class="sub">Вход через Discord</div>';
+      document.querySelector('#discordUser b').textContent=u.global_name || u.username || 'Пользователь';
+      if(u.avatar_url){
+        const img=document.getElementById('discordAvatar');
+        img.src=u.avatar_url; img.style.display='grid';
+      } else {
+        const av=document.getElementById('discordAvatar');
+        av.replaceWith(Object.assign(document.createElement('div'),{className:'avatar',textContent:(u.username||'D').slice(0,1).toUpperCase()}));
+      }
+      document.getElementById('discordLogout').style.display='inline-block';
+    }
+  } catch(e) {}
+}
+loadDiscordUser();
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background: var(--bg-dark);
-            color: var(--text-main);
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .dashboard-container {
-            width: 100%;
-            max-width: 1100px;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .header-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 25px;
-            margin-bottom: 35px;
-        }
-
-        h1 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .user-panel {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 8px 16px;
-            border-radius: 30px;
-            border: 1px solid var(--border-color);
-        }
-
-        .avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid var(--accent-purple);
-            object-fit: cover;
-        }
-
-        .login-btn,
-        .logout-btn {
-            background: var(--accent-purple);
-            color: #fff;
-            border: none;
-            padding: 10px 22px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: opacity 0.2s;
-            font-size: 14px;
-        }
-
-        .login-btn:hover,
-        .logout-btn:hover {
-            opacity: 0.85;
-        }
-
-        .logout-btn {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 8px 14px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 25px;
-            margin-bottom: 35px;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.01);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--accent-purple);
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-
-        .stat-value {
-            font-size: 36px;
-            font-weight: 700;
-        }
-
-        .info-box {
-            background: rgba(125, 95, 255, 0.05);
-            border: 1px solid rgba(125, 95, 255, 0.2);
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .info-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .info-desc {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .status-badge {
-            background: rgba(255, 159, 67, 0.1);
-            color: #ff9f43;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            border: 1px solid rgba(255, 159, 67, 0.2);
-        }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 16px 10px;
-            }
-
-            .dashboard-container {
-                padding: 22px 16px;
-            }
-
-            h1 {
-                font-size: 23px;
-            }
-
-            .user-panel {
-                flex-wrap: wrap;
-                border-radius: 12px;
-            }
-
-            .stat-value {
-                font-size: 30px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <main class="dashboard-container">
-        <header class="header-section">
-            <h1>🦅 FALCONS PANEL</h1>
-
-            <div id="auth-area">
-                <a href="/auth/discord" class="login-btn">
-                    Войти через Discord
-                </a>
-            </div>
-        </header>
-
-        <section class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Участников сервера</div>
-                <div class="stat-value" id="total-members-count">0</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Онлайн сейчас</div>
-                <div class="stat-value" id="online-members-count">0</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Участники клана</div>
-                <div class="stat-value" id="clan-members-count">0</div>
-            </div>
-        </section>
-
-        <section class="info-box">
-            <div>
-                <div class="info-title">
-                    Интеграция с Discord-ботом FLCN
-                </div>
-                <div class="info-desc" id="info-desc-text">
-                    Ожидание статистики от Discord-бота.
-                </div>
-            </div>
-
-            <div class="status-badge" id="bot-status">
-                🟡 Ожидание данных...
-            </div>
-        </section>
-    </main>
-
-    <script>
-        let currentUserId = null;
-
-        async function initDashboard() {
-            try {
-                const response = await fetch('/api/me', {
-                    method: 'GET',
-                    credentials: 'same-origin',
-                    cache: 'no-store'
-                });
-
-                if (!response.ok) {
-                    throw new Error('Ошибка API: ' + response.status);
-                }
-
-                const data = await response.json();
-                const authArea = document.getElementById('auth-area');
-
-                if (data.authenticated && data.user) {
-                    if (currentUserId !== data.user.id) {
-                        currentUserId = data.user.id;
-                        authArea.replaceChildren();
-
-                        const userPanel = document.createElement('div');
-                        userPanel.className = 'user-panel';
-
-                        if (data.user.avatar_url) {
-                            const avatar = document.createElement('img');
-                            avatar.src = data.user.avatar_url;
-                            avatar.className = 'avatar';
-                            avatar.alt = 'Аватар Discord';
-                            userPanel.appendChild(avatar);
-                        }
-
-                        const username = document.createElement('span');
-                        username.style.fontWeight = '600';
-                        username.textContent =
-                            data.user.global_name ||
-                            data.user.username ||
-                            'Пользователь Discord';
-
-                        const logoutButton = document.createElement('button');
-                        logoutButton.className = 'logout-btn';
-                        logoutButton.textContent = 'Выйти';
-                        logoutButton.addEventListener('click', logout);
-
-                        userPanel.appendChild(username);
-                        userPanel.appendChild(logoutButton);
-                        authArea.appendChild(userPanel);
-                    }
-                } else {
-                    currentUserId = null;
-                    authArea.innerHTML = `
-                        <a href="/auth/discord" class="login-btn">
-                            Войти через Discord
-                        </a>
-                    `;
-                }
-
-                if (data.stats) {
-                    const total = Number(data.stats.total) || 0;
-                    const online = Number(data.stats.online) || 0;
-                    const clan = Number(data.stats.clan) || 0;
-
-                    document.getElementById('total-members-count').textContent =
-                        total.toLocaleString('ru-RU');
-
-                    document.getElementById('online-members-count').textContent =
-                        online.toLocaleString('ru-RU');
-
-                    document.getElementById('clan-members-count').textContent =
-                        clan.toLocaleString('ru-RU');
-
-                    const statusBadge =
-                        document.getElementById('bot-status');
-                    const descText =
-                        document.getElementById('info-desc-text');
-
-                    if (total > 0) {
-                        statusBadge.textContent = '🟢 Мост: LIVE';
-                        statusBadge.style.backgroundColor =
-                            'rgba(46, 213, 115, 0.1)';
-                        statusBadge.style.color = 'var(--success-green)';
-                        statusBadge.style.borderColor =
-                            'rgba(46, 213, 115, 0.2)';
-
-                        descText.textContent =
-                            'Статистика получена от Discord-бота.';
-                    } else {
-                        statusBadge.textContent = '🟡 Ожидание данных...';
-                        statusBadge.style.backgroundColor =
-                            'rgba(255, 159, 67, 0.1)';
-                        statusBadge.style.color = '#ff9f43';
-                        statusBadge.style.borderColor =
-                            'rgba(255, 159, 67, 0.2)';
-
-                        descText.textContent =
-                            'Сайт ожидает первую статистику от Discord-бота.';
-                    }
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки панели:', error);
-                document.getElementById('info-desc-text').textContent =
-                    'Не удалось загрузить данные. Обнови страницу позже.';
-            }
-        }
-
-        async function logout() {
-            try {
-                const response = await fetch('/auth/logout', {
-                    method: 'POST',
-                    credentials: 'same-origin'
-                });
-
-                if (!response.ok) {
-                    throw new Error('Ошибка выхода: ' + response.status);
-                }
-
-                currentUserId = null;
-                await initDashboard();
-            } catch (error) {
-                console.error('Ошибка выхода:', error);
-                alert('Не удалось выйти. Попробуй обновить страницу.');
-            }
-        }
-
-        initDashboard();
-        setInterval(initDashboard, 15000);
-    </script>
-</body>
-</html>
+const fmt=n=>Number.isFinite(n)?n.toLocaleString('ru-RU'):'\u2014';
+function setText(id,t){const e=document.getElementById(id);if(e)e.textContent=t}
+async function loadStats(){
+  try{
+    const r=await fetch('/api/me',{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json(), s=d.stats||{};
+    // accepts both naming styles: total/online/clan and total_members/online_members/clan_members
+    const pick=(a,b)=>{const v=s[a]!==undefined?s[a]:s[b];return(v===undefined||v===null)?NaN:Number(v)};
+    const total=pick('total','total_members'), online=pick('online','online_members'), clan=pick('clan','clan_members');
+    const ts=d.stats_updated_at;
+    const known=!!ts||[total,online,clan].some(v=>v>0);
+    const show=v=>known?fmt(v):'\u2014';
+    setText('stat-total',show(total)); setText('stat-online',show(online));
+    setText('role-total',show(total)); setText('role-clan',show(clan));
+    setText('stat-updated',ts?'Обновлено '+new Date(ts*1000).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'Ожидание данных от бота…');
+    const fresh=!!ts&&(Date.now()/1000-ts)<25*60;
+    const st=document.getElementById('bot-status');
+    if(st){st.textContent=fresh?'● Бот в сети':'● Нет свежих данных от бота';st.style.color=fresh?'':'#ffbd59'}
+    setText('real-data',known?'Участники, онлайн, клан':'Пока нет');
+  }catch(e){
+    ['stat-total','stat-online','role-total','role-clan'].forEach(id=>setText(id,'\u2014'));
+    setText('stat-updated','Не удалось загрузить данные');
+    setText('bot-status','● Нет связи с сервером');
+  }
+}
+loadStats(); setInterval(loadStats,60000);
+</script></body></html>
