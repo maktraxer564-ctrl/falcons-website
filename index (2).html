@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FALCONS — Панель управления v0.2</title>
+<style>
+:root{--bg:#070811;--panel:#0c0d19;--line:#242239;--muted:#9294b3;--text:#eef0ff;--purple:#782cff;--purple2:#a35cff;--green:#21e6a0}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#20103b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.4 Inter,Segoe UI,Arial,sans-serif}button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:245px 1fr;min-height:100vh}.side{padding:22px 15px;border-right:1px solid var(--line);background:#080914;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:12px;padding:0 12px 28px}.bird{font-size:35px;color:var(--purple2);filter:drop-shadow(0 0 12px #782cff)}.brand b{font-size:22px;letter-spacing:2px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}.nav{display:grid;gap:7px}.nav button{border:0;color:#bcbdd6;background:transparent;text-align:left;padding:13px 14px;border-radius:10px;display:flex;gap:12px;align-items:center}.nav button:hover,.nav button.active{background:linear-gradient(100deg,#4e1a9e,#29144f);color:white}.ico{width:21px;text-align:center;font-size:18px}.sidefoot{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:15px;color:var(--muted);font-size:12px}.main{min-width:0}.top{height:67px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 28px;background:#090914c9}.emergency{background:#4a101e!important;border:1px solid #ff4d6d!important;color:#fff!important;font-weight:800;box-shadow:0 0 18px #ff244522}.emergency:hover{background:#70152a!important}.pill{padding:10px 13px;border:1px solid #38265a;border-radius:9px;background:#111020;color:#eee}.avatar{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#3b1769;border:1px solid #a35cff}.content{padding:27px;max-width:1600px;margin:auto}.hero{padding:26px;border-radius:16px;border:1px solid #292044;background:linear-gradient(110deg,#111020f2 0%,#151025e8 50%,#241044c9 100%);position:relative;overflow:hidden;margin-bottom:20px}.hero:after{content:'🦅';position:absolute;right:38px;top:-34px;font-size:155px;opacity:.13;transform:rotate(-12deg)}h1{margin:0 0 7px;font-size:29px}h1 span{color:var(--purple2)}p{margin:0;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:14px;margin-bottom:16px}.card{background:linear-gradient(145deg,#0e0f1c,#090a14);border:1px solid var(--line);border-radius:13px;padding:18px;min-width:0}.stat-icon{color:var(--purple2);font-size:23px}.label{color:#a6a7c3;font-size:12px;margin-top:12px}.num{font-size:28px;font-weight:700;margin:2px 0}.delta{font-size:11px;color:var(--green)}.grid{display:grid;grid-template-columns:1.35fr .9fr .8fr;gap:15px}.card h2{font-size:16px;margin:0 0 18px}.chart{height:155px;display:flex;align-items:end;gap:8px;padding:10px 5px 0;border-bottom:1px solid #29263d;background:repeating-linear-gradient(to bottom,transparent 0 37px,#211f32 38px)}.bar{flex:1;min-width:5px;background:linear-gradient(#a85aff,#5520c8);border-radius:5px 5px 0 0;box-shadow:0 0 12px #6b25ca55}.roleline{display:flex;justify-content:space-between;gap:8px;padding:7px 0;color:#bcbdd6;font-size:12px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--purple2);margin-right:8px}.server{display:flex;align-items:center;gap:10px;margin-bottom:12px}.server-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#7026df,#191127);display:grid;place-items:center;font-size:21px}.server b{display:block}.online{color:var(--green);font-size:12px}.rowitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #1d1d30}.rowitem:last-child{border-bottom:0}.sub{color:var(--muted);font-size:11px}.tag{font-size:11px;border-radius:20px;padding:5px 9px;background:#321765;color:#d8c5ff}.quick button{width:100%;text-align:left;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:11px;margin:4px 0}.quick button:hover{border-color:var(--purple2);background:#1b1031}.page{display:none}.page.active{display:block}.setting{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line)}.switch{width:42px;height:24px;border-radius:99px;border:0;background:#353448;padding:3px}.switch:after{content:'';display:block;width:18px;height:18px;border-radius:50%;background:white;transition:.2s}.switch.on{background:var(--purple)}.switch.on:after{transform:translateX(18px)}.toast{position:fixed;right:22px;bottom:22px;background:#1a1230;border:1px solid #7540c8;border-radius:10px;padding:13px 18px;display:none;box-shadow:0 10px 35px #0008}.mutednote{font-size:11px;color:#7f809d;margin-top:20px}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}.grid .servercard{grid-column:1/-1}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.brand{padding:4px 8px 12px}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.nav button{padding:10px}.sidefoot{display:none}.top{height:56px;padding:0 14px}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.grid .servercard{grid-column:auto}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
+/* --- добавлено поверх образца v0.2 --- */
+[hidden]{display:none!important}
+.loginwrap{min-height:100vh;display:grid;place-items:center;padding:20px}
+.logincard{width:100%;max-width:380px;text-align:center;padding:30px}
+.logincard p{margin-bottom:20px}
+.loginbtn{display:inline-block;background:linear-gradient(100deg,#4e1a9e,#782cff);color:#fff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:10px}
+.loginbtn:hover{filter:brightness(1.12)}
+.avatar{overflow:hidden}.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.dim{color:#6b6c88}.sub.live{color:var(--green)}
+.empty{margin:16px 0 4px;padding:18px;border:1px dashed #2d2a47;border-radius:10px;color:#7f809d;font-size:12px;line-height:1.5}
+.tag.st-ok{background:#0f3b2c;color:#6ff2c0}.tag.st-part{background:#463310;color:#ffd48a}.tag.st-no{background:#2a2540;color:#a9a6c9}
+button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
+
+</style></head><body>
+
+<!-- Экран входа: показывается, пока нет авторизации Discord -->
+<div class="loginwrap" id="loginScreen" hidden>
+  <div class="card logincard">
+    <div class="brand" style="justify-content:center;padding:0 0 18px"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
+    <p id="loginMsg">Войдите через Discord, чтобы открыть панель.</p>
+    <a class="loginbtn" href="/auth/discord">Войти через Discord</a>
+  </div>
+</div>
+
+<div class="app" id="app" hidden><aside class="side"><div class="brand"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div><nav class="nav" id="nav">
+<button class="active" data-page="home"><span class="ico">⌂</span>Главная</button><button data-page="members"><span class="ico">♟</span>Роли и участники</button><button data-page="tickets"><span class="ico">▤</span>Тикеты</button><button data-page="invites"><span class="ico">↗</span>Инвайты и рекрутинг</button><button data-page="apps"><span class="ico">▣</span>Заявки в клан</button><button data-page="moderation"><span class="ico">⬡</span>Модерация</button><button data-page="stats"><span class="ico">▥</span>Статистика</button><button data-page="logs"><span class="ico">◷</span>Логи</button><button data-page="settings"><span class="ico">⚙</span>Настройки</button><button data-page="roles"><span class="ico">♛</span>Роли и права</button></nav><div class="sidefoot">🦅 <b style="color:#eee">Falcons Bot</b><br><br>Панель · v0.2<br><span style="color:#a35cff">♥</span> Сделано для Falcons</div></aside>
+<main class="main"><header class="top"><button class="pill emergency" onclick="emergency()">🚨 АВАРИЙНЫЙ РЕЖИМ</button><button class="pill" onclick="toast('Выбор сервера появится после подключения нескольких серверов.')">▣ Falcons | Rust Clan　⌄</button><div class="avatar" id="avatar">?</div><div><b id="userName">…</b><div class="sub">Вход через Discord</div></div><button class="pill" onclick="logout()">Выйти</button></header><div class="content">
+
+<section class="page active" id="home"><div class="hero"><h1>Добро пожаловать,</h1><h1><span id="heroName">♛ …</span></h1><p>Панель управления вашим Discord-сервером и ботом Falcons Bot</p></div>
+
+<div class="stats">
+<div class="card"><div class="stat-icon">♟</div><div class="label">Участников сервера</div><div class="num" id="total-members-count">—</div><div class="sub live">данные бота</div></div>
+<div class="card"><div class="stat-icon">●</div><div class="label">Онлайн сейчас</div><div class="num" id="online-members-count">—</div><div class="sub live">данные бота</div></div>
+<div class="card"><div class="stat-icon">♛</div><div class="label">Участники клана</div><div class="num" id="clan-members-count">—</div><div class="sub live">данные бота</div></div>
+<div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num dim">—</div><div class="sub">не передаётся в панель</div></div>
+<div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num dim">—</div><div class="sub">не передаётся в панель</div></div>
+<div class="card"><div class="stat-icon">↗</div><div class="label">Приглашений</div><div class="num dim">—</div><div class="sub">в боте не реализовано</div></div>
+</div>
+
+<div class="grid">
+<div class="card"><h2>▥　Активность сервера</h2><div class="sub">Участники за последние 7 дней</div><div class="empty">Истории активности пока нет: бот отдаёт только текущие цифры.</div></div>
+
+<div class="card"><h2>◉　Роли на сервере</h2>
+<div class="roleline"><span><i class="dot" style="background:#5bb4ff"></i>Клан</span><b id="role-clan">—</b></div>
+<div class="roleline"><span><i class="dot"></i>Участники</span><b class="dim">—</b></div>
+<div class="roleline"><span><i class="dot" style="background:#d8a16d"></i>Стафф</span><b class="dim">—</b></div>
+<div class="roleline"><span><i class="dot" style="background:#f0b64b"></i>VIP</span><b class="dim">—</b></div>
+<div class="roleline"><span><i class="dot" style="background:#b76b80"></i>Боты</span><b class="dim">—</b></div>
+<div class="mutednote" style="margin-top:12px">Бот считает только роль клана. Остальные роли не подключены.</div></div>
+
+<div class="card servercard"><h2>▣　Информация о сервере</h2><div class="server"><div class="server-icon">🦅</div><div><b>Falcons | Rust Clan</b><span class="online" id="botStatus">● Бот не отвечает</span></div></div>
+<div class="roleline"><span>Участников</span><b id="srv-total">—</b></div>
+<div class="roleline"><span>ID сервера</span><b class="dim">не передаётся</b></div>
+<div class="roleline"><span>Настоящие данные</span><b style="color:#ffbd59">Частично</b></div>
+<button class="pill" style="width:100%;margin-top:8px" onclick="showPage('settings')">⚙ Настройки сервера</button></div>
+
+<div class="card"><h2>▤　Последние тикеты</h2><div class="empty">Список тикетов пока не передаётся из бота в панель. Тикеты создаются и закрываются в Discord.</div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
+
+<div class="card"><h2>♛　Топ рекрутеров</h2><div class="empty">Учёт приглашений в боте не реализован, показывать нечего.</div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('invites')">Все рекрутеры →</button></div>
+
+<div class="card quick"><h2>ϟ　Быстрые действия</h2><button onclick="showPage('tickets')">▤　Открыть тикеты</button><button onclick="showPage('members')">♟　Роли и участники</button><button onclick="showPage('apps')">▣　Посмотреть заявки</button><button onclick="showPage('invites')">↗　Просмотр инвайтов</button></div>
+</div>
+<div class="mutednote">Реальные данные сейчас: участники сервера, онлайн, участники клана. Остальные блоки — макет, пока бот не передаёт данные.</div></section>
+
+<div class="page" id="generic"><div class="hero"><h1 id="pageTitle">Раздел</h1><p id="pageDesc"></p></div><div class="card" id="pageBody"></div></div>
+</div></main></div><div class="toast" id="toast"></div>
+
+<script>
+/* Статус каждого пункта сверяется с текущим bot.py: ok — работает в боте, part — частично, no — не реализовано.
+   Сама панель пока не управляет ботом: пункты только показывают состояние. */
+const info={
+roles:['Роли и права доступа','Макет разграничения доступа по ролям Falcons.',[
+ ['OWNER — полный доступ; назначает и снимает Dep Leader','no','OWNER'],
+ ['DEP LEADER — управление работой; опасные действия требуют подтверждения Owner','no','DEP LEADER'],
+ ['TICKET STAFF — тикеты и проверка заявок; без управления настройками и правами','part','TICKET STAFF'],
+ ['Owner выбирает Discord-роль для CLAN MEMBERS','no'],
+ ['Owner выбирает общую Discord-роль для STAFF и Dep Leader','no'],
+ ['Опасные действия: причина, просмотр изменений, подтверждение Owner, запись в журнал','no']]],
+members:['Роли и участники','Управление ролями, доступом и никнеймами.',[
+ ['Автоматическая роль новичкам','no'],['Никнейм FLCN | Steam nickname','no'],['Роли за достижения по инвайтам','no']]],
+tickets:['Тикеты','Настройка панели обращений и доступа стаффа.',[
+ ['Создание приватных тикетов','ok'],['Кнопки «Взять» и «Закрыть»','part','Есть только «Закрыть»'],['Сохранение истории тикета','no'],['Защита от спама тикетами','no']]],
+invites:['Инвайты и рекрутинг','Статистика приглашений, рекрутеры и награды.',[
+ ['Отслеживание приглашений','no'],['Защита от фейковых инвайтов','no'],['Награды за 10 / 25 / 50 / 100 приглашений','no']]],
+apps:['Заявки в клан','Очередь заявок и ручная проверка кандидатов.',[
+ ['Статус скриншота /screen','no'],['Решение проверяющего стаффа','part','Вручную в тикете'],['Выдать роль после одобрения','no']]],
+moderation:['Модерация','Правила защиты сервера и наказания.',[
+ ['Антиспам','no'],['Антирейд','no'],['Журнал предупреждений и банов','no']]],
+stats:['Статистика','Обзор активности и состава сервера.',[
+ ['Участники и онлайн','ok'],['Статистика по ролям','part','Только клан'],['Активность тикетов','no']]],
+logs:['Логи стаффа','История действий администраторов и стаффа.',[
+ ['Изменения ролей','no'],['Решения по заявкам','no'],['Наказания и настройки','no']]],
+settings:['Общие настройки','Подключение и параметры панели.',[
+ ['Вход через Discord','ok'],['Проверка прав администратора','no'],['Резервные копии данных','no']]]
+};
+const STATE={ok:['Работает','st-ok'],part:['Частично','st-part'],no:['Не реализовано','st-no']};
+const $=id=>document.getElementById(id);
+
+function toast(s){const t=$('toast');t.textContent=s;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
+
+function emergency(){
+  if(!confirm('АВАРИЙНЫЙ РЕЖИМ (демо)\n\nВ реальной версии он заморозит опасные действия, отзовёт активные сессии стаффа и заместителей, оставив доступ Owner, и запишет событие в журнал.\n\nСейчас функция не реализована. Включить визуальную демонстрацию?')) return;
+  const b=document.createElement('div');b.id='emergencyBanner';
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#7a1027;color:white;text-align:center;padding:12px;font-weight:800';
+  b.textContent='🚨 ДЕМО: АВАРИЙНЫЙ РЕЖИМ ВКЛЮЧЁН — реальные Discord-сессии не затронуты ';
+  const x=document.createElement('button');x.textContent='Скрыть';x.style.cssText='margin-left:16px;background:#fff;color:#7a1027;border:0;border-radius:6px;padding:5px 10px';
+  x.onclick=()=>b.remove();b.appendChild(x);document.body.appendChild(b);
+  toast('Включён только визуальный аварийный режим.');
+}
+
+function showPage(id){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  $('home').classList.toggle('active',id==='home');
+  $('generic').classList.toggle('active',id!=='home');
+  if(id==='home')return;
+  const d=info[id]||info.settings;
+  $('pageTitle').textContent=d[0];$('pageDesc').textContent=d[1];
+  const body=$('pageBody');body.textContent='';
+  d[2].forEach(it=>{
+    const row=document.createElement('div');row.className='setting';
+    const left=document.createElement('div');
+    const b=document.createElement('b');b.textContent=it[0];left.appendChild(b);
+    const sub=document.createElement('div');sub.className='sub';
+    sub.textContent=it[1]==='ok'?'Работает в Discord-боте или на сайте':(it[2]&&it[1]==='part'?it[2]:(it[1]==='part'?'Работает частично':'Пока не подключено'));
+    left.appendChild(sub);
+    const tag=document.createElement('span');tag.className='tag '+STATE[it[1]][1];tag.textContent=(id==='roles'&&it[2]&&it[1]==='no')?it[2]+' · '+STATE.no[0]:STATE[it[1]][0];
+    row.append(left,tag);body.appendChild(row);
+  });
+  const n=document.createElement('p');n.className='mutednote';
+  n.textContent='Панель пока только показывает состояние: изменения отсюда не отправляются в бота и не влияют на Discord.';
+  body.appendChild(n);
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+
+/* ---- Авторизация и статистика (контракт /api/me не изменён) ---- */
+const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—'};
+
+function renderStats(s){
+  const ok=!!s&&typeof s==='object';
+  const total=ok?fmt(s.total_members):'—',online=ok?fmt(s.online_members):'—',clan=ok?fmt(s.clan_members):'—';
+  $('total-members-count').textContent=total;
+  $('online-members-count').textContent=online;
+  $('clan-members-count').textContent=clan;
+  $('role-clan').textContent=clan;
+  $('srv-total').textContent=total;
+  const st=$('botStatus');
+  st.textContent=ok?'● Бот в сети':'● Нет данных от бота';
+  st.style.color=ok?'':'#ffbd59';
+}
+
+function showLogin(msg){
+  $('app').hidden=true;$('loginScreen').hidden=false;
+  if(msg)$('loginMsg').textContent=msg;
+}
+
+function showApp(user){
+  const name=user.global_name||user.username||'Пользователь';
+  $('userName').textContent=name;
+  $('heroName').textContent='♛ '+name;
+  const av=$('avatar');av.textContent='';
+  if(user.avatar_url&&/^https:\/\//.test(user.avatar_url)){
+    const img=document.createElement('img');img.src=user.avatar_url;img.alt='';
+    img.onerror=()=>{av.textContent=name.charAt(0).toUpperCase()};
+    av.appendChild(img);
+  }else av.textContent=name.charAt(0).toUpperCase();
+  $('loginScreen').hidden=true;$('app').hidden=false;
+}
+
+async function fetchMe(){
+  const r=await fetch('/api/me',{credentials:'same-origin'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+async function init(){
+  try{
+    const data=await fetchMe();
+    if(!data.authenticated||!data.user){showLogin();return}
+    showApp(data.user);renderStats(data.stats);
+    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)renderStats(d.stats);else location.reload()}catch(e){}},60000);
+  }catch(e){
+    console.error('FALCONS: не удалось получить /api/me',e);
+    showLogin('Не удалось связаться с сервером. Попробуйте обновить страницу.');
+  }
+}
+
+async function logout(){
+  try{await fetch('/auth/logout',{method:'POST',credentials:'same-origin'})}catch(e){}
+  location.reload();
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script></body></html>
