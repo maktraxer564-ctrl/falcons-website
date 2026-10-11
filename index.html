@@ -17,6 +17,7 @@
 .empty{margin:16px 0 4px;padding:18px;border:1px dashed #2d2a47;border-radius:10px;color:#7f809d;font-size:12px;line-height:1.5}
 .tag.st-ok{background:#0f3b2c;color:#6ff2c0}.tag.st-part{background:#463310;color:#ffd48a}.tag.st-no{background:#2a2540;color:#a9a6c9}
 button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
+a.tag{text-decoration:none;white-space:nowrap}a.tag:hover{background:#4a2390}.tkstale{color:#ffbd59;font-size:11px;margin:4px 0 8px}
 
 </style></head><body>
 
@@ -39,8 +40,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 <div class="card"><div class="stat-icon">♟</div><div class="label">Участников сервера</div><div class="num" id="total-members-count">—</div><div class="sub live">данные бота</div></div>
 <div class="card"><div class="stat-icon">●</div><div class="label">Онлайн сейчас</div><div class="num" id="online-members-count">—</div><div class="sub live">данные бота</div></div>
 <div class="card"><div class="stat-icon">♛</div><div class="label">Участники клана</div><div class="num" id="clan-members-count">—</div><div class="sub live">данные бота</div></div>
-<div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num dim">—</div><div class="sub">не передаётся в панель</div></div>
-<div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num dim">—</div><div class="sub">не передаётся в панель</div></div>
+<div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num dim" id="tk-open-count">—</div><div class="sub" id="tk-open-sub">ожидание данных</div></div>
+<div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num dim" id="tk-clan-count">—</div><div class="sub" id="tk-clan-sub">ожидание данных</div></div>
 <div class="card"><div class="stat-icon">↗</div><div class="label">Приглашений</div><div class="num dim">—</div><div class="sub">в боте не реализовано</div></div>
 </div>
 
@@ -61,13 +62,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 <div class="roleline"><span>Настоящие данные</span><b style="color:#ffbd59">Частично</b></div>
 <button class="pill" style="width:100%;margin-top:8px" onclick="showPage('settings')">⚙ Настройки сервера</button></div>
 
-<div class="card"><h2>▤　Последние тикеты</h2><div class="empty">Список тикетов пока не передаётся из бота в панель. Тикеты создаются и закрываются в Discord.</div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
+<div class="card"><h2>▤　Последние тикеты</h2><div id="recent-tickets"><div class="empty">Ожидание данных от бота…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
 
 <div class="card"><h2>♛　Топ рекрутеров</h2><div class="empty">Учёт приглашений в боте не реализован, показывать нечего.</div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('invites')">Все рекрутеры →</button></div>
 
 <div class="card quick"><h2>ϟ　Быстрые действия</h2><button onclick="showPage('tickets')">▤　Открыть тикеты</button><button onclick="showPage('members')">♟　Роли и участники</button><button onclick="showPage('apps')">▣　Посмотреть заявки</button><button onclick="showPage('invites')">↗　Просмотр инвайтов</button></div>
 </div>
-<div class="mutednote">Реальные данные сейчас: участники сервера, онлайн, участники клана. Остальные блоки — макет, пока бот не передаёт данные.</div></section>
+<div class="mutednote">Реальные данные сейчас: участники сервера, онлайн, участники клана и (только для стаффа) открытые тикеты. Остальные блоки — макет, пока бот не передаёт данные.</div></section>
 
 <div class="page" id="generic"><div class="hero"><h1 id="pageTitle">Раздел</h1><p id="pageDesc"></p></div><div class="card" id="pageBody"></div></div>
 </div></main></div><div class="toast" id="toast"></div>
@@ -86,11 +87,11 @@ roles:['Роли и права доступа','Макет разграниче�
 members:['Роли и участники','Управление ролями, доступом и никнеймами.',[
  ['Автоматическая роль новичкам','no'],['Никнейм FLCN | Steam nickname','no'],['Роли за достижения по инвайтам','no']]],
 tickets:['Тикеты','Настройка панели обращений и доступа стаффа.',[
- ['Создание приватных тикетов','ok'],['Кнопки «Взять» и «Закрыть»','part','Есть только «Закрыть»'],['Сохранение истории тикета','no'],['Защита от спама тикетами','no']]],
+ ['Список открытых тикетов на сайте (для стаффа)','part','Только просмотр, без управления'],['Создание приватных тикетов','ok'],['Кнопки «Взять» и «Закрыть»','part','Есть только «Закрыть»'],['Сохранение истории тикета','no'],['Защита от спама тикетами','no']]],
 invites:['Инвайты и рекрутинг','Статистика приглашений, рекрутеры и награды.',[
  ['Отслеживание приглашений','no'],['Защита от фейковых инвайтов','no'],['Награды за 10 / 25 / 50 / 100 приглашений','no']]],
 apps:['Заявки в клан','Очередь заявок и ручная проверка кандидатов.',[
- ['Статус скриншота /screen','no'],['Решение проверяющего стаффа','part','Вручную в тикете'],['Выдать роль после одобрения','no']]],
+ ['Список заявок в клан — это тикеты категории «Набор в клан» (для стаффа)','part','Только просмотр, без управления'],['Статус скриншота /screen','no'],['Решение проверяющего стаффа','part','Вручную в тикете'],['Выдать роль после одобрения','no']]],
 moderation:['Модерация','Правила защиты сервера и наказания.',[
  ['Антиспам','no'],['Антирейд','no'],['Журнал предупреждений и банов','no']]],
 stats:['Статистика','Обзор активности и состава сервера.',[
@@ -102,6 +103,91 @@ settings:['Общие настройки','Подключение и парам�
 };
 const STATE={ok:['Работает','st-ok'],part:['Частично','st-part'],no:['Не реализовано','st-no']};
 const $=id=>document.getElementById(id);
+
+/* ---- Тикеты (только для стаффа; права проверяет сервер, /api/me отдаёт tickets только стаффу) ---- */
+let currentPage='home';
+const ME={staff:false,tickets:null,serverTime:null};
+const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',question:'Вопрос по клану',report:'Жалоба на игрока',other:'Другое обращение'};
+const ID_RE=/^\d{1,25}$/;
+const STALE_SEC=25*60;
+const ageSec=u=>(ME.serverTime!==null?ME.serverTime:Math.floor(Date.now()/1000))-u;
+const fmtDateTime=ts=>{const d=new Date(Number(ts)*1000);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})};
+
+function ticketState(){
+  if(!ME.staff)return{state:'nostaff'};
+  const t=ME.tickets;
+  if(!t||t.updated_at===null||t.updated_at===undefined)return{state:'wait'};
+  const items=Array.isArray(t.items)?t.items:[];
+  return{state:'ok',items,guild:String(t.guild_id||''),updatedAt:t.updated_at,stale:ageSec(t.updated_at)>STALE_SEC};
+}
+
+function setCounter(numId,subId,text,sub,live,stale){
+  const n=$(numId),s=$(subId);
+  n.textContent=text;n.classList.toggle('dim',!live);
+  s.textContent=sub;s.className='sub'+(live&&!stale?' live':'');
+  s.style.color=stale?'#ffbd59':'';
+}
+
+function renderTicketCounters(){
+  const st=ticketState();
+  if(st.state==='nostaff'){
+    setCounter('tk-open-count','tk-open-sub','—','доступно только стаффу',false,false);
+    setCounter('tk-clan-count','tk-clan-sub','—','доступно только стаффу',false,false);
+  }else if(st.state==='wait'){
+    setCounter('tk-open-count','tk-open-sub','—','ожидание данных от бота…',false,false);
+    setCounter('tk-clan-count','tk-clan-sub','—','ожидание данных от бота…',false,false);
+  }else{
+    const clan=st.items.filter(t=>t.category==='clan').length;
+    const sub=st.stale?'данные устарели':'данные бота';
+    setCounter('tk-open-count','tk-open-sub',fmt(st.items.length),sub,true,st.stale);
+    setCounter('tk-clan-count','tk-clan-sub',fmt(clan),sub,true,st.stale);
+  }
+}
+
+function ticketRow(t,guild){
+  const row=document.createElement('div');row.className='rowitem';
+  const left=document.createElement('div');
+  const b=document.createElement('b');b.textContent='#'+t.number+' · '+t.owner_name;
+  const sub=document.createElement('div');sub.className='sub';
+  sub.textContent=(CAT_LABEL[t.category]||'Обращение')+' · '+fmtDateTime(t.created_at);
+  left.append(b,sub);row.appendChild(left);
+  if(ID_RE.test(guild)&&ID_RE.test(String(t.channel_id))){
+    const a=document.createElement('a');a.className='tag';
+    a.href='https://discord.com/channels/'+guild+'/'+t.channel_id;
+    a.target='_blank';a.rel='noopener noreferrer';a.textContent='Открыть в Discord';
+    row.appendChild(a);
+  }
+  return row;
+}
+
+function fillTickets(el,kind,limit){
+  if(!el)return;
+  el.textContent='';
+  const empty=txt=>{const d=document.createElement('div');d.className='empty';d.textContent=txt;el.appendChild(d)};
+  const st=ticketState();
+  if(st.state==='nostaff')return empty('Список тикетов доступен только стаффу панели.');
+  if(st.state==='wait')return empty('Ожидание данных от бота… Бот присылает список при запуске и раз в несколько минут.');
+  let items=st.items;
+  if(kind==='clan')items=items.filter(t=>t.category==='clan');
+  if(!items.length)return empty(kind==='clan'?'Открытых заявок в клан нет.':'Открытых тикетов нет.');
+  if(st.stale){const w=document.createElement('div');w.className='tkstale';w.textContent='Данные устарели: последнее обновление в '+(fmtTime(st.updatedAt)||'—')+'. Проверьте, что бот запущен.';el.appendChild(w)}
+  items.slice(0,limit||items.length).forEach(t=>el.appendChild(ticketRow(t,st.guild)));
+}
+
+function renderTicketViews(){
+  renderTicketCounters();
+  fillTickets($('recent-tickets'),'all',5);
+  const box=$('tk-section');
+  if(box)fillTickets(box,box.dataset.kind);
+}
+
+function applyMe(d){
+  ME.staff=!!d.is_staff;
+  ME.tickets=d.tickets||null;
+  ME.serverTime=typeof d.server_time==='number'?d.server_time:null;
+  renderStats(d.stats,d.stats_updated_at);
+  renderTicketViews();
+}
 
 function toast(s){const t=$('toast');t.textContent=s;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
 
@@ -116,6 +202,7 @@ function emergency(){
 }
 
 function showPage(id){
+  currentPage=id;
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
   $('home').classList.toggle('active',id==='home');
   $('generic').classList.toggle('active',id!=='home');
@@ -133,6 +220,12 @@ function showPage(id){
     const tag=document.createElement('span');tag.className='tag '+STATE[it[1]][1];tag.textContent=(id==='roles'&&it[2]&&it[1]==='no')?it[2]+' · '+STATE.no[0]:STATE[it[1]][0];
     row.append(left,tag);body.appendChild(row);
   });
+  if(id==='tickets'||id==='apps'){
+    const h=document.createElement('h2');h.style.margin='22px 0 8px';
+    h.textContent=id==='apps'?'Открытые заявки в клан':'Открытые тикеты';
+    const box=document.createElement('div');box.id='tk-section';box.dataset.kind=id==='apps'?'clan':'all';
+    body.append(h,box);fillTickets(box,box.dataset.kind);
+  }
   const n=document.createElement('p');n.className='mutednote';
   n.textContent='Панель пока только показывает состояние: изменения отсюда не отправляются в бота и не влияют на Discord.';
   body.appendChild(n);
@@ -168,7 +261,12 @@ function renderStats(s,updatedAt){
   $('role-clan').textContent=clan;
   $('srv-total').textContent=total;
   const st=$('botStatus');
-  if(live){const tm=fmtTime(updatedAt);st.textContent='● Бот в сети'+(tm?' · обновлено '+tm:'');st.style.color=''}
+  if(live){
+    const tm=fmtTime(updatedAt);
+    const stale=typeof updatedAt==='number'&&updatedAt<1e12&&ageSec(updatedAt)>STALE_SEC;
+    if(stale){st.textContent='● Данные устарели'+(tm?' · обновлено '+tm:'')+' — проверьте бота';st.style.color='#ffbd59'}
+    else{st.textContent='● Бот в сети'+(tm?' · обновлено '+tm:'');st.style.color=''}
+  }
   else{st.textContent='● Ожидание данных от бота…';st.style.color='#ffbd59'}
 }
 
@@ -200,8 +298,8 @@ async function init(){
   try{
     const data=await fetchMe();
     if(!data.authenticated||!data.user){showLogin();return}
-    showApp(data.user);renderStats(data.stats,data.stats_updated_at);
-    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)renderStats(d.stats,d.stats_updated_at);else location.reload()}catch(e){}},60000);
+    showApp(data.user);applyMe(data);
+    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)applyMe(d);else location.reload()}catch(e){}},60000);
   }catch(e){
     console.error('FALCONS: не удалось получить /api/me',e);
     showLogin('Не удалось связаться с сервером. Попробуйте обновить страницу.');
