@@ -142,17 +142,34 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
 /* ---- Авторизация и статистика (контракт /api/me не изменён) ---- */
 const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—'};
 
-function renderStats(s){
+const pick=(o,...k)=>{for(const x of k){if(o[x]!==undefined&&o[x]!==null)return o[x]}return undefined};
+
+function fmtTime(t){
+  if(t===null||t===undefined||t==='')return '';
+  let d=typeof t==='number'?new Date(t<1e12?t*1000:t):new Date(t);
+  if(isNaN(d))return '';
+  return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* Формат /api/me: stats:{total,online,clan} + stats_updated_at (null, пока бот ничего не прислал).
+   Старые имена total_members / online_members / clan_members тоже понимаются. */
+function renderStats(s,updatedAt){
   const ok=!!s&&typeof s==='object';
-  const total=ok?fmt(s.total_members):'—',online=ok?fmt(s.online_members):'—',clan=ok?fmt(s.clan_members):'—';
+  const t=ok?pick(s,'total','total_members'):undefined;
+  const o=ok?pick(s,'online','online_members'):undefined;
+  const c=ok?pick(s,'clan','clan_members'):undefined;
+  /* Бот ещё не присылал данные: показываем ожидание, а не нули */
+  const received=updatedAt!==undefined?updatedAt!==null:Number(t)>0;
+  const live=ok&&received;
+  const total=live?fmt(t):'—',online=live?fmt(o):'—',clan=live?fmt(c):'—';
   $('total-members-count').textContent=total;
   $('online-members-count').textContent=online;
   $('clan-members-count').textContent=clan;
   $('role-clan').textContent=clan;
   $('srv-total').textContent=total;
   const st=$('botStatus');
-  st.textContent=ok?'● Бот в сети':'● Нет данных от бота';
-  st.style.color=ok?'':'#ffbd59';
+  if(live){const tm=fmtTime(updatedAt);st.textContent='● Бот в сети'+(tm?' · обновлено '+tm:'');st.style.color=''}
+  else{st.textContent='● Ожидание данных от бота…';st.style.color='#ffbd59'}
 }
 
 function showLogin(msg){
@@ -183,8 +200,8 @@ async function init(){
   try{
     const data=await fetchMe();
     if(!data.authenticated||!data.user){showLogin();return}
-    showApp(data.user);renderStats(data.stats);
-    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)renderStats(d.stats);else location.reload()}catch(e){}},60000);
+    showApp(data.user);renderStats(data.stats,data.stats_updated_at);
+    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)renderStats(d.stats,d.stats_updated_at);else location.reload()}catch(e){}},60000);
   }catch(e){
     console.error('FALCONS: не удалось получить /api/me',e);
     showLogin('Не удалось связаться с сервером. Попробуйте обновить страницу.');
