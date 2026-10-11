@@ -17,6 +17,30 @@ API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "")
 LIVE_STATS = {"total": 0, "online": 0, "clan": 0}
 LIVE_META = {"updated_at": None}
 
+# --- Тикеты (этап 1а) ---
+# Кто считается стаффом панели: Discord ID через запятую в переменной PANEL_ADMIN_IDS.
+# Пусто = тикеты не видит никто. Проверка делается здесь, на сервере; скрытые кнопки защитой не считаются.
+PANEL_ADMIN_IDS = {x.strip() for x in os.environ.get("PANEL_ADMIN_IDS", "").split(",") if x.strip().isdigit()}
+# Лимит размера входящего запроса (тикеты): 300 КБ.
+app.config["MAX_CONTENT_LENGTH"] = 300 * 1024
+TICKET_CATEGORIES = {"clan", "partner", "question", "report", "other"}
+MAX_TICKETS = 100
+# Список открытых тикетов, присланный ботом. Хранится в памяти (после перезапуска пусто, пока бот не пришлёт снова).
+LIVE_TICKETS = {"items": [], "guild_id": None, "updated_at": None}
+
+def _is_staff(user):
+    return bool(user) and str(user.get("id") or "") in PANEL_ADMIN_IDS
+
+def _id_str(v):
+    """Discord ID: целое число или строка из цифр (1-25 знаков) -> строка, иначе None."""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int) and v >= 0:
+        v = str(v)
+    if isinstance(v, str) and v.isascii() and v.isdigit() and 1 <= len(v) <= 25:
+        return v
+    return None
+
 @app.get("/")
 def index():
     return send_from_directory(".", "index.html")
@@ -81,11 +105,60 @@ def update_stats():
     LIVE_META["updated_at"] = int(time.time())
     return jsonify({"ok": True})
 
+@app.post("/api/update-tickets")
+def update_tickets():
+    provided = request.headers.get("X-Falcons-Secret", "")
+    if not API_SECRET_KEY or not hmac.compare_digest(provided.encode(), API_SECRET_KEY.encode()):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    guild_id = _id_str(data.get("guild_id"))
+    if guild_id is None:
+        return jsonify({"ok": False, "error": "invalid guild_id"}), 400
+    raw = data.get("tickets")
+    if not isinstance(raw, list):
+        return jsonify({"ok": False, "error": "invalid tickets"}), 400
+    if len(raw) > MAX_TICKETS:
+        return jsonify({"ok": False, "error": "too many tickets"}), 400
+    items = []
+    for i, t in enumerate(raw):
+        if not isinstance(t, dict):
+            return jsonify({"ok": False, "error": f"invalid ticket {i}"}), 400
+        number = t.get("number")
+        if isinstance(number, bool) or not isinstance(number, int) or number < 0:
+            return jsonify({"ok": False, "error": f"invalid number in ticket {i}"}), 400
+        category = t.get("category")
+        if category not in TICKET_CATEGORIES:
+            return jsonify({"ok": False, "error": f"invalid category in ticket {i}"}), 400
+        owner_id = _id_str(t.get("owner_id"))
+        channel_id = _id_str(t.get("channel_id"))
+        if owner_id is None or channel_id is None:
+            return jsonify({"ok": False, "error": f"invalid id in ticket {i}"}), 400
+        owner_name = t.get("owner_name")
+        if not isinstance(owner_name, str) or len(owner_name) > 100:
+            return jsonify({"ok": False, "error": f"invalid owner_name in ticket {i}"}), 400
+        created_at = t.get("created_at")
+        if isinstance(created_at, bool) or not isinstance(created_at, int) or created_at < 0:
+            return jsonify({"ok": False, "error": f"invalid created_at in ticket {i}"}), 400
+        items.append({"number": number, "category": category, "owner_id": owner_id,
+                      "owner_name": owner_name, "channel_id": channel_id, "created_at": created_at})
+    LIVE_TICKETS["items"] = items
+    LIVE_TICKETS["guild_id"] = guild_id
+    LIVE_TICKETS["updated_at"] = int(time.time())
+    return jsonify({"ok": True, "count": len(items)})
+
 @app.get("/api/me")
 def me():
     user = session.get("user")
-    resp = jsonify({"authenticated": bool(user), "user": user,
-                    "stats": dict(LIVE_STATS), "stats_updated_at": LIVE_META["updated_at"]})
+    staff = _is_staff(user)
+    payload = {"authenticated": bool(user), "user": user,
+               "stats": dict(LIVE_STATS), "stats_updated_at": LIVE_META["updated_at"],
+               "is_staff": staff, "server_time": int(time.time())}
+    if staff:
+        payload["tickets"] = {"items": list(LIVE_TICKETS["items"]), "guild_id": LIVE_TICKETS["guild_id"],
+                              "updated_at": LIVE_TICKETS["updated_at"]}
+    resp = jsonify(payload)
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
