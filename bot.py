@@ -3,6 +3,7 @@ import json
 import re
 import asyncio
 import logging
+import aiohttp
 from urllib.parse import urlparse
 
 import discord
@@ -137,17 +138,86 @@ async def refresh(guild):
     async with refresh_lock:
         if GUILD_ID and guild.id != GUILD_ID:
             return
+
         try:
             await guild.chunk(cache=True)
         except Exception:
             log.exception("Could not chunk guild members")
+
         members = list(guild.members)
-        total = guild.member_count if guild.member_count is not None else len(members)
-        online = sum(1 for m in members if m.status not in (discord.Status.offline, discord.Status.invisible))
+
+        total = (
+            guild.member_count
+            if guild.member_count is not None
+            else len(members)
+        )
+
+        online = sum(
+            1 for m in members
+            if m.status not in (
+                discord.Status.offline,
+                discord.Status.invisible
+            )
+        )
+
         clan_role = guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
-        clan = sum(1 for m in members if clan_role and clan_role in m.roles)
+        clan = sum(
+            1 for m in members
+            if clan_role and clan_role in m.roles
+        )
+
+        # Отправляем статистику на сайт
+        website_url = os.getenv(
+            "WEBSITE_URL",
+            "https://falcons-website-bbv7.onrender.com"
+        ).strip().rstrip("/")
+
+        api_secret = os.getenv("API_SECRET_KEY", "").strip()
+
+        if not api_secret:
+            log.error(
+                "API_SECRET_KEY is missing; website stats were not sent"
+            )
+        else:
+            try:
+                timeout = aiohttp.ClientTimeout(total=20)
+
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.post(
+                        f"{website_url}/api/update-stats",
+                        json={
+                            "total": total,
+                            "online": online,
+                            "clan": clan
+                        },
+                        headers={
+                            "X-Falcons-Secret": api_secret
+                        }
+                    ) as response:
+                        if response.status == 200:
+                            log.info(
+                                "Website stats updated: total=%s online=%s clan=%s",
+                                total, online, clan
+                            )
+                        else:
+                            body = await response.text()
+                            log.error(
+                                "Website stats update failed: HTTP %s: %s",
+                                response.status,
+                                body[:300]
+                            )
+
+            except Exception:
+                log.exception("Could not send stats to website")
+
+        # Обновляем счётчики Discord
         category = await get_category(guild)
-        for key, count in (("members", total), ("online", online), ("clan", clan)):
+
+        for key, count in (
+            ("members", total),
+            ("online", online),
+            ("clan", clan)
+        ):
             await update_counter(guild, category, key, count)
             await asyncio.sleep(1.2)
 
