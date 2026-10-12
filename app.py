@@ -25,6 +25,25 @@ PANEL_ADMIN_IDS = {x.strip() for x in os.environ.get("PANEL_ADMIN_IDS", "").spli
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024
 TICKET_CATEGORIES = {"clan", "partner", "question", "report", "other"}
 MAX_TICKETS = 100
+
+# --- Вход в панель только с ролью (этап 1.5) ---
+# GUILD_ID и TICKET_STAFF_ROLE_ID: ID сервера и роли Ticket Staff (цифры, не секреты).
+# Владельцы из PANEL_ADMIN_IDS входят всегда (защита от самоблокировки), остальные только с ролью.
+GUILD_ID = os.environ.get("GUILD_ID", "").strip()
+GUILD_ID = GUILD_ID if GUILD_ID.isdigit() else ""
+TICKET_STAFF_ROLE_ID = os.environ.get("TICKET_STAFF_ROLE_ID", "").strip()
+TICKET_STAFF_ROLE_ID = TICKET_STAFF_ROLE_ID if TICKET_STAFF_ROLE_ID.isdigit() else ""
+SESSION_MAX_UNVERIFIED = 3600   # без свежего списка от бота сессия живёт не дольше часа без повторной проверки роли
+STAFF_FRESH_SECONDS = 25 * 60   # список стаффа от бота считается свежим 25 минут
+# Список ID участников с ролью Ticket Staff, присланный ботом (в памяти).
+LIVE_STAFF = {"ids": set(), "updated_at": None}
+MSG_NO_ROLE = ("Доступ запрещён. Для входа в панель FALCONS необходима роль TICKET STAFF на Discord-сервере. "
+               "Обратись к администрации, чтобы получить доступ.")
+MSG_NOT_IN_GUILD = "Доступ запрещён: ты не состоишь на Discord-сервере FALCONS."
+MSG_UNAVAILABLE = "Проверка роли временно недоступна. Попробуй войти позже."
+MSG_NOT_CONFIGURED = "Проверка ролей на сайте ещё не настроена. Обратись к администрации."
+MSG_REVOKED = "Доступ закрыт: у тебя больше нет роли TICKET STAFF."
+MSG_RECHECK = "Для безопасности нужно войти заново."
 # Список открытых тикетов, присланный ботом. Хранится в памяти (после перезапуска пусто, пока бот не пришлёт снова).
 LIVE_TICKETS = {"items": [], "guild_id": None, "updated_at": None}
 
@@ -56,8 +75,66 @@ def discord_login():
     state = secrets.token_urlsafe(24)
     session["oauth_state"] = state
     params = {"client_id": CLIENT_ID, "redirect_uri": REDIRECT_URI,
-              "response_type": "code", "scope": "identify", "state": state}
+              "response_type": "code", "scope": "identify guilds.members.read", "state": state}
     return redirect("https://discord.com/oauth2/authorize?" + urlencode(params))
+
+def _check_panel_access(uid, access_token):
+    """(допущен, сообщение). Роль проверяется на сервере по ответу Discord, а не по данным браузера."""
+    if uid in PANEL_ADMIN_IDS:
+        return True, None
+    if not GUILD_ID or not TICKET_STAFF_ROLE_ID:
+        return False, MSG_NOT_CONFIGURED
+    if not access_token:
+        return False, MSG_UNAVAILABLE
+    try:
+        r = requests.get(f"{API}/users/@me/guilds/{GUILD_ID}/member",
+                         headers={"Authorization": f"Bearer {access_token}"}, timeout=10)
+    except requests.RequestException:
+        return False, MSG_UNAVAILABLE
+    if r.status_code == 404:
+        return False, MSG_NOT_IN_GUILD
+    if r.status_code != 200:
+        return False, MSG_UNAVAILABLE
+    try:
+        roles = r.json().get("roles")
+    except (ValueError, AttributeError):
+        return False, MSG_UNAVAILABLE
+    if not isinstance(roles, list):
+        return False, MSG_UNAVAILABLE
+    if TICKET_STAFF_ROLE_ID in {str(x) for x in roles}:
+        return True, None
+    return False, MSG_NO_ROLE
+
+def _drop_session(msg):
+    session.pop("user", None)
+    session.pop("verified_at", None)
+    session["auth_notice"] = msg
+
+def _current_user():
+    """Вошедший пользователь, у которого доступ всё ещё действует; иначе None."""
+    user = session.get("user")
+    if not user:
+        return None
+    uid = str(user.get("id") or "")
+    verified = session.get("verified_at")
+    now = int(time.time())
+    if not (uid.isascii() and uid.isdigit()):
+        _drop_session(MSG_RECHECK)
+        return None
+    if isinstance(verified, bool) or not isinstance(verified, int):
+        _drop_session(MSG_RECHECK)      # сессия создана до проверки ролей
+        return None
+    if uid in PANEL_ADMIN_IDS:
+        return user
+    updated = LIVE_STAFF["updated_at"]
+    if updated is not None and now - updated <= STAFF_FRESH_SECONDS:
+        if uid not in LIVE_STAFF["ids"]:
+            _drop_session(MSG_REVOKED)  # роль забрали после входа
+            return None
+    elif now - verified > SESSION_MAX_UNVERIFIED:
+        _drop_session(MSG_RECHECK)      # бот давно не присылал список, проверяем роль заново
+        return None
+    return user
 
 @app.get("/auth/discord/callback")
 def discord_callback():
@@ -81,10 +158,18 @@ def discord_callback():
     if not user_response.ok:
         return "Could not retrieve Discord profile.", 502
     user = user_response.json()
-    session["user"] = {"id": user.get("id"), "username": user.get("username"),
+    profile = {"id": user.get("id"), "username": user.get("username"),
         "global_name": user.get("global_name"),
         "avatar_url": f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.png"
             if user.get("avatar") else None}
+    allowed, reason = _check_panel_access(str(user.get("id") or ""), access_token)
+    session.pop("user", None)
+    session.pop("verified_at", None)
+    if not allowed:
+        session["auth_notice"] = reason
+        return redirect("/")
+    session["user"] = profile
+    session["verified_at"] = int(time.time())
     return redirect("/")
 
 @app.post("/api/update-stats")
@@ -148,13 +233,46 @@ def update_tickets():
     LIVE_TICKETS["updated_at"] = int(time.time())
     return jsonify({"ok": True, "count": len(items)})
 
+@app.post("/api/update-staff")
+def update_staff():
+    provided = request.headers.get("X-Falcons-Secret", "")
+    if not API_SECRET_KEY or not hmac.compare_digest(provided.encode(), API_SECRET_KEY.encode()):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    if data.get("complete") is not True:
+        # Неполный список (бот не уверен в кеше участников) не принимаем: иначе можно по ошибке закрыть доступ всем.
+        return jsonify({"ok": False, "error": "incomplete"}), 400
+    guild_id = _id_str(data.get("guild_id"))
+    if guild_id is None or (GUILD_ID and guild_id != GUILD_ID):
+        return jsonify({"ok": False, "error": "invalid guild_id"}), 400
+    raw = data.get("staff_ids")
+    if not isinstance(raw, list) or len(raw) > 500:
+        return jsonify({"ok": False, "error": "invalid staff_ids"}), 400
+    ids = set()
+    for v in raw:
+        s = _id_str(v)
+        if s is None:
+            return jsonify({"ok": False, "error": "invalid staff id"}), 400
+        ids.add(s)
+    LIVE_STAFF["ids"] = ids
+    LIVE_STAFF["updated_at"] = int(time.time())
+    return jsonify({"ok": True, "count": len(ids)})
+
 @app.get("/api/me")
 def me():
-    user = session.get("user")
-    staff = _is_staff(user)
+    user = _current_user()
+    staff = bool(user)   # попасть в панель могут только допущенные (Owner или роль Ticket Staff)
     payload = {"authenticated": bool(user), "user": user,
                "stats": dict(LIVE_STATS), "stats_updated_at": LIVE_META["updated_at"],
                "is_staff": staff, "server_time": int(time.time())}
+    if user:
+        payload["panel_role"] = "owner" if str(user.get("id") or "") in PANEL_ADMIN_IDS else "staff"
+    else:
+        notice = session.pop("auth_notice", None)
+        if notice:
+            payload["notice"] = notice
     if staff:
         payload["tickets"] = {"items": list(LIVE_TICKETS["items"]), "guild_id": LIVE_TICKETS["guild_id"],
                               "updated_at": LIVE_TICKETS["updated_at"]}
