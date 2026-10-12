@@ -195,7 +195,7 @@ def _current_user():
         if uid not in staff_ids:
             _drop_session(MSG_REVOKED)
             return None
-        elif now - verified > SESSION_MAX_UNVERIFIED:
+    elif now - verified > SESSION_MAX_UNVERIFIED:
         _drop_session(MSG_RECHECK)
         return None
     return user
