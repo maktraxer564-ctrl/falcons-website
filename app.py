@@ -198,7 +198,7 @@ def _current_user():
     elif now - verified > SESSION_MAX_UNVERIFIED:
         _drop_session(MSG_RECHECK)
         return None
-    return user
+        return user
   @app.get("/auth/discord/callback")
 def discord_callback():
     if request.args.get("error"):
