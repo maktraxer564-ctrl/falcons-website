@@ -420,7 +420,10 @@ async def on_member_remove(member):
             await refresh(member.guild)
         except Exception:
             pass
-            def safe_channel_name(name):
+            
+
+
+def safe_channel_name(name):
     cleaned = re.sub(r"[^a-z0-9-]", "-", name.lower())
     cleaned = re.sub(r"-+", "-", cleaned).strip("-")
     return (cleaned or "player")[:18]
