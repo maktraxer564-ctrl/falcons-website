@@ -90,4 +90,292 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
   <button class="pill" onclick="logout()">Выйти</button>
 </header>
 <div class="content">
-  
+  <section class="page active" id="home">
+  <div class="hero"><h1>Добро пожаловать,</h1><h1><span id="heroName">…</span></h1><p>Панель управления Discord-сервером FALCONS</p></div>
+  <div class="stats">
+    <div class="card"><div class="stat-icon">♟</div><div class="label">Участников</div><div class="num" id="s-total">—</div><div class="sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">●</div><div class="label">Онлайн</div><div class="num" id="s-online">—</div><div class="sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">♛</div><div class="label">Клан</div><div class="num" id="s-clan">—</div><div class="sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num" id="s-tickets">—</div><div class="sub" id="s-tickets-sub">ожидание</div></div>
+    <div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num" id="s-apps">—</div><div class="sub" id="s-apps-sub">ожидание</div></div>
+    <div class="card"><div class="stat-icon">↗</div><div class="label">Приглашений</div><div class="num dim">—</div><div class="sub">не ведётся</div></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>▤ Последние тикеты</h2><div id="recent-tickets"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
+    <div class="card"><h2>▣ Последние заявки</h2><div id="recent-apps"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('apps')">Все заявки →</button></div>
+    <div class="card quick"><h2>ϟ Быстрые действия</h2>
+      <button onclick="showPage('tickets')">▤ Открыть тикеты</button>
+      <button onclick="showPage('apps')">▣ Заявки в клан</button>
+      <button onclick="showPage('logs')">◷ Логи стаффа</button>
+    </div>
+  </div>
+  <div class="mutednote" id="statsNote">Данные обновляются ботом раз в 10 минут.</div>
+</section>
+
+<section class="page" id="tickets">
+  <div class="hero"><h1>Тикеты</h1><p>Все открытые обращения на сервере</p></div>
+  <div class="card" id="ticketsList"><div class="empty">Загрузка…</div></div>
+</section>
+
+<section class="page" id="apps">
+  <div class="hero"><h1>Заявки в клан</h1><p>Тикеты категории «Набор в клан»</p></div>
+  <div class="card" id="appsList"><div class="empty">Загрузка…</div></div>
+</section>
+
+<section class="page" id="logs">
+  <div class="hero"><h1>Логи стаффа</h1><p>История действий администрации</p></div>
+  <div class="card" id="logsList"><div class="empty">Загрузка…</div></div>
+</section>
+
+<section class="page" id="members">
+  <div class="hero"><h1>Роли и участники</h1><p>Управление ролями сервера</p></div>
+  <div class="card">
+    <div class="setting"><div><b>Участников на сервере</b><div class="sub">данные бота</div></div><b id="m-total">—</b></div>
+    <div class="setting"><div><b>Онлайн сейчас</b><div class="sub">данные бота</div></div><b id="m-online">—</b></div>
+    <div class="setting"><div><b>Участников клана</b><div class="sub">по роли клана</div></div><b id="m-clan">—</b></div>
+  </div>
+  <div class="mutednote">Управление ролями из панели пока не реализовано. Всё делается командами бота в Discord.</div>
+</section>
+
+<section class="page" id="invites">
+  <div class="hero"><h1>Инвайты и рекрутинг</h1><p>Статистика приглашений</p></div>
+  <div class="card"><div class="empty">Учёт приглашений в боте не ведётся. Данных нет.</div></div>
+</section>
+
+<section class="page" id="moderation">
+  <div class="hero"><h1>Модерация</h1><p>Правила защиты сервера</p></div>
+  <div class="card"><div class="empty">Модуль модерации не подключён. Наказания выдаются вручную в Discord.</div></div>
+</section>
+
+<section class="page" id="stats">
+  <div class="hero"><h1>Статистика</h1><p>Обзор активности и состава сервера</p></div>
+  <div class="card">
+    <div class="setting"><div><b>Участников</b></div><b id="st-total">—</b></div>
+    <div class="setting"><div><b>Онлайн</b></div><b id="st-online">—</b></div>
+    <div class="setting"><div><b>Клан</b></div><b id="st-clan">—</b></div>
+    <div class="setting"><div><b>Обновлено</b></div><b id="st-updated">—</b></div>
+  </div>
+</section>
+
+<section class="page" id="settings">
+  <div class="hero"><h1>Настройки</h1><p>Подключение и параметры панели</p></div>
+  <div class="card">
+    <div class="setting"><div><b>Вход через Discord</b><div class="sub">OAuth2 · работает</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>Твоя роль в панели</b></div><b id="st-panel-role">—</b></div>
+    <div class="setting"><div><b>ID пользователя</b></div><b id="st-uid" class="dim">—</b></div>
+  </div>
+</section>
+
+<section class="page" id="roles">
+  <div class="hero"><h1>Роли и права доступа</h1><p>Разграничение доступа к панели</p></div>
+  <div class="card">
+    <div class="setting"><div><b>OWNER</b><div class="sub">полный доступ к панели и боту</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>TICKET STAFF</b><div class="sub">доступ к тикетам и заявкам</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>DEP LEADER</b><div class="sub">используется ботом для прав в тикетах</div></div><span class="tag st-no">Только в боте</span></div>
+    <div class="setting"><div><b>Обычные участники</b><div class="sub">без доступа к панели</div></div><span class="tag st-ok">Работает</span></div>
+  </div>
+</section>
+
+</div></main></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let ME={user:null,staff:false,tickets:null,stats:null,panelRole:null};
+
+function toast(msg,isError){
+  const t=$('toast');t.textContent=msg;
+  t.style.borderColor=isError?'#a8223a':'#7540c8';
+  t.style.display='block';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500);
+}
+
+const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',question:'Вопрос по клану',report:'Жалоба на игрока',other:'Другое'};
+const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—';};
+const fmtTs=ts=>{if(!ts)return '';const d=new Date(ts<1e12?ts*1000:ts);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+
+function showLogin(msg){
+  $('app').hidden=true;$('loginScreen').hidden=false;
+  if(msg)$('loginMsg').textContent=msg;
+}
+function showApp(user){
+  const name=user.global_name||user.username||'Пользователь';
+  $('userName').textContent=name;
+  $('heroName').textContent=name;
+  const av=$('avatar');av.textContent='';
+  if(user.avatar_url&&/^https:\/\//.test(user.avatar_url)){
+    const img=document.createElement('img');img.src=user.avatar_url;img.alt='';
+    img.onerror=()=>{av.textContent=name.charAt(0).toUpperCase();};
+    av.appendChild(img);
+  }else av.textContent=name.charAt(0).toUpperCase();
+  $('loginScreen').hidden=true;$('app').hidden=false;
+}
+
+function renderStats(stats,updatedAt){
+  const s=stats||{total:0,online:0,clan:0};
+  const live=updatedAt!=null;
+  const set=(id,v)=>{const el=$(id);if(el)el.textContent=live?fmt(v):'—';};
+  set('s-total',s.total);set('s-online',s.online);set('s-clan',s.clan);
+  set('m-total',s.total);set('m-online',s.online);set('m-clan',s.clan);
+  set('st-total',s.total);set('st-online',s.online);set('st-clan',s.clan);
+  const st=$('st-updated');if(st)st.textContent=updatedAt?fmtTs(updatedAt):'—';
+  if($('statsNote'))$('statsNote').textContent=updatedAt
+    ? 'Данные обновлены: '+fmtTs(updatedAt)
+    : 'Данные ещё не приходили от бота.';
+}
+
+function ticketRow(t,opts){
+  opts=opts||{};
+  const row=document.createElement('div');row.className='rowitem';
+  const left=document.createElement('div');left.style.minWidth='180px';
+  const b=document.createElement('b');b.textContent='#'+t.number+' · '+(t.owner_name||'?');
+  const sub=document.createElement('div');sub.className='sub';
+  sub.textContent=(CAT_LABEL[t.category]||t.category)+' · '+fmtTs(t.created_at);
+  left.append(b,sub);row.appendChild(left);
+  const right=document.createElement('div');
+  if(opts.guild&&/^\d+$/.test(String(opts.guild))&&/^\d+$/.test(String(t.channel_id))){
+    const a=document.createElement('a');a.className='tag';
+    a.href='https://discord.com/channels/'+opts.guild+'/'+t.channel_id;
+    a.target='_blank';a.rel='noopener noreferrer';a.textContent='Discord';
+    right.appendChild(a);
+  }
+  if(opts.actions&&t.category==='clan'){
+    const actions=document.createElement('div');actions.className='ticket-actions';
+    const mk=(label,cls,fn)=>{const btn=document.createElement('button');btn.className='btn '+cls;btn.textContent=label;btn.onclick=()=>fn(btn);return btn;};
+    actions.appendChild(mk('Принять','accept',b=>ticketAction('accept',t.channel_id,null,b)));
+    actions.appendChild(mk('Обзвон','call',b=>ticketAction('call',t.channel_id,null,b)));
+    actions.appendChild(mk('Отклонить','reject',b=>{
+      const reason=prompt('Причина отказа:');
+      if(reason===null)return;
+      if(!reason.trim())return toast('Причина обязательна',true);
+      ticketAction('reject',t.channel_id,reason.trim(),b);
+    }));
+    actions.appendChild(mk('Закрыть','close',b=>ticketAction('close',t.channel_id,null,b)));
+    right.appendChild(actions);
+  }
+  row.appendChild(right);
+  return row;
+}
+
+async function ticketAction(kind,channelId,reason,btn){
+  if(btn){btn.disabled=true;var old=btn.textContent;btn.textContent='…';}
+  try{
+    const body={channel_id:String(channelId)};
+    if(reason)body.reason=reason;
+    const r=await fetch('/api/ticket/'+kind,{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){throw new Error(j.error||('HTTP '+r.status));}
+    toast('Готово: '+kind);
+    await reloadMe();
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+    if(btn){btn.disabled=false;btn.textContent=old;}
+  }
+}
+
+function fillTicketsList(el,filterFn,opts){
+  if(!el)return;
+  el.textContent='';
+  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+  const tk=ME.tickets;
+  if(!tk||tk.updated_at==null)return el.appendChild(emptyNode('Ожидание данных от бота…'));
+  let items=Array.isArray(tk.items)?tk.items:[];
+  if(filterFn)items=items.filter(filterFn);
+  if(!items.length)return el.appendChild(emptyNode('Открытых тикетов нет.'));
+  const stale=(Date.now()/1000)-tk.updated_at>25*60;
+  if(stale){
+    const w=document.createElement('div');w.className='tk-stale';
+    w.textContent='Данные устарели, обновлено: '+fmtTs(tk.updated_at);
+    el.appendChild(w);
+  }
+  items.forEach(t=>el.appendChild(ticketRow(t,Object.assign({guild:tk.guild_id},opts||{}))));
+}
+
+function emptyNode(text){const d=document.createElement('div');d.className='empty';d.textContent=text;return d;}
+
+function renderTickets(){
+  const tk=ME.tickets;
+  const items=(tk&&Array.isArray(tk.items))?tk.items:[];
+  const clanCount=items.filter(t=>t.category==='clan').length;
+  const live=tk&&tk.updated_at!=null;
+  if($('s-tickets'))$('s-tickets').textContent=live?fmt(items.length):'—';
+  if($('s-tickets-sub'))$('s-tickets-sub').textContent=live?'данные бота':'ожидание';
+  if($('s-apps'))$('s-apps').textContent=live?fmt(clanCount):'—';
+  if($('s-apps-sub'))$('s-apps-sub').textContent=live?'данные бота':'ожидание';
+  fillTicketsList($('recent-tickets'),null,{actions:false});
+  fillTicketsList($('recent-apps'),t=>t.category==='clan',{actions:false});
+  fillTicketsList($('ticketsList'),null,{actions:true});
+  fillTicketsList($('appsList'),t=>t.category==='clan',{actions:true});
+}
+
+async function renderLogs(){
+  const el=$('logsList');if(!el)return;
+  el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+  try{
+    const r=await fetch('/api/logs?limit=100',{credentials:'same-origin'});
+    if(!r.ok){el.textContent='';return el.appendChild(emptyNode('Логи недоступны.'));}
+    const j=await r.json();
+    const logs=(j&&j.logs)||[];
+    el.textContent='';
+    if(!logs.length)return el.appendChild(emptyNode('Пока пусто.'));
+    logs.forEach(l=>{
+      const row=document.createElement('div');row.className='rowitem';
+      const left=document.createElement('div');
+      const b=document.createElement('b');b.textContent=l.action||'—';
+      const sub=document.createElement('div');sub.className='sub';
+      sub.textContent=[fmtTs(l.ts),l.actor_name,l.target_name,l.details].filter(Boolean).join(' · ');
+      left.append(b,sub);row.appendChild(left);
+      el.appendChild(row);
+    });
+  }catch(e){el.textContent='';el.appendChild(emptyNode('Ошибка загрузки логов.'));}
+}
+
+function showPage(id){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+  if(id==='logs')renderLogs();
+}
+
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+
+function applyMe(d){
+  ME.user=d.user||null;ME.staff=!!d.is_staff;ME.tickets=d.tickets||null;ME.panelRole=d.panel_role||null;
+  renderStats(d.stats,d.stats_updated_at);
+  renderTickets();
+  if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
+  if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
+  if($('userRole'))$('userRole').textContent=(ME.panelRole==='owner'?'OWNER':'STAFF')+' · Discord';
+}
+
+async function reloadMe(){
+  const r=await fetch('/api/me',{credentials:'same-origin'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+async function init(){
+  try{
+    const data=await reloadMe();
+    if(!data.authenticated||!data.user){showLogin(data.notice||undefined);return;}
+    showApp(data.user);applyMe(data);
+    setInterval(async()=>{
+      try{
+        const d=await reloadMe();
+        if(d.authenticated)applyMe(d);
+        else showLogin(d.notice||'Сессия завершена.');
+      }catch(e){}
+    },60000);
+  }catch(e){
+    console.error(e);
+    showLogin('Не удалось связаться с сервером. Обнови страницу.');
+  }
+}
+
+async function logout(){
+  try{await fetch('/auth/logout',{method:'POST',credentials:'same-origin'});}catch(e){}
+  location.reload();
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script></body></html>
