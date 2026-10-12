@@ -761,8 +761,9 @@ async def setup_tickets(interaction):
                      "⚔️ **Набор в клан** — от 15 лет и от 3000 часов в Rust.\n"
                      "Скриншот Steam понадобится только для заявки в клан."),
         color=discord.Color.blurple())
-    embed.set_image(url="https://files.catbox.moe/nksitu.png")
-    await interaction.channel.send(embed=embed, view=TicketPanelView())
+    file = discord.File("falcons.png", filename="falcons.png")
+    embed.set_image(url="attachment://falcons.png")
+    await interaction.channel.send(file=file, embed=embed, view=TicketPanelView())
     await interaction.response.send_message("Панель заявок опубликована.", ephemeral=True)
 
 @bot.tree.command(name="ticket_add_question", description="Добавить вопрос в анкету")
