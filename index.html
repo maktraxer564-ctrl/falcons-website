@@ -297,9 +297,9 @@ async function fetchMe(){
 async function init(){
   try{
     const data=await fetchMe();
-    if(!data.authenticated||!data.user){showLogin();return}
+    if(!data.authenticated||!data.user){showLogin(data.notice||undefined);return}
     showApp(data.user);applyMe(data);
-    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)applyMe(d);else location.reload()}catch(e){}},60000);
+    setInterval(async()=>{try{const d=await fetchMe();if(d.authenticated)applyMe(d);else if(!$('app').hidden)showLogin(d.notice||'Сессия завершена. Войдите снова.')}catch(e){}},60000);
   }catch(e){
     console.error('FALCONS: не удалось получить /api/me',e);
     showLogin('Не удалось связаться с сервером. Попробуйте обновить страницу.');
