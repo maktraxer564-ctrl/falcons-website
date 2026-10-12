@@ -98,6 +98,9 @@ def init_db():
         conn.execute("INSERT OR IGNORE INTO stats(id) VALUES(1)")
         conn.execute("INSERT OR IGNORE INTO staff_meta(id) VALUES(1)")
         conn.execute("INSERT OR IGNORE INTO tickets_meta(id) VALUES(1)")
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(stats)").fetchall()}
+        if "joins_7d" not in cols:
+            conn.execute("ALTER TABLE stats ADD COLUMN joins_7d TEXT")
 
 init_db()
 
@@ -250,9 +253,22 @@ def update_stats():
         if isinstance(v, bool) or not isinstance(v, int) or v < 0:
             return jsonify({"ok": False, "error": f"invalid {key}"}), 400
         values[key] = v
+    joins_7d = data.get("joins_7d")
+    joins_json = None
+    if isinstance(joins_7d, list) and len(joins_7d) == 7:
+        clean = []
+        ok = True
+        for v in joins_7d:
+            if isinstance(v, bool) or not isinstance(v, int) or v < 0:
+                ok = False
+                break
+            clean.append(v)
+        if ok:
+            joins_json = json.dumps(clean)
     with _db() as conn:
-        conn.execute("UPDATE stats SET total=?, online=?, clan=?, updated_at=? WHERE id=1",
-                     (values["total"], values["online"], values["clan"], int(time.time())))
+        conn.execute(
+            "UPDATE stats SET total=?, online=?, clan=?, updated_at=?, joins_7d=COALESCE(?, joins_7d) WHERE id=1",
+            (values["total"], values["online"], values["clan"], int(time.time()), joins_json))
     return jsonify({"ok": True})
 
 @app.post("/api/update-staff")
@@ -420,12 +436,19 @@ def me():
     user = _current_user()
     staff = bool(user)
     with _db() as conn:
-        s = conn.execute("SELECT total, online, clan, updated_at FROM stats WHERE id=1").fetchone()
+        s = conn.execute("SELECT total, online, clan, updated_at, joins_7d FROM stats WHERE id=1").fetchone()
+    joins_7d = None
+    if s and s["joins_7d"]:
+        try:
+            joins_7d = json.loads(s["joins_7d"])
+        except (ValueError, TypeError):
+            joins_7d = None
     payload = {
         "authenticated": bool(user),
         "user": user,
         "stats": {"total": s["total"], "online": s["online"], "clan": s["clan"]} if s else {"total": 0, "online": 0, "clan": 0},
         "stats_updated_at": s["updated_at"] if s else None,
+        "joins_7d": joins_7d,
         "is_staff": staff,
         "server_time": int(time.time()),
     }
