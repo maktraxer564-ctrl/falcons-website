@@ -103,6 +103,14 @@ def init_db():
             updated_at INTEGER NOT NULL,
             PRIMARY KEY (guild_id, user_id)
         );
+        CREATE TABLE IF NOT EXISTS stats_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL,
+            total INTEGER NOT NULL,
+            online INTEGER NOT NULL,
+            clan INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_stats_history_ts ON stats_history(ts);
         """)
         conn.execute("INSERT OR IGNORE INTO stats(id) VALUES(1)")
         conn.execute("INSERT OR IGNORE INTO staff_meta(id) VALUES(1)")
@@ -274,10 +282,14 @@ def update_stats():
             clean.append(v)
         if ok:
             joins_json = json.dumps(clean)
+    now = int(time.time())
     with _db() as conn:
         conn.execute(
             "UPDATE stats SET total=?, online=?, clan=?, updated_at=?, joins_7d=COALESCE(?, joins_7d) WHERE id=1",
-            (values["total"], values["online"], values["clan"], int(time.time()), joins_json))
+            (values["total"], values["online"], values["clan"], now, joins_json))
+        conn.execute(
+            "INSERT INTO stats_history(ts, total, online, clan) VALUES(?,?,?,?)",
+            (now, values["total"], values["online"], values["clan"]))
     return jsonify({"ok": True})
 
 @app.post("/api/update-staff")
@@ -529,8 +541,120 @@ def api_reload_config():
     user = _current_user()
     if not user:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _is_staff(user):
+        return jsonify({"ok": False, "error": "owner only"}), 403
     ok, status, body = _bot_post("/bot/reload_config", {})
     return jsonify(body), status
+
+@app.get("/api/punishments")
+def api_punishments():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    user_id = _id_str(request.args.get("user_id"))
+    if not user_id:
+        return jsonify({"ok": False, "error": "invalid user_id"}), 400
+    try:
+        limit = int(request.args.get("limit", "10"))
+    except (TypeError, ValueError):
+        limit = 10
+    limit = max(1, min(limit, 50))
+    ok, status, body = _bot_get(f"/bot/punishments?user_id={user_id}&limit={limit}")
+    return jsonify(body), status
+
+@app.post("/api/punish")
+def api_punish():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    action = data.get("action")
+    if action not in ("warn", "timeout", "kick", "ban"):
+        return jsonify({"ok": False, "error": "invalid action"}), 400
+    user_id = _id_str(data.get("user_id"))
+    if not user_id:
+        return jsonify({"ok": False, "error": "invalid user_id"}), 400
+    reason = str(data.get("reason", "")).strip()
+    if not reason or len(reason) > 500:
+        return jsonify({"ok": False, "error": "invalid reason"}), 400
+    payload = {"actor_id": user.get("id"), "action": action, "user_id": user_id, "reason": reason}
+    if action == "timeout":
+        minutes = data.get("duration_minutes")
+        if isinstance(minutes, bool) or not isinstance(minutes, int) or not 1 <= minutes <= 40320:
+            return jsonify({"ok": False, "error": "invalid duration"}), 400
+        payload["duration_minutes"] = minutes
+    ok, status, body = _bot_post("/bot/punish", payload)
+    return jsonify(body), status
+
+@app.post("/api/invites/reward")
+def api_invites_reward():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    user_id = _id_str(data.get("user_id"))
+    if not user_id:
+        return jsonify({"ok": False, "error": "invalid user_id"}), 400
+    ok, status, body = _bot_post("/bot/invites/reward", {"user_id": user_id, "actor_id": user.get("id")})
+    return jsonify(body), status
+
+@app.get("/api/bot-status")
+def api_bot_status():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    ok, status, body = _bot_get("/bot/status")
+    if ok:
+        return jsonify({"ok": True, "online": True, "bot": body})
+    return jsonify({"ok": True, "online": False, "error": body.get("error", "unreachable")})
+
+@app.get("/api/bot-settings")
+def api_bot_settings_get():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _is_staff(user):
+        return jsonify({"ok": False, "error": "owner only"}), 403
+    ok, status, body = _bot_get("/bot/settings")
+    return jsonify(body), status
+
+@app.post("/api/bot-settings")
+def api_bot_settings_set():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _is_staff(user):
+        return jsonify({"ok": False, "error": "owner only"}), 403
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    payload = {}
+    for key in ("welcome_enabled", "goodbye_enabled"):
+        if key in data:
+            if not isinstance(data[key], bool):
+                return jsonify({"ok": False, "error": f"invalid {key}"}), 400
+            payload[key] = data[key]
+    for key in ("welcome_text", "goodbye_text"):
+        if key in data:
+            if not isinstance(data[key], str) or len(data[key]) > 500:
+                return jsonify({"ok": False, "error": f"invalid {key}"}), 400
+            payload[key] = data[key].strip()
+    if not payload:
+        return jsonify({"ok": False, "error": "no settings"}), 400
+    ok, status, body = _bot_post("/bot/settings", payload)
+    return jsonify(body), status
+
+@app.get("/api/analytics")
+def api_analytics():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    since = int(time.time()) - 7 * 86400
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT ts, total, online, clan FROM stats_history WHERE ts>=? ORDER BY ts ASC LIMIT 2000",
+            (since,)).fetchall()
+    return jsonify({"ok": True, "points": [dict(r) for r in rows]})
 
 @app.get("/api/me")
 def me():
