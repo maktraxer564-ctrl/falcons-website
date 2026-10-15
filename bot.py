@@ -40,6 +40,17 @@ WEBSITE_URL = os.getenv("WEBSITE_URL", "https://falcons-panel.onrender.com").str
 API_SECRET_KEY = os.getenv("API_SECRET_KEY", "").strip()
 BOT_HTTP_PORT = int(os.getenv("BOT_HTTP_PORT", os.getenv("SERVER_PORT", "8080")) or 8080)
 BOT_HTTP_HOST = os.getenv("BOT_HTTP_HOST", "0.0.0.0").strip()
+NEWCOMER_ROLE_ID = int(os.getenv("NEWCOMER_ROLE_ID", "0") or 0)
+REWARD_ROLE_10 = int(os.getenv("REWARD_ROLE_10", "0") or 0)
+REWARD_ROLE_25 = int(os.getenv("REWARD_ROLE_25", "0") or 0)
+REWARD_ROLE_50 = int(os.getenv("REWARD_ROLE_50", "0") or 0)
+REWARD_ROLE_100 = int(os.getenv("REWARD_ROLE_100", "0") or 0)
+INVITE_REWARDS = ((10, REWARD_ROLE_10), (25, REWARD_ROLE_25), (50, REWARD_ROLE_50), (100, REWARD_ROLE_100))
+INVITE_FAKE_SECONDS = 600
+
+SPAM_WINDOW_SECONDS = 3.0
+SPAM_MESSAGE_LIMIT = 5
+SPAM_TIMEOUT_MINUTES = 10
 
 DB_PATH = str(Path(__file__).resolve().parent / "falcons.db")
 
@@ -115,6 +126,34 @@ def init_db():
             ts INTEGER NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_joins_ts ON joins(guild_id, ts);
+        CREATE TABLE IF NOT EXISTS punishments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            mod_id TEXT,
+            mod_name TEXT,
+            action TEXT NOT NULL,
+            reason TEXT,
+            duration INTEGER,
+            ts INTEGER NOT NULL,
+            expires_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS invites_cache (
+            guild_id TEXT NOT NULL,
+            code TEXT NOT NULL,
+            uses INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (guild_id, code)
+        );
+        CREATE TABLE IF NOT EXISTS invites (
+            guild_id TEXT NOT NULL,
+            inviter_id TEXT NOT NULL,
+            invited_id TEXT NOT NULL,
+            code TEXT NOT NULL,
+            joined_at INTEGER NOT NULL,
+            left_at INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_invites_invited ON invites(guild_id, invited_id);
         """)
 
 def next_ticket_number(guild_id):
@@ -364,6 +403,7 @@ async def refresh(guild):
         clan_role = guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
         clan = sum(1 for m in members if clan_role and clan_role in m.roles)
         await push_stats(guild, total, online, clan)
+        await push_invites(guild)
         await push_staff(guild)
         await push_tickets(guild)
         try:
@@ -398,6 +438,12 @@ async def on_ready():
                 await refresh(guild)
             except Exception:
                 log.exception("initial refresh failed")
+    for guild in bot.guilds:
+        if not GUILD_ID or guild.id == GUILD_ID:
+            try:
+                await collect_invites(guild)
+            except Exception:
+                log.exception("Не удалось собрать кэш инвайтов")
 
 @bot.event
 async def on_member_join(member):
@@ -408,6 +454,19 @@ async def on_member_join(member):
                              (str(member.guild.id), str(member.id), int(time.time())))
         except Exception:
             log.exception("Не удалось записать join")
+        if NEWCOMER_ROLE_ID:
+            role = member.guild.get_role(NEWCOMER_ROLE_ID)
+            if role is None:
+                log.warning("NEWCOMER_ROLE_ID=%s не найден на сервере", NEWCOMER_ROLE_ID)
+            else:
+                try:
+                    await member.add_roles(role, reason="Автороль новичка")
+                except (discord.Forbidden, discord.HTTPException):
+                    log.exception("Не удалось выдать автороль новичку")
+        try:
+            await handle_invite_join(member)
+        except Exception:
+            log.exception("Обработка инвайта не удалась")
         try:
             await refresh(member.guild)
         except Exception:
@@ -420,6 +479,10 @@ async def on_member_remove(member):
             await refresh(member.guild)
         except Exception:
             pass
+        try:
+            mark_invite_left(member.guild.id, member.id)
+        except Exception:
+            log.exception("Не удалось отметить выход по инвайту")
             
 
 
@@ -969,6 +1032,436 @@ async def start_bot_http():
     site = aiohttp_web.TCPSite(runner, BOT_HTTP_HOST, BOT_HTTP_PORT)
     await site.start()
     log.info("Bot HTTP API запущен на %s:%s", BOT_HTTP_HOST, BOT_HTTP_PORT)
+
+MOD_ACTION_LABELS = {"warn": "Предупреждение", "timeout": "Таймаут", "untimeout": "Снятие таймаута",
+                     "kick": "Кик", "ban": "Бан", "unban": "Разбан"}
+MOD_EMBED_TITLES = {"warn": "⚠️ Предупреждение", "timeout": "⏳ Таймаут",
+                    "kick": "👢 Кик", "ban": "🔨 Бан"}
+MOD_EMBED_COLORS = {"warn": discord.Color.orange(), "timeout": discord.Color.orange(),
+                    "kick": discord.Color.dark_orange(), "ban": discord.Color.red()}
+
+def add_punishment(guild_id, user_id, user_name, mod_id, mod_name, action, reason, duration=None, expires_at=None):
+    with _db() as conn:
+        conn.execute(
+            "INSERT INTO punishments(guild_id, user_id, user_name, mod_id, mod_name, action, reason, duration, ts, expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (str(guild_id), str(user_id), user_name, str(mod_id) if mod_id else None,
+             mod_name, action, reason, duration, int(time.time()), expires_at))
+
+def get_user_punishments(guild_id, user_id, limit=10):
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT action, reason, mod_name, ts, duration, expires_at FROM punishments WHERE guild_id=? AND user_id=? ORDER BY ts DESC LIMIT ?",
+            (str(guild_id), str(user_id), limit)).fetchall()
+        return [dict(r) for r in rows]
+
+async def log_mod_action(guild, title, color, target_text, mod, reason, duration_text=None):
+    fields = [("Игрок", target_text),
+              ("Модератор", f"{mod} (`{mod.id}`)"),
+              ("Причина", reason or "—")]
+    if duration_text:
+        fields.append(("Длительность", duration_text))
+    await send_staff_log(guild, make_log_embed(title, color, fields))
+
+async def apply_punishment(interaction, action, target_id, reason, duration_minutes=None):
+    guild = interaction.guild
+    mod = interaction.user
+    member = guild.get_member(int(target_id))
+    if member is None:
+        return await interaction.response.send_message("Игрок не найден на сервере.", ephemeral=True)
+    if member.id == mod.id:
+        return await interaction.response.send_message("Нельзя применить наказание к себе.", ephemeral=True)
+    if action in ("timeout", "kick", "ban"):
+        if guild.me and member.id != guild.owner_id and member.top_role >= guild.me.top_role:
+            return await interaction.response.send_message("Не могу: роль игрока выше или равна роли бота.", ephemeral=True)
+        if (isinstance(mod, discord.Member) and mod.id not in (guild.owner_id, OWNER_ID)
+                and mod.top_role <= member.top_role):
+            return await interaction.response.send_message("Нельзя наказать игрока с ролью выше или равной твоей.", ephemeral=True)
+    duration = None
+    expires_at = None
+    duration_text = None
+    if action == "timeout":
+        duration = int(duration_minutes) * 60
+        expires_at = int(time.time()) + duration
+        duration_text = f"{duration_minutes} мин"
+    dm_messages = {
+        "warn": f"Ты получил предупреждение на сервере FALCONS.\n**Причина:** {reason}",
+        "timeout": f"Тебе выдан таймаут на {duration_minutes} мин на сервере FALCONS.\n**Причина:** {reason}",
+        "kick": f"Ты кикнут с сервера FALCONS.\n**Причина:** {reason}",
+        "ban": f"Ты забанен на сервере FALCONS.\n**Причина:** {reason}",
+    }
+    try:
+        await member.send(dm_messages[action])
+    except (discord.Forbidden, discord.HTTPException):
+        pass
+    try:
+        if action == "timeout":
+            await member.timeout(datetime.timedelta(minutes=duration_minutes), reason=f"{reason} | {mod}")
+        elif action == "kick":
+            await member.kick(reason=f"{reason} | {mod}")
+        elif action == "ban":
+            await member.ban(reason=f"{reason} | {mod}")
+    except discord.Forbidden:
+        return await interaction.response.send_message("Не удалось выполнить действие: нет прав у бота.", ephemeral=True)
+    except discord.HTTPException:
+        log.exception("moderation action failed")
+        return await interaction.response.send_message("Ошибка Discord API, действие не выполнено.", ephemeral=True)
+    add_punishment(guild.id, member.id, str(member), mod.id, str(mod), action, reason, duration, expires_at)
+    log_action(guild.id, f"mod_{action}", actor=mod, target=member, details=reason)
+    await log_mod_action(guild, MOD_EMBED_TITLES[action], MOD_EMBED_COLORS[action],
+                         f"{member} (`{member.id}`)", mod, reason, duration_text)
+    await interaction.response.send_message(f"✅ {MOD_ACTION_LABELS[action]} применён к {member.mention}.", ephemeral=True)
+
+class PunishReasonModal(discord.ui.Modal):
+    TITLES = {"warn": "Причина предупреждения", "timeout": "Причина таймаута",
+              "kick": "Причина кика", "ban": "Причина бана"}
+
+    def __init__(self, action, target_id, duration_minutes=None):
+        super().__init__(title=self.TITLES.get(action, "Причина"), timeout=600)
+        self.action = action
+        self.target_id = target_id
+        self.duration_minutes = duration_minutes
+        self.reason = discord.ui.TextInput(label="Причина", style=discord.TextStyle.paragraph,
+                                           required=True, min_length=1, max_length=500,
+                                           placeholder="Причина наказания (игрок получит её в ЛС)")
+        self.add_item(self.reason)
+
+    async def on_submit(self, interaction):
+        if not is_staff_interaction(interaction):
+            return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+        await apply_punishment(interaction, self.action, self.target_id,
+                               str(self.reason.value).strip(), self.duration_minutes)
+
+@bot.tree.command(name="warn", description="Выдать предупреждение игроку")
+@app_commands.describe(member="Игрок, которому выносится предупреждение")
+async def warn_command(interaction: discord.Interaction, member: discord.Member):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    await interaction.response.send_modal(PunishReasonModal("warn", member.id))
+
+@bot.tree.command(name="warnings", description="Показать последние наказания игрока")
+@app_commands.describe(member="Игрок")
+async def warnings_command(interaction: discord.Interaction, member: discord.Member):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    rows = get_user_punishments(interaction.guild.id, member.id, limit=10)
+    if not rows:
+        return await interaction.response.send_message(f"У {member.mention} нет наказаний.", ephemeral=True)
+    lines = []
+    for r in rows:
+        dt = time.strftime("%d.%m.%Y %H:%M", time.localtime(r["ts"]))
+        line = (f"`{dt}` · {MOD_ACTION_LABELS.get(r['action'], r['action'])} · "
+                f"{r['reason'] or 'без причины'} · мод: {r['mod_name'] or '?'}")
+        if r["duration"]:
+            line += f" · {int(r['duration']) // 60} мин"
+        lines.append(line)
+    text = f"**Наказания {member.mention} (последние {len(rows)})**\n" + "\n".join(lines)
+    await interaction.response.send_message(text[:1950], ephemeral=True)
+
+@bot.tree.command(name="timeout", description="Выдать таймаут игроку")
+@app_commands.describe(member="Игрок", minutes="Длительность таймаута в минутах")
+async def timeout_command(interaction: discord.Interaction, member: discord.Member,
+                          minutes: app_commands.Range[int, 1, 40320]):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    await interaction.response.send_modal(PunishReasonModal("timeout", member.id, duration_minutes=minutes))
+
+@bot.tree.command(name="untimeout", description="Снять таймаут с игрока")
+@app_commands.describe(member="Игрок")
+async def untimeout_command(interaction: discord.Interaction, member: discord.Member):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    try:
+        await member.timeout(None, reason=f"Untimeout by {interaction.user}")
+    except discord.Forbidden:
+        return await interaction.response.send_message("Не удалось снять таймаут: нет прав у бота.", ephemeral=True)
+    except discord.HTTPException:
+        log.exception("untimeout failed")
+        return await interaction.response.send_message("Ошибка Discord API, действие не выполнено.", ephemeral=True)
+    add_punishment(interaction.guild.id, member.id, str(member), interaction.user.id,
+                   str(interaction.user), "untimeout", "Таймаут снят модератором")
+    log_action(interaction.guild.id, "mod_untimeout", actor=interaction.user, target=member)
+    await log_mod_action(interaction.guild, "✅ Таймаут снят", discord.Color.green(),
+                         f"{member} (`{member.id}`)", interaction.user, "Таймаут снят модератором")
+    await interaction.response.send_message(f"✅ Таймаут с {member.mention} снят.", ephemeral=True)
+
+@bot.tree.command(name="kick", description="Кикнуть игрока с сервера")
+@app_commands.describe(member="Игрок")
+async def kick_command(interaction: discord.Interaction, member: discord.Member):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    await interaction.response.send_modal(PunishReasonModal("kick", member.id))
+
+@bot.tree.command(name="ban", description="Забанить игрока на сервере")
+@app_commands.describe(member="Игрок")
+async def ban_command(interaction: discord.Interaction, member: discord.Member):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    await interaction.response.send_modal(PunishReasonModal("ban", member.id))
+
+@bot.tree.command(name="unban", description="Разбанить пользователя по ID")
+@app_commands.describe(user_id="Discord ID пользователя")
+async def unban_command(interaction: discord.Interaction, user_id: str):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    user_id = user_id.strip()
+    if not (user_id.isascii() and user_id.isdigit()):
+        return await interaction.response.send_message("Некорректный ID.", ephemeral=True)
+    try:
+        await interaction.guild.unban(discord.Object(id=int(user_id)), reason=f"Unban by {interaction.user}")
+    except discord.NotFound:
+        return await interaction.response.send_message("Этот пользователь не забанен.", ephemeral=True)
+    except discord.Forbidden:
+        return await interaction.response.send_message("Не удалось разбанить: нет прав у бота.", ephemeral=True)
+    target_name = f"ID {user_id}"
+    try:
+        fetched = await bot.fetch_user(int(user_id))
+        target_name = str(fetched)
+    except Exception:
+        pass
+    add_punishment(interaction.guild.id, user_id, target_name, interaction.user.id,
+                   str(interaction.user), "unban", "Разбан")
+    log_action(interaction.guild.id, "mod_unban", actor=interaction.user, details=target_name)
+    await log_mod_action(interaction.guild, "✅ Разбан", discord.Color.green(),
+                         f"{target_name} (`{user_id}`)", interaction.user, "Разбан")
+    await interaction.response.send_message(f"✅ {target_name} разбанен.", ephemeral=True)
+
+def replace_invite_cache(guild_id, uses_by_code):
+    with _db() as conn:
+        conn.execute("DELETE FROM invites_cache WHERE guild_id=?", (str(guild_id),))
+        for code, uses in uses_by_code.items():
+            conn.execute("INSERT INTO invites_cache(guild_id, code, uses) VALUES(?,?,?)",
+                         (str(guild_id), str(code), int(uses)))
+
+def get_invite_cache(guild_id):
+    with _db() as conn:
+        rows = conn.execute("SELECT code, uses FROM invites_cache WHERE guild_id=?",
+                            (str(guild_id),)).fetchall()
+    return {r["code"]: r["uses"] for r in rows}
+
+def add_invite(guild_id, inviter_id, invited_id, code):
+    with _db() as conn:
+        conn.execute(
+            "INSERT INTO invites(guild_id, inviter_id, invited_id, code, joined_at, left_at) VALUES(?,?,?,?,?,NULL)",
+            (str(guild_id), str(inviter_id), str(invited_id), str(code), int(time.time())))
+
+def mark_invite_left(guild_id, invited_id):
+    with _db() as conn:
+        conn.execute(
+            "UPDATE invites SET left_at=? WHERE guild_id=? AND invited_id=? AND left_at IS NULL",
+            (int(time.time()), str(guild_id), str(invited_id)))
+
+def invite_stats(guild_id, inviter_id):
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT"
+            " SUM(CASE WHEN left_at IS NULL OR left_at - joined_at > ? THEN 1 ELSE 0 END) AS total,"
+            " SUM(CASE WHEN left_at IS NULL THEN 1 ELSE 0 END) AS active,"
+            " SUM(CASE WHEN left_at IS NOT NULL AND left_at - joined_at > ? THEN 1 ELSE 0 END) AS gone"
+            " FROM invites WHERE guild_id=? AND inviter_id=?",
+            (INVITE_FAKE_SECONDS, INVITE_FAKE_SECONDS, str(guild_id), str(inviter_id))).fetchone()
+    return (row["total"] or 0, row["active"] or 0, row["gone"] or 0)
+
+def count_valid_invites(guild_id, inviter_id):
+    total, _, _ = invite_stats(guild_id, inviter_id)
+    return total
+
+def top_recruiters(guild_id, limit=10):
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT inviter_id,"
+            " SUM(CASE WHEN left_at IS NULL OR left_at - joined_at > ? THEN 1 ELSE 0 END) AS invites,"
+            " SUM(CASE WHEN left_at IS NULL THEN 1 ELSE 0 END) AS active"
+            " FROM invites WHERE guild_id=?"
+            " GROUP BY inviter_id HAVING invites > 0"
+            " ORDER BY active DESC, invites DESC LIMIT ?",
+            (INVITE_FAKE_SECONDS, str(guild_id), int(limit))).fetchall()
+    return [dict(r) for r in rows]
+
+_invite_perm_warned = False
+
+def _has_invite_perms(guild):
+    global _invite_perm_warned
+    if guild.me is None or not guild.me.guild_permissions.manage_guild:
+        if not _invite_perm_warned:
+            log.warning("Учёт инвайтов: у бота нет права Manage Server — отслеживание отключено")
+            _invite_perm_warned = True
+        return False
+    return True
+
+async def collect_invites(guild):
+    if not _has_invite_perms(guild):
+        return
+    try:
+        invites = await guild.invites()
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("Не удалось загрузить инвайты сервера")
+        return
+    replace_invite_cache(guild.id, {inv.code: (inv.uses or 0) for inv in invites})
+
+async def find_used_invite(guild):
+    if not _has_invite_perms(guild):
+        return None, None
+    try:
+        fresh = await guild.invites()
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("Не удалось получить инвайты при заходе")
+        return None, None
+    fresh_map = {inv.code: (inv.uses or 0) for inv in fresh}
+    cached = get_invite_cache(guild.id)
+    if not cached:
+        return None, fresh_map
+    used = None
+    best_delta = 0
+    for inv in fresh:
+        delta = (inv.uses or 0) - cached.get(inv.code, 0)
+        if delta > best_delta:
+            used = inv
+            best_delta = delta
+    return used, fresh_map
+
+async def award_invite_rewards(guild, inviter):
+    total = count_valid_invites(guild.id, inviter.id)
+    for threshold, role_id in INVITE_REWARDS:
+        if not role_id or total < threshold:
+            continue
+        role = guild.get_role(role_id)
+        if role is None:
+            log.warning("Награда за инвайты: роль %s (порог %s) не найдена", role_id, threshold)
+            continue
+        if role in inviter.roles:
+            continue
+        try:
+            await inviter.add_roles(role, reason=f"FLCN: {threshold} приглашений")
+        except (discord.Forbidden, discord.HTTPException):
+            log.exception("Не удалось выдать награду за инвайты")
+            continue
+        log_action(guild.id, "invite_reward", target=inviter, details=f"{threshold}: {role.name}")
+        await send_staff_log(guild, make_log_embed("🏆 Награда за приглашения", discord.Color.gold(),
+            [("Кто", f"{inviter} (`{inviter.id}`)"),
+             ("Порог", f"{threshold} приглашений (всего {total})"),
+             ("Роль", role.mention)]))
+
+async def handle_invite_join(member):
+    guild = member.guild
+    used, fresh_map = await find_used_invite(guild)
+    if fresh_map is None:
+        return
+    replace_invite_cache(guild.id, fresh_map)
+    if used is None or used.inviter is None:
+        return
+    inviter = used.inviter
+    if inviter.id == member.id:
+        log_action(guild.id, "invite_self_skipped", target=member, details=used.code)
+        return
+    add_invite(guild.id, inviter.id, member.id, used.code)
+    log_action(guild.id, "invite_join", actor=inviter, target=member, details=used.code)
+    await send_staff_log(guild, make_log_embed("📨 Приглашение", discord.Color.green(),
+        [("Пригласил", f"{inviter} (`{inviter.id}`)"),
+         ("Пришёл", f"{member} (`{member.id}`)"),
+         ("Код инвайта", used.code)]))
+    inviter_member = guild.get_member(inviter.id)
+    if inviter_member is not None:
+        await award_invite_rewards(guild, inviter_member)
+
+async def push_invites(guild):
+    if not API_SECRET_KEY:
+        return
+    try:
+        top = []
+        for row in top_recruiters(guild.id, limit=20):
+            member = guild.get_member(int(row["inviter_id"]))
+            user_name = str(member)[:100] if member else f"ID: {row['inviter_id']}"
+            top.append({"user_id": row["inviter_id"], "user_name": user_name,
+                        "invites": int(row["invites"]), "active": int(row["active"])})
+        timeout = aiohttp.ClientTimeout(total=20)
+        async with aiohttp.ClientSession(timeout=timeout) as s:
+            async with s.post(f"{WEBSITE_URL}/api/update-invites",
+                              json={"guild_id": str(guild.id), "top": top, "complete": True},
+                              headers={"X-Falcons-Secret": API_SECRET_KEY}) as r:
+                if r.status != 200:
+                    log.error("update-invites HTTP %s", r.status)
+    except Exception:
+        log.exception("push_invites failed")
+
+@bot.tree.command(name="invites", description="Показать статистику приглашений")
+@app_commands.describe(user="Участник (смотреть других может только Ticket Staff)")
+async def invites_command(interaction: discord.Interaction, user: discord.Member = None):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    target = user or interaction.user
+    if target.id != interaction.user.id and not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Смотреть приглашения других может только Ticket Staff.", ephemeral=True)
+    total, active, gone = invite_stats(interaction.guild.id, target.id)
+    lines = [f"**Приглашения {target.mention}**",
+             f"Всего зашло: **{total}**",
+             f"Активных: **{active}**",
+             f"Ушло: **{gone}**"]
+    for threshold, role_id in INVITE_REWARDS:
+        if role_id and total < threshold:
+            lines.append(f"До награды за {threshold}: ещё **{threshold - total}**")
+            break
+    await interaction.response.send_message("\n".join(lines)[:1900], ephemeral=True)
+
+@bot.tree.command(name="top_recruiters", description="Топ-10 рекрутеров по активным приглашениям")
+async def top_recruiters_command(interaction: discord.Interaction):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    rows = top_recruiters(interaction.guild.id, limit=10)
+    if not rows:
+        return await interaction.response.send_message("Данных о приглашениях пока нет.", ephemeral=True)
+    lines = []
+    for i, row in enumerate(rows, 1):
+        member = interaction.guild.get_member(int(row["inviter_id"]))
+        name = member.mention if member else f"`ID: {row['inviter_id']}`"
+        lines.append(f"{i}. {name} — активных: **{row['active']}**, всего: **{row['invites']}**")
+    await interaction.response.send_message("**Топ рекрутеров**\n" + "\n".join(lines)[:1900], ephemeral=True)
+
+@bot.tree.command(name="invite_rewards", description="Показать награды за приглашения")
+async def invite_rewards_command(interaction: discord.Interaction):
+    lines = []
+    for threshold, role_id in INVITE_REWARDS:
+        if not role_id:
+            lines.append(f"**{threshold}** приглашений — не настроено")
+            continue
+        role = interaction.guild.get_role(role_id) if interaction.guild else None
+        lines.append(f"**{threshold}** приглашений — {role.mention if role else 'роль не найдена'}")
+    await interaction.response.send_message("**Награды за приглашения**\n" + "\n".join(lines), ephemeral=True)
+
+_spam_tracker = {}
+
+@bot.listen("on_message")
+async def antispam_listener(message: discord.Message):
+    if message.author.bot or message.guild is None:
+        return
+    if not GUILD_ID or message.guild.id != GUILD_ID:
+        return
+    if not isinstance(message.author, discord.Member) or has_staff_perms(message.author):
+        return
+    channel = message.channel
+    if isinstance(channel, discord.TextChannel) and channel.topic and "FLCN_TICKET" in channel.topic:
+        return
+    now = time.monotonic()
+    stamps = _spam_tracker.setdefault(message.author.id, [])
+    stamps.append(now)
+    cutoff = now - SPAM_WINDOW_SECONDS
+    while stamps and stamps[0] < cutoff:
+        stamps.pop(0)
+    if len(stamps) < SPAM_MESSAGE_LIMIT:
+        return
+    stamps.clear()
+    reason = f"Авто-модерация: {SPAM_MESSAGE_LIMIT}+ сообщений за {int(SPAM_WINDOW_SECONDS)} сек"
+    try:
+        await message.author.timeout(datetime.timedelta(minutes=SPAM_TIMEOUT_MINUTES), reason=reason)
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("Антиспам: не удалось выдать таймаут")
+        return
+    duration = SPAM_TIMEOUT_MINUTES * 60
+    add_punishment(message.guild.id, message.author.id, str(message.author), bot.user.id,
+                   str(bot.user), "timeout", reason, duration, int(time.time()) + duration)
+    log_action(message.guild.id, "antispam_timeout", target=message.author, details=reason)
+    await log_mod_action(message.guild, "⏳ Антиспам: таймаут", discord.Color.orange(),
+                         f"{message.author} (`{message.author.id}`)", bot.user, reason,
+                         f"{SPAM_TIMEOUT_MINUTES} мин")
 
 if __name__ == "__main__":
     if not TOKEN:
