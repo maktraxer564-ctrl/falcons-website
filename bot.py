@@ -1,3 +1,4 @@
+import io
 import os
 import json
 import re
@@ -48,6 +49,20 @@ REWARD_ROLE_100 = int(os.getenv("REWARD_ROLE_100", "0") or 0)
 INVITE_REWARDS = ((10, REWARD_ROLE_10), (25, REWARD_ROLE_25), (50, REWARD_ROLE_50), (100, REWARD_ROLE_100))
 INVITE_FAKE_SECONDS = 600
 
+TRANSCRIPT_CHANNEL_ID = int(os.getenv("TRANSCRIPT_CHANNEL_ID", "0") or 0)
+TICKET_REMINDER_MINUTES = int(os.getenv("TICKET_REMINDER_MINUTES", "30") or 30)
+RUST_MIN_HOURS = int(os.getenv("RUST_MIN_HOURS", "3000") or 3000)
+WARN_TIMEOUT_COUNT = int(os.getenv("WARN_TIMEOUT_COUNT", "3") or 3)
+WARN_TIMEOUT_MINUTES = int(os.getenv("WARN_TIMEOUT_MINUTES", "60") or 60)
+WARN_KICK_COUNT = int(os.getenv("WARN_KICK_COUNT", "5") or 5)
+WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID", "0") or 0)
+WELCOME_TEXT = os.getenv("WELCOME_TEXT", "Добро пожаловать на сервер FALCONS, {mention}!").strip()
+GOODBYE_CHANNEL_ID = int(os.getenv("GOODBYE_CHANNEL_ID", "0") or 0)
+GOODBYE_ENABLED = os.getenv("GOODBYE_ENABLED", "1").strip().lower() not in ("0", "false", "no", "off")
+GOODBYE_TEXT = os.getenv("GOODBYE_TEXT", "{name} покинул сервер FALCONS.").strip()
+SELF_ROLES = os.getenv("SELF_ROLES", "").strip()
+AUTO_ANNOUNCE = os.getenv("AUTO_ANNOUNCE", "").strip()
+
 SPAM_WINDOW_SECONDS = 3.0
 SPAM_MESSAGE_LIMIT = 5
 SPAM_TIMEOUT_MINUTES = 10
@@ -95,7 +110,9 @@ def init_db():
             decided_by INTEGER,
             decided_at INTEGER,
             decision TEXT,
-            reason TEXT
+            reason TEXT,
+            claimed_by TEXT,
+            reminded INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_tickets_owner ON tickets(guild_id, owner_id);
         CREATE TABLE IF NOT EXISTS logs (
@@ -153,8 +170,17 @@ def init_db():
             joined_at INTEGER NOT NULL,
             left_at INTEGER
         );
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS idx_invites_invited ON invites(guild_id, invited_id);
         """)
+        ticket_cols = {row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
+        if "claimed_by" not in ticket_cols:
+            conn.execute("ALTER TABLE tickets ADD COLUMN claimed_by TEXT")
+        if "reminded" not in ticket_cols:
+            conn.execute("ALTER TABLE tickets ADD COLUMN reminded INTEGER NOT NULL DEFAULT 0")
 
 def next_ticket_number(guild_id):
     with _db() as conn:
@@ -191,6 +217,49 @@ def get_ticket_by_channel(channel_id):
     with _db() as conn:
         row = conn.execute("SELECT * FROM tickets WHERE channel_id=?", (str(channel_id),)).fetchone()
         return dict(row) if row else None
+
+def claim_ticket(channel_id, actor):
+    with _db() as conn:
+        conn.execute("UPDATE tickets SET claimed_by=? WHERE channel_id=?",
+                     (str(actor.id), str(channel_id)))
+
+def get_stale_tickets(guild_id, older_than_seconds):
+    cutoff = int(time.time()) - int(older_than_seconds)
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT channel_id, number, category, owner_id, owner_name, created_at, claimed_by FROM tickets"
+            " WHERE guild_id=? AND status='open' AND reminded=0 AND created_at<=?",
+            (str(guild_id), cutoff)).fetchall()
+    return [dict(r) for r in rows]
+
+def mark_reminded(channel_id):
+    with _db() as conn:
+        conn.execute("UPDATE tickets SET reminded=1 WHERE channel_id=?", (str(channel_id),))
+
+def count_warns(guild_id, user_id):
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM punishments WHERE guild_id=? AND user_id=? AND action='warn'",
+            (str(guild_id), str(user_id))).fetchone()
+    return row["c"] if row else 0
+
+def get_setting(key, default=None):
+    with _db() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key=?", (str(key),)).fetchone()
+    return row["value"] if row else default
+
+def set_setting(key, value):
+    with _db() as conn:
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES(?,?)"
+            " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (str(key), str(value)))
+
+def setting_bool(key, default):
+    raw = get_setting(key)
+    if raw is None:
+        return default
+    return raw == "1"
 
 def get_previous_tickets(guild_id, owner_id, limit=5):
     with _db() as conn:
@@ -248,6 +317,8 @@ class FalconsBot(commands.Bot):
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
+        if parse_self_roles():
+            self.add_view(SelfRolesView())
         self.loop.create_task(start_bot_http())
 
 bot = FalconsBot()
@@ -427,11 +498,100 @@ async def updater():
 async def before_updater():
     await bot.wait_until_ready()
 
+async def remind_stale_tickets(guild):
+    if TICKET_REMINDER_MINUTES <= 0:
+        return
+    for row in get_stale_tickets(guild.id, TICKET_REMINDER_MINUTES * 60):
+        channel = guild.get_channel(int(row["channel_id"]))
+        if channel is None:
+            mark_reminded(row["channel_id"])
+            continue
+        minutes = max(1, (int(time.time()) - int(row["created_at"])) // 60)
+        embed = discord.Embed(title="⏰ Тикет ждёт ответа", color=discord.Color.orange(),
+                              description=f"Тикет #{row['number']} открыт {minutes} мин без ответа стаффа.")
+        if row.get("claimed_by"):
+            embed.add_field(name="Взял в работу", value=f"<@{row['claimed_by']}>", inline=False)
+        staff_role = get_staff_role(guild)
+        try:
+            await channel.send(content=staff_role.mention if staff_role else None, embed=embed)
+        except (discord.Forbidden, discord.HTTPException):
+            log.exception("Не удалось отправить напоминание о тикете")
+        mark_reminded(row["channel_id"])
+
+@tasks.loop(minutes=5)
+async def ticket_reminder():
+    for guild in bot.guilds:
+        if not GUILD_ID or guild.id == GUILD_ID:
+            try:
+                await remind_stale_tickets(guild)
+            except Exception:
+                log.exception("ticket_reminder failed")
+
+@ticket_reminder.before_loop
+async def before_ticket_reminder():
+    await bot.wait_until_ready()
+
+_announce_last_sent = {}
+
+def parse_auto_announces():
+    entries = []
+    for part in AUTO_ANNOUNCE.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        bits = part.split("@", 2)
+        if len(bits) != 3:
+            continue
+        channel_id, hhmm, text = bits[0].strip(), bits[1].strip(), bits[2].strip()
+        if not (channel_id.isascii() and channel_id.isdigit()) or not text:
+            continue
+        if not re.fullmatch(r"\d{1,2}:\d{2}", hhmm):
+            continue
+        hh, mm = (int(x) for x in hhmm.split(":"))
+        if hh > 23 or mm > 59:
+            continue
+        entries.append((int(channel_id), hh * 60 + mm, text))
+    return entries
+
+@tasks.loop(seconds=45)
+async def auto_announce_loop():
+    entries = parse_auto_announces()
+    if not entries:
+        return
+    now = datetime.datetime.now()
+    today_key = now.strftime("%Y-%m-%d")
+    current = now.hour * 60 + now.minute
+    for channel_id, minutes, text in entries:
+        key = (channel_id, minutes, text)
+        if current < minutes or _announce_last_sent.get(key) == today_key:
+            continue
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            guild = bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
+            if guild is not None:
+                channel = guild.get_channel(channel_id)
+        if channel is None:
+            log.warning("auto_announce: канал %s не найден", channel_id)
+            continue
+        try:
+            await channel.send(text)
+            _announce_last_sent[key] = today_key
+        except (discord.Forbidden, discord.HTTPException):
+            log.exception("auto_announce: не удалось отправить")
+
+@auto_announce_loop.before_loop
+async def before_auto_announce():
+    await bot.wait_until_ready()
+
 @bot.event
 async def on_ready():
     log.info("Connected as %s (%s)", bot.user, bot.user.id)
     if not updater.is_running():
         updater.start()
+    if not ticket_reminder.is_running():
+        ticket_reminder.start()
+    if not auto_announce_loop.is_running():
+        auto_announce_loop.start()
     for guild in bot.guilds:
         if not GUILD_ID or guild.id == GUILD_ID:
             try:
@@ -468,6 +628,10 @@ async def on_member_join(member):
         except Exception:
             log.exception("Обработка инвайта не удалась")
         try:
+            await send_welcome(member)
+        except Exception:
+            log.exception("Приветствие не отправлено")
+        try:
             await refresh(member.guild)
         except Exception:
             pass
@@ -483,6 +647,10 @@ async def on_member_remove(member):
             mark_invite_left(member.guild.id, member.id)
         except Exception:
             log.exception("Не удалось отметить выход по инвайту")
+        try:
+            await send_goodbye(member)
+        except Exception:
+            log.exception("Прощание не отправлено")
             
 
 
@@ -530,6 +698,40 @@ def build_history_text(guild, owner_id):
         lines.append(f"#{p['number']} · {CATEGORY_LABELS.get(p['category'], p['category'])} · {dt} · {dec}")
     return "\n".join(lines)[:1024]
 
+async def save_transcript(channel, ticket):
+    if not TRANSCRIPT_CHANNEL_ID or channel.guild is None:
+        return
+    lines = []
+    try:
+        async for msg in channel.history(limit=500, oldest_first=True):
+            content = msg.content or ""
+            for att in msg.attachments:
+                content = (content + " " if content else "") + att.url
+            for emb in msg.embeds:
+                title = emb.title or emb.description or ""
+                if title:
+                    content = (content + " " if content else "") + f"[embed] {title}"
+            lines.append(f"[{msg.created_at.strftime('%d.%m.%Y %H:%M')}] {msg.author}: {content}".rstrip())
+    except Exception:
+        log.exception("Не удалось прочитать историю тикета")
+        return
+    if not lines:
+        return
+    t = ticket or {}
+    number = t.get("number", "?")
+    header = (f"Тикет #{number} · {CATEGORY_LABELS.get(t.get('category'), t.get('category') or '?')}\n"
+              f"Открыл: {t.get('owner_name', '?')} ({t.get('owner_id', '?')})\n" + "-" * 40)
+    body = (header + "\n" + "\n".join(lines)).encode("utf-8")
+    target = channel.guild.get_channel(TRANSCRIPT_CHANNEL_ID)
+    if target is None:
+        log.warning("TRANSCRIPT_CHANNEL_ID=%s не найден", TRANSCRIPT_CHANNEL_ID)
+        return
+    try:
+        await target.send(content=f"📄 Транскрипт тикета #{number}",
+                          file=discord.File(io.BytesIO(body), filename=f"ticket-{number}.txt"))
+    except Exception:
+        log.exception("Не удалось отправить транскрипт")
+
 async def create_ticket(interaction, category_key, answers):
     guild = interaction.guild
     if guild is None:
@@ -570,7 +772,7 @@ async def create_ticket(interaction, category_key, answers):
     if category_key == "clan":
         embed.set_footer(text="Для набора приложи скрин Steam и ссылку BattleMetrics.")
 
-    view = TicketActionsView() if category_key == "clan" else None
+    view = TicketActionsView()
     await channel.send(content=staff_role.mention if staff_role else None, embed=embed, view=view)
     if category_key == "clan":
         await channel.send(f"{interaction.user.mention} Прекрепи сюда скрин Steam и ссылку на BattleMetrics , ответы я не умею читать")
@@ -627,12 +829,24 @@ class CloseTicketView(discord.ui.View):
             await send_staff_log(interaction.guild, make_log_embed("🔒 Тикет закрыт", discord.Color.dark_gray(),
                 [("Номер", f"#{t['number']}"), ("Кем", f"{interaction.user} (`{interaction.user.id}`)")]))
         await interaction.response.send_message("Закрываю тикет…", ephemeral=True)
+        await save_transcript(interaction.channel, t)
         await interaction.channel.delete(reason=f"Closed by {interaction.user}")
         asyncio.create_task(push_tickets(interaction.guild))
 
 class TicketActionsView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+
+    @discord.ui.button(label="Взять", style=discord.ButtonStyle.secondary, custom_id="flcn:claim")
+    async def claim(self, interaction, button):
+        if not is_staff_interaction(interaction):
+            return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+        t = get_ticket_by_channel(interaction.channel.id)
+        if not t or t["status"] != "open":
+            return await interaction.response.send_message("Эта заявка уже обработана.", ephemeral=True)
+        claim_ticket(interaction.channel.id, interaction.user)
+        log_action(interaction.guild.id, "ticket_claim", actor=interaction.user, details=f"#{t['number']}")
+        await interaction.response.send_message(f"✅ {interaction.user.mention} взял тикет #{t['number']} в работу.")
 
     @discord.ui.button(label="Принять", style=discord.ButtonStyle.success, custom_id="flcn:accept")
     async def accept(self, interaction, button):
@@ -641,6 +855,8 @@ class TicketActionsView(discord.ui.View):
         t = get_ticket_by_channel(interaction.channel.id)
         if not t or t["status"] != "open":
             return await interaction.response.send_message("Эта заявка уже обработана.", ephemeral=True)
+        if t["category"] != "clan":
+            return await interaction.response.send_message("Кнопка доступна только для заявок в клан.", ephemeral=True)
         clan_role = interaction.guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
         if clan_role is None:
             return await interaction.response.send_message("Роль клана не настроена (CLAN_ROLE_ID).", ephemeral=True)
@@ -659,6 +875,7 @@ class TicketActionsView(discord.ui.View):
              ("Принял", f"{interaction.user} (`{interaction.user.id}`)")]))
         await interaction.response.send_message("Принято, роль выдана, тикет закрывается…", ephemeral=True)
         await asyncio.sleep(2)
+        await save_transcript(interaction.channel, t)
         try:
             await interaction.channel.delete(reason="Accepted")
         except Exception:
@@ -672,6 +889,8 @@ class TicketActionsView(discord.ui.View):
         t = get_ticket_by_channel(interaction.channel.id)
         if not t or t["status"] != "open":
             return await interaction.response.send_message("Эта заявка уже обработана.", ephemeral=True)
+        if t["category"] != "clan":
+            return await interaction.response.send_message("Кнопка доступна только для заявок в клан.", ephemeral=True)
         channels = list(interaction.guild.voice_channels)
         if VOICE_CATEGORY_NAME:
             cat = discord.utils.get(interaction.guild.categories, name=VOICE_CATEGORY_NAME)
@@ -692,6 +911,8 @@ class TicketActionsView(discord.ui.View):
         t = get_ticket_by_channel(interaction.channel.id)
         if not t or t["status"] != "open":
             return await interaction.response.send_message("Эта заявка уже обработана.", ephemeral=True)
+        if t["category"] != "clan":
+            return await interaction.response.send_message("Кнопка доступна только для заявок в клан.", ephemeral=True)
         await interaction.response.send_modal(RejectModal(int(t["owner_id"]), t["number"]))
 
 class VoiceSelectView(discord.ui.View):
@@ -771,6 +992,8 @@ class RejectModal(discord.ui.Modal, title="Причина отказа"):
              ("Причина", reason)]))
         await interaction.response.send_message("Заявка отклонена. Тикет закрывается…", ephemeral=True)
         await asyncio.sleep(2)
+        t = get_ticket_by_channel(interaction.channel.id)
+        await save_transcript(interaction.channel, t or {"number": self.ticket_number})
         try:
             await interaction.channel.delete(reason="Rejected")
         except Exception:
@@ -796,6 +1019,57 @@ class TicketPanelView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(TicketCategorySelect())
+
+def parse_self_roles():
+    roles = []
+    for part in SELF_ROLES.split(";"):
+        part = part.strip()
+        if not part or ":" not in part:
+            continue
+        role_id, label = part.split(":", 1)
+        role_id, label = role_id.strip(), label.strip()
+        if role_id.isascii() and role_id.isdigit() and label:
+            roles.append((int(role_id), label[:80]))
+    return roles[:25]
+
+class SelfRoleSelect(discord.ui.Select):
+    def __init__(self):
+        options = [discord.SelectOption(label=label, value=str(rid)) for rid, label in parse_self_roles()]
+        super().__init__(placeholder="Выбери роли…", min_values=0, max_values=max(1, len(options)),
+                         options=options, custom_id="flcn:selfroles")
+
+    async def callback(self, interaction):
+        if interaction.guild is None or not isinstance(interaction.user, discord.Member):
+            return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+        member = interaction.user
+        chosen = {int(v) for v in self.values}
+        added, removed = [], []
+        for role_id, _ in parse_self_roles():
+            role = interaction.guild.get_role(role_id)
+            if role is None:
+                continue
+            try:
+                if role_id in chosen and role not in member.roles:
+                    await member.add_roles(role, reason="FLCN self-roles")
+                    added.append(role.name)
+                elif role_id not in chosen and role in member.roles:
+                    await member.remove_roles(role, reason="FLCN self-roles")
+                    removed.append(role.name)
+            except (discord.Forbidden, discord.HTTPException):
+                log.exception("self-roles: не удалось изменить роль %s", role_id)
+        parts = []
+        if added:
+            parts.append("выдано: " + ", ".join(added))
+        if removed:
+            parts.append("снято: " + ", ".join(removed))
+        await interaction.response.send_message(
+            "Готово. " + ("; ".join(parts) if parts else "Изменений нет."), ephemeral=True)
+
+class SelfRolesView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        if parse_self_roles():
+            self.add_item(SelfRoleSelect())
 
 @bot.tree.command(name="falcons_stats", description="Обновить счётчики сервера")
 async def falcons_stats(interaction):
@@ -828,6 +1102,21 @@ async def setup_tickets(interaction):
     embed.set_image(url="attachment://falcons.png")
     await interaction.channel.send(file=file, embed=embed, view=TicketPanelView())
     await interaction.response.send_message("Панель заявок опубликована.", ephemeral=True)
+
+@bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
+async def setup_roles(interaction):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    roles = parse_self_roles()
+    if not roles:
+        return await interaction.response.send_message("SELF_ROLES не настроены в .env.", ephemeral=True)
+    embed = discord.Embed(title="🎭 Само-роли", color=discord.Color.blurple(),
+                          description="Выбери роли в меню ниже. Можно выбрать несколько или снять уже выбранные.")
+    embed.add_field(name="Доступные роли", value="\n".join(label for _, label in roles)[:1024], inline=False)
+    await interaction.channel.send(embed=embed, view=SelfRolesView())
+    await interaction.response.send_message("Панель само-ролей опубликована.", ephemeral=True)
 
 @bot.tree.command(name="ticket_add_question", description="Добавить вопрос в анкету")
 @app_commands.describe(category="clan / partner / question / report / other", question="Текст вопроса")
@@ -907,6 +1196,26 @@ async def ticket_repair_permissions(interaction):
             pass
     await interaction.response.send_message(f"Права обновлены в {repaired} тикетах.", ephemeral=True)
 
+async def fetch_bm_hours(player_id):
+    if not str(player_id).isdigit():
+        return None
+    url = f"https://api.battlemetrics.com/players/{player_id}"
+    timeout = aiohttp.ClientTimeout(total=15)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as s:
+            async with s.get(url) as r:
+                if r.status != 200:
+                    return None
+                data = await r.json()
+    except Exception:
+        log.exception("BattleMetrics: запрос не удался")
+        return None
+    attrs = ((data or {}).get("data") or {}).get("attributes") or {}
+    seconds = attrs.get("playtime")
+    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or seconds < 0:
+        return None
+    return int(seconds // 3600)
+
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild:
@@ -921,7 +1230,13 @@ async def on_message(message):
         if steam_match:
             replies.append(f"Нашёл Steam-профиль: {steam_match.group(0).rstrip('.,)>]}')}")
         if bm_match:
-            replies.append(f"Нашёл BattleMetrics ID `{bm_match.group(1)}`.")
+            hours = await fetch_bm_hours(bm_match.group(1))
+            if hours is None:
+                replies.append(f"Нашёл BattleMetrics ID `{bm_match.group(1)}`, но часы не удалось получить.")
+            elif hours >= RUST_MIN_HOURS:
+                replies.append(f"✅ BattleMetrics: **{hours} ч** — порог {RUST_MIN_HOURS} ч пройден.")
+            else:
+                replies.append(f"⚠️ BattleMetrics: **{hours} ч** — меньше порога {RUST_MIN_HOURS} ч.")
         if replies:
             await message.reply("\n\n".join(replies), mention_author=False)
     await bot.process_commands(message)
@@ -952,6 +1267,7 @@ async def http_close_ticket(request):
     if t and t["status"] == "open":
         record_ticket_decision(channel.id, "closed_by_site", actor)
         log_action(guild.id, "ticket_close_site", actor=actor, details=f"#{t['number']}")
+    await save_transcript(channel, t)
     try:
         await channel.delete(reason=f"Closed from site by {actor}")
     except Exception as e:
@@ -983,6 +1299,7 @@ async def http_accept_ticket(request):
     log_action(guild.id, "ticket_accept_site", actor=actor, target=member, details=f"#{t['number']}")
     try:
         await channel.send(f"✅ {member.mention} принят в клан. Решение принял {actor.mention}.")
+        await save_transcript(channel, t)
         await asyncio.sleep(2)
         await channel.delete(reason="Accepted from site")
     except Exception:
@@ -1015,6 +1332,7 @@ async def http_reject_ticket(request):
                 await member.send(f"Твоя заявка в FALCONS (тикет №{t['number']}) отклонена.\n**Причина:** {reason}")
             except discord.Forbidden:
                 pass
+        await save_transcript(channel, t)
         await asyncio.sleep(2)
         await channel.delete(reason="Rejected from site")
     except Exception:
@@ -1068,6 +1386,167 @@ async def http_reload_config(request):
             log.exception("reload_config: не удалось отправить лог")
     return aiohttp_web.json_response({"ok": True})
 
+async def http_get_punishments(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    user_id = request.query.get("user_id", "").strip()
+    if not (user_id.isascii() and user_id.isdigit()):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid user_id"}, status=400)
+    try:
+        limit = max(1, min(int(request.query.get("limit", "10")), 50))
+    except (TypeError, ValueError):
+        limit = 10
+    guild = bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    member = guild.get_member(int(user_id))
+    return aiohttp_web.json_response({
+        "ok": True,
+        "user_name": str(member) if member else None,
+        "warns": count_warns(guild.id, user_id),
+        "punishments": get_user_punishments(guild.id, user_id, limit=limit),
+    })
+
+async def http_punish(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    if not isinstance(data, dict):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    action = data.get("action")
+    if action not in ("warn", "timeout", "kick", "ban"):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid action"}, status=400)
+    user_id = str(data.get("user_id", "")).strip()
+    if not (user_id.isascii() and user_id.isdigit()):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid user_id"}, status=400)
+    reason = str(data.get("reason", "")).strip()
+    if not reason or len(reason) > 500:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid reason"}, status=400)
+    duration_minutes = data.get("duration_minutes")
+    if action == "timeout":
+        if isinstance(duration_minutes, bool) or not isinstance(duration_minutes, int) or not 1 <= duration_minutes <= 40320:
+            return aiohttp_web.json_response({"ok": False, "error": "invalid duration"}, status=400)
+    else:
+        duration_minutes = None
+    guild, actor, _ = _get_guild_and_actor(data)
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    if actor is None or not has_staff_perms(actor):
+        return aiohttp_web.json_response({"ok": False, "error": "no perms"}, status=403)
+    member = guild.get_member(int(user_id))
+    if member is None:
+        return aiohttp_web.json_response({"ok": False, "error": "member not found"}, status=400)
+    if member.id == actor.id:
+        return aiohttp_web.json_response({"ok": False, "error": "self"}, status=400)
+    if action in ("timeout", "kick", "ban"):
+        if guild.me and member.id != guild.owner_id and member.top_role >= guild.me.top_role:
+            return aiohttp_web.json_response({"ok": False, "error": "role too high"}, status=403)
+        if (isinstance(actor, discord.Member) and actor.id not in (guild.owner_id, OWNER_ID)
+                and actor.top_role <= member.top_role):
+            return aiohttp_web.json_response({"ok": False, "error": "target role higher"}, status=403)
+    ok, error = await _do_punishment(guild, actor, member, action, reason, duration_minutes)
+    if not ok:
+        if error == "forbidden":
+            return aiohttp_web.json_response({"ok": False, "error": "forbidden"}, status=403)
+        return aiohttp_web.json_response({"ok": False, "error": "discord api"}, status=502)
+    return aiohttp_web.json_response({"ok": True})
+
+async def http_invite_reward(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    if not isinstance(data, dict):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    user_id = str(data.get("user_id", "")).strip()
+    if not (user_id.isascii() and user_id.isdigit()):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid user_id"}, status=400)
+    guild, actor, _ = _get_guild_and_actor(data)
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    if actor is None or not has_staff_perms(actor):
+        return aiohttp_web.json_response({"ok": False, "error": "no perms"}, status=403)
+    member = guild.get_member(int(user_id))
+    if member is None:
+        return aiohttp_web.json_response({"ok": False, "error": "member not found"}, status=400)
+    total = count_valid_invites(guild.id, member.id)
+    awarded = await award_invite_rewards(guild, member)
+    return aiohttp_web.json_response({"ok": True, "invites": total, "awarded": awarded})
+
+async def http_bot_status(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    latency = bot.latency
+    latency_ms = None
+    if isinstance(latency, (int, float)) and latency == latency and latency > 0:
+        latency_ms = round(latency * 1000)
+    return aiohttp_web.json_response({
+        "ok": True,
+        "user": str(bot.user) if bot.user else None,
+        "latency_ms": latency_ms,
+        "guilds": [{"id": str(g.id), "name": g.name, "members": g.member_count or 0} for g in bot.guilds],
+    })
+
+def _current_settings():
+    return {
+        "welcome_enabled": setting_bool("welcome_enabled", True),
+        "goodbye_enabled": setting_bool("goodbye_enabled", GOODBYE_ENABLED),
+        "welcome_text": get_setting("welcome_text") or WELCOME_TEXT,
+        "goodbye_text": get_setting("goodbye_text") or GOODBYE_TEXT,
+    }
+
+async def http_get_settings(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    return aiohttp_web.json_response({"ok": True, "settings": _current_settings()})
+
+async def http_set_settings(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    if not isinstance(data, dict):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    updates = {}
+    for key in ("welcome_enabled", "goodbye_enabled"):
+        if key in data:
+            if not isinstance(data[key], bool):
+                return aiohttp_web.json_response({"ok": False, "error": f"invalid {key}"}, status=400)
+            updates[key] = "1" if data[key] else "0"
+    for key in ("welcome_text", "goodbye_text"):
+        if key in data:
+            value = data[key]
+            if not isinstance(value, str) or len(value) > 500:
+                return aiohttp_web.json_response({"ok": False, "error": f"invalid {key}"}, status=400)
+            updates[key] = value.strip()
+    if not updates:
+        return aiohttp_web.json_response({"ok": False, "error": "no settings"}, status=400)
+    for key, value in updates.items():
+        set_setting(key, value)
+    log.info("Настройки бота обновлены с сайта: %s", sorted(updates))
+    guild = bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
+    if guild is not None:
+        current = _current_settings()
+        fields = [("Источник", "Панель управления (сайт)"),
+                  ("Приветствие", "вкл" if current["welcome_enabled"] else "выкл"),
+                  ("Прощание", "вкл" if current["goodbye_enabled"] else "выкл")]
+        if "welcome_text" in updates:
+            fields.append(("Текст приветствия", updates["welcome_text"] or "(из .env)"))
+        if "goodbye_text" in updates:
+            fields.append(("Текст прощания", updates["goodbye_text"] or "(из .env)"))
+        try:
+            await send_staff_log(guild, make_log_embed("⚙️ Настройки бота обновлены", discord.Color.blurple(), fields))
+        except Exception:
+            log.exception("settings: не удалось отправить лог")
+    return aiohttp_web.json_response({"ok": True, "settings": _current_settings()})
+
 async def start_bot_http():
     app = aiohttp_web.Application()
     app.router.add_post("/bot/ticket/close", http_close_ticket)
@@ -1076,6 +1555,12 @@ async def start_bot_http():
     app.router.add_get("/bot/questions", http_get_questions)
     app.router.add_post("/bot/questions", http_set_questions)
     app.router.add_post("/bot/reload_config", http_reload_config)
+    app.router.add_get("/bot/punishments", http_get_punishments)
+    app.router.add_post("/bot/punish", http_punish)
+    app.router.add_post("/bot/invites/reward", http_invite_reward)
+    app.router.add_get("/bot/status", http_bot_status)
+    app.router.add_get("/bot/settings", http_get_settings)
+    app.router.add_post("/bot/settings", http_set_settings)
     runner = aiohttp_web.AppRunner(app)
     await runner.setup()
     site = aiohttp_web.TCPSite(runner, BOT_HTTP_HOST, BOT_HTTP_PORT)
@@ -1111,20 +1596,7 @@ async def log_mod_action(guild, title, color, target_text, mod, reason, duration
         fields.append(("Длительность", duration_text))
     await send_staff_log(guild, make_log_embed(title, color, fields))
 
-async def apply_punishment(interaction, action, target_id, reason, duration_minutes=None):
-    guild = interaction.guild
-    mod = interaction.user
-    member = guild.get_member(int(target_id))
-    if member is None:
-        return await interaction.response.send_message("Игрок не найден на сервере.", ephemeral=True)
-    if member.id == mod.id:
-        return await interaction.response.send_message("Нельзя применить наказание к себе.", ephemeral=True)
-    if action in ("timeout", "kick", "ban"):
-        if guild.me and member.id != guild.owner_id and member.top_role >= guild.me.top_role:
-            return await interaction.response.send_message("Не могу: роль игрока выше или равна роли бота.", ephemeral=True)
-        if (isinstance(mod, discord.Member) and mod.id not in (guild.owner_id, OWNER_ID)
-                and mod.top_role <= member.top_role):
-            return await interaction.response.send_message("Нельзя наказать игрока с ролью выше или равной твоей.", ephemeral=True)
+async def _do_punishment(guild, mod, member, action, reason, duration_minutes=None, title=None):
     duration = None
     expires_at = None
     duration_text = None
@@ -1150,15 +1622,58 @@ async def apply_punishment(interaction, action, target_id, reason, duration_minu
         elif action == "ban":
             await member.ban(reason=f"{reason} | {mod}")
     except discord.Forbidden:
-        return await interaction.response.send_message("Не удалось выполнить действие: нет прав у бота.", ephemeral=True)
+        return False, "forbidden"
     except discord.HTTPException:
         log.exception("moderation action failed")
-        return await interaction.response.send_message("Ошибка Discord API, действие не выполнено.", ephemeral=True)
+        return False, "api"
     add_punishment(guild.id, member.id, str(member), mod.id, str(mod), action, reason, duration, expires_at)
     log_action(guild.id, f"mod_{action}", actor=mod, target=member, details=reason)
-    await log_mod_action(guild, MOD_EMBED_TITLES[action], MOD_EMBED_COLORS[action],
+    await log_mod_action(guild, title or MOD_EMBED_TITLES[action],
+                         discord.Color.orange() if title else MOD_EMBED_COLORS[action],
                          f"{member} (`{member.id}`)", mod, reason, duration_text)
+    if action == "warn":
+        asyncio.create_task(check_auto_punish(guild, member))
+    return True, None
+
+async def apply_punishment(interaction, action, target_id, reason, duration_minutes=None):
+    guild = interaction.guild
+    mod = interaction.user
+    member = guild.get_member(int(target_id))
+    if member is None:
+        return await interaction.response.send_message("Игрок не найден на сервере.", ephemeral=True)
+    if member.id == mod.id:
+        return await interaction.response.send_message("Нельзя применить наказание к себе.", ephemeral=True)
+    if action in ("timeout", "kick", "ban"):
+        if guild.me and member.id != guild.owner_id and member.top_role >= guild.me.top_role:
+            return await interaction.response.send_message("Не могу: роль игрока выше или равна роли бота.", ephemeral=True)
+        if (isinstance(mod, discord.Member) and mod.id not in (guild.owner_id, OWNER_ID)
+                and mod.top_role <= member.top_role):
+            return await interaction.response.send_message("Нельзя наказать игрока с ролью выше или равной твоей.", ephemeral=True)
+    ok, error = await _do_punishment(guild, mod, member, action, reason, duration_minutes)
+    if not ok:
+        if error == "forbidden":
+            return await interaction.response.send_message("Не удалось выполнить действие: нет прав у бота.", ephemeral=True)
+        return await interaction.response.send_message("Ошибка Discord API, действие не выполнено.", ephemeral=True)
     await interaction.response.send_message(f"✅ {MOD_ACTION_LABELS[action]} применён к {member.mention}.", ephemeral=True)
+
+async def check_auto_punish(guild, member):
+    warns = count_warns(guild.id, member.id)
+    if warns not in (WARN_TIMEOUT_COUNT, WARN_KICK_COUNT):
+        return
+    if member.bot or member.id in (getattr(guild, "owner_id", 0), OWNER_ID) or has_staff_perms(member):
+        return
+    if guild.me and member.top_role >= guild.me.top_role:
+        return
+    reason = f"Авто-наказание: {warns} предупреждений"
+    if warns == WARN_TIMEOUT_COUNT:
+        action, minutes, title = "timeout", WARN_TIMEOUT_MINUTES, "⏳ Авто-наказание: таймаут"
+    else:
+        action, minutes, title = "kick", None, "👢 Авто-наказание: кик"
+    ok, error = await _do_punishment(guild, bot.user, member, action, reason, minutes, title)
+    if not ok:
+        log.warning("Авто-наказание не выполнено (%s): %s", error, member.id)
+        return
+    log_action(guild.id, "auto_punish", target=member, details=reason)
 
 class PunishReasonModal(discord.ui.Modal):
     TITLES = {"warn": "Причина предупреждения", "timeout": "Причина таймаута",
@@ -1370,6 +1885,7 @@ async def find_used_invite(guild):
 
 async def award_invite_rewards(guild, inviter):
     total = count_valid_invites(guild.id, inviter.id)
+    awarded = []
     for threshold, role_id in INVITE_REWARDS:
         if not role_id or total < threshold:
             continue
@@ -1384,11 +1900,13 @@ async def award_invite_rewards(guild, inviter):
         except (discord.Forbidden, discord.HTTPException):
             log.exception("Не удалось выдать награду за инвайты")
             continue
+        awarded.append(role.name)
         log_action(guild.id, "invite_reward", target=inviter, details=f"{threshold}: {role.name}")
         await send_staff_log(guild, make_log_embed("🏆 Награда за приглашения", discord.Color.gold(),
             [("Кто", f"{inviter} (`{inviter.id}`)"),
              ("Порог", f"{threshold} приглашений (всего {total})"),
              ("Роль", role.mention)]))
+    return awarded
 
 async def handle_invite_join(member):
     guild = member.guild
@@ -1411,6 +1929,49 @@ async def handle_invite_join(member):
     inviter_member = guild.get_member(inviter.id)
     if inviter_member is not None:
         await award_invite_rewards(guild, inviter_member)
+
+def _format_member_text(template, member, fallback):
+    try:
+        return template.format(mention=member.mention, name=member.display_name,
+                               username=member.name, server=member.guild.name)
+    except (KeyError, IndexError, ValueError):
+        return fallback
+
+async def send_welcome(member):
+    if not setting_bool("welcome_enabled", True):
+        return
+    if not WELCOME_CHANNEL_ID:
+        return
+    channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
+    if channel is None:
+        log.warning("WELCOME_CHANNEL_ID=%s не найден", WELCOME_CHANNEL_ID)
+        return
+    template = get_setting("welcome_text") or WELCOME_TEXT
+    text = _format_member_text(template, member, f"Добро пожаловать, {member.mention}!")
+    embed = discord.Embed(description=text, color=discord.Color.green())
+    try:
+        embed.set_thumbnail(url=member.display_avatar.url)
+    except Exception:
+        pass
+    try:
+        await channel.send(content=member.mention, embed=embed)
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("Не удалось отправить приветствие")
+
+async def send_goodbye(member):
+    if not setting_bool("goodbye_enabled", GOODBYE_ENABLED) or not GOODBYE_CHANNEL_ID:
+        return
+    channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
+    if channel is None:
+        log.warning("GOODBYE_CHANNEL_ID=%s не найден", GOODBYE_CHANNEL_ID)
+        return
+    template = get_setting("goodbye_text") or GOODBYE_TEXT
+    text = _format_member_text(template, member, f"{member.display_name} покинул сервер FALCONS.")
+    embed = discord.Embed(description=text, color=discord.Color.dark_gray())
+    try:
+        await channel.send(embed=embed)
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("Не удалось отправить прощание")
 
 async def push_invites(guild):
     if not API_SECRET_KEY:
