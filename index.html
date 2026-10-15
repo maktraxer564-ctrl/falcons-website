@@ -64,6 +64,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 .q-row{display:flex;gap:8px;align-items:center;margin-top:10px}
 .q-input{flex:1;min-width:0;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:10px 12px;font:inherit}
 .q-input:focus{border-color:var(--purple2);outline:none}
+.punish-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:6px}
+.punish-form .q-input{width:100%}
+.inv-actions{display:flex;gap:6px;flex-wrap:wrap}
+.setting input[type=checkbox]{width:18px;height:18px;accent-color:var(--purple2);cursor:pointer}
+.setting input[type=checkbox]:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.sidefoot{display:none}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
 </style></head><body>
 
@@ -108,7 +113,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
     <div class="card"><div class="stat-icon">♛</div><div class="label">Клан</div><div class="num" id="s-clan">—</div><div class="sub">данные бота</div></div>
     <div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num" id="s-tickets">—</div><div class="sub" id="s-tickets-sub">ожидание</div></div>
     <div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num" id="s-apps">—</div><div class="sub" id="s-apps-sub">ожидание</div></div>
-    <div class="card"><div class="stat-icon">↗</div><div class="label">Приглашений</div><div class="num dim">—</div><div class="sub">не ведётся</div></div>
+    <div class="card"><div class="stat-icon">↗</div><div class="label">Рекрутеров</div><div class="num dim" id="s-invites">—</div><div class="sub" id="s-invites-sub">данные бота</div></div>
   </div>
   <div class="card" style="margin-bottom:15px">
     <h2>📊 Активность за 7 дней</h2>
@@ -153,13 +158,42 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 </section>
 
 <section class="page" id="invites">
-  <div class="hero"><h1>Инвайты и рекрутинг</h1><p>Статистика приглашений</p></div>
-  <div class="card"><div class="empty">Учёт приглашений в боте не ведётся. Данных нет.</div></div>
+  <div class="hero"><h1>Инвайты и рекрутинг</h1><p>Топ рекрутеров по активным приглашениям</p></div>
+  <div class="card" id="invitesList"><div class="empty">Загрузка…</div></div>
+  <div class="mutednote">Кнопка «Выдать награду» повторно выдаёт роли за достигнутые пороги приглашений.</div>
 </section>
 
 <section class="page" id="moderation">
-  <div class="hero"><h1>Модерация</h1><p>Правила защиты сервера</p></div>
-  <div class="card"><div class="empty">Модуль модерации не подключён. Наказания выдаются вручную в Discord.</div></div>
+  <div class="hero"><h1>Модерация</h1><p>Наказания и история игрока</p></div>
+  <div class="card" style="margin-bottom:15px">
+    <h2>⬡ Выдать наказание</h2>
+    <div class="punish-form">
+      <div><div class="sub">Действие</div>
+        <select id="pun-action" class="q-input">
+          <option value="warn">Предупреждение</option>
+          <option value="timeout">Таймаут</option>
+          <option value="kick">Кик</option>
+          <option value="ban">Бан</option>
+        </select></div>
+      <div><div class="sub">Discord ID игрока</div>
+        <input id="pun-user" class="q-input" placeholder="123456789012345678" inputmode="numeric"></div>
+      <div id="pun-minutes-wrap"><div class="sub">Минуты (для таймаута)</div>
+        <input id="pun-minutes" class="q-input" type="number" min="1" max="40320" value="60"></div>
+    </div>
+    <div class="q-row">
+      <input id="pun-reason" class="q-input" placeholder="Причина (игрок получит её в ЛС)" maxlength="500">
+      <button class="btn reject" id="pun-go">Применить</button>
+    </div>
+    <div class="mutednote">Наказание выполняет бот от твоего имени. Нужны права Ticket Staff.</div>
+  </div>
+  <div class="card">
+    <h2>◷ Наказания игрока</h2>
+    <div class="q-row">
+      <input id="hist-user" class="q-input" placeholder="Discord ID игрока" inputmode="numeric">
+      <button class="pill" id="hist-go">Показать</button>
+    </div>
+    <div id="hist-list" style="margin-top:10px"></div>
+  </div>
 </section>
 
 <section class="page" id="stats">
@@ -170,6 +204,17 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
     <div class="setting"><div><b>Клан</b></div><b id="st-clan">—</b></div>
     <div class="setting"><div><b>Обновлено</b></div><b id="st-updated">—</b></div>
   </div>
+  <div class="card" style="margin-top:15px">
+    <h2>📈 Онлайн за 7 дней</h2>
+    <div class="activity" id="analyticsChart"><div class="empty">Загрузка…</div></div>
+    <div class="sub" id="analyticsNote">Средний онлайн по дням.</div>
+  </div>
+  <div class="card" style="margin-top:15px">
+    <h2>🤖 Статус бота</h2>
+    <div class="setting"><div><b>Бот</b><div class="sub">Discord-подключение</div></div><span class="tag st-no" id="st-bot">проверка…</span></div>
+    <div class="setting"><div><b>Задержка</b></div><b id="st-bot-latency">—</b></div>
+    <div class="setting"><div><b>Серверы</b></div><b id="st-bot-guilds">—</b></div>
+  </div>
 </section>
 
 <section class="page" id="settings">
@@ -178,6 +223,26 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
     <div class="setting"><div><b>Вход через Discord</b><div class="sub">OAuth2 · работает</div></div><span class="tag st-ok">Работает</span></div>
     <div class="setting"><div><b>Твоя роль в панели</b></div><b id="st-panel-role">—</b></div>
     <div class="setting"><div><b>ID пользователя</b></div><b id="st-uid" class="dim">—</b></div>
+  </div>
+  <div class="card" style="margin-top:15px">
+    <h2>👋 Приветствие и прощание</h2>
+    <div class="setting">
+      <div><b>Приветствие новых участников</b><div class="sub">сообщение при входе на сервер</div></div>
+      <input type="checkbox" id="set-welcome">
+    </div>
+    <div class="setting">
+      <div><b>Прощание при выходе</b><div class="sub">сообщение, когда участник покидает сервер</div></div>
+      <input type="checkbox" id="set-goodbye">
+    </div>
+    <div class="q-row">
+      <input id="set-welcome-text" class="q-input" maxlength="500" placeholder="Текст приветствия">
+      <button class="pill" id="set-welcome-save">Сохранить</button>
+    </div>
+    <div class="q-row">
+      <input id="set-goodbye-text" class="q-input" maxlength="500" placeholder="Текст прощания">
+      <button class="pill" id="set-goodbye-save">Сохранить</button>
+    </div>
+    <div class="mutednote" id="set-note">Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).</div>
   </div>
 </section>
 
@@ -219,7 +284,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 
 <script>
 const $=id=>document.getElementById(id);
-let ME={user:null,staff:false,tickets:null,stats:null,panelRole:null};
+let ME={user:null,staff:false,tickets:null,stats:null,panelRole:null,inviteLeaderboard:[]};
 
 function toast(msg,isError){
   const t=$('toast');t.textContent=msg;
@@ -229,6 +294,7 @@ function toast(msg,isError){
 }
 
 const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',question:'Вопрос по клану',report:'Жалоба на игрока',other:'Другое'};
+const MOD_LABEL={warn:'Предупреждение',timeout:'Таймаут',untimeout:'Снятие таймаута',kick:'Кик',ban:'Бан',unban:'Разбан'};
 const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—';};
 const fmtTs=ts=>{if(!ts)return '';const d=new Date(ts<1e12?ts*1000:ts);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
 
@@ -347,6 +413,45 @@ async function ticketAction(kind,channelId,reason,btn){
 
 function emptyNode(text){const d=document.createElement('div');d.className='empty';d.textContent=text;return d;}
 
+function renderInvites(){
+  const el=$('invitesList');if(!el)return;
+  el.textContent='';
+  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+  const rows=Array.isArray(ME.inviteLeaderboard)?ME.inviteLeaderboard:[];
+  if($('s-invites'))$('s-invites').textContent=rows.length?fmt(rows.length):'—';
+  if($('s-invites-sub'))$('s-invites-sub').textContent=rows.length?'топ по активным':'данные бота';
+  if(!rows.length)return el.appendChild(emptyNode('Данных о приглашениях пока нет. Бот собирает их автоматически.'));
+  rows.forEach(r=>{
+    const row=document.createElement('div');row.className='rowitem';
+    const left=document.createElement('div');left.style.minWidth='180px';
+    const b=document.createElement('b');b.textContent=r.user_name||('ID: '+r.user_id);
+    const sub=document.createElement('div');sub.className='sub';
+    sub.textContent='Активных: '+fmt(r.active)+' · Всего: '+fmt(r.invites);
+    left.append(b,sub);row.appendChild(left);
+    const right=document.createElement('div');right.className='inv-actions';
+    const btn=document.createElement('button');btn.className='btn accept';btn.textContent='Выдать награду';
+    btn.onclick=()=>rewardInviter(r.user_id,btn);
+    right.appendChild(btn);row.appendChild(right);
+    el.appendChild(row);
+  });
+}
+
+async function rewardInviter(userId,btn){
+  if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/invites/reward',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(userId)})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    toast(Array.isArray(j.awarded)&&j.awarded.length?('Выдано: '+j.awarded.join(', ')):'Новых наград нет');
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
 function fillTicketsList(el,filterFn,opts){
   if(!el)return;
   el.textContent='';
@@ -464,7 +569,7 @@ async function saveQuestions(){
 }
 
 async function reloadConfig(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    if(ME.panelRole!=='owner')return toast('Перезагрузка конфига доступна только OWNER',true);
     const btn=$('q-reload');btn.disabled=true;
     try{
         const r=await fetch('/api/reload-config',{method:'POST',credentials:'same-origin',
@@ -494,7 +599,232 @@ function initQSettings(){
         $('q-save').onclick=saveQuestions;
         $('q-reload').onclick=reloadConfig;
     }
+    const rb=$('q-reload');
+    if(rb)rb.disabled=ME.panelRole!=='owner';
     loadQuestions();
+}
+
+function initModeration(){
+    const go=$('pun-go');
+    if(!go)return;
+    if(!go._init){
+        go._init=true;
+        $('pun-action').onchange=()=>{
+            const wrap=$('pun-minutes-wrap');
+            if(wrap)wrap.style.visibility=$('pun-action').value==='timeout'?'visible':'hidden';
+        };
+        $('pun-action').onchange();
+        go.onclick=punishAction;
+        $('hist-go').onclick=loadPunishments;
+    }
+}
+
+async function punishAction(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const action=$('pun-action').value;
+    const userId=$('pun-user').value.trim();
+    const reason=$('pun-reason').value.trim();
+    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
+    if(!reason)return toast('Причина обязательна',true);
+    const body={action:action,user_id:userId,reason:reason};
+    if(action==='timeout'){
+        const m=parseInt($('pun-minutes').value,10);
+        if(!(m>=1&&m<=40320))return toast('Минуты: от 1 до 40320',true);
+        body.duration_minutes=m;
+    }
+    const btn=$('pun-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/punish',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Наказание применено');
+        $('pun-reason').value='';
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+async function loadPunishments(){
+    const el=$('hist-list');if(!el)return;
+    const userId=$('hist-user').value.trim();
+    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
+    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+    try{
+        const r=await fetch('/api/punishments?user_id='+encodeURIComponent(userId)+'&limit=10',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        el.textContent='';
+        const head=document.createElement('div');head.className='sub';
+        head.textContent='Предупреждений: '+fmt(j.warns||0)+(j.user_name?(' · '+j.user_name):'');
+        el.appendChild(head);
+        const rows=Array.isArray(j.punishments)?j.punishments:[];
+        if(!rows.length)return el.appendChild(emptyNode('Наказаний нет.'));
+        rows.forEach(p=>{
+            const row=document.createElement('div');row.className='rowitem';
+            const left=document.createElement('div');
+            const b=document.createElement('b');b.textContent=MOD_LABEL[p.action]||p.action;
+            const sub=document.createElement('div');sub.className='sub';
+            sub.textContent=[fmtTs(p.ts),p.reason||'без причины','мод: '+(p.mod_name||'?')].join(' · ');
+            left.append(b,sub);row.appendChild(left);
+            el.appendChild(row);
+        });
+    }catch(e){
+        el.textContent='';el.appendChild(emptyNode('Ошибка: '+e.message));
+    }
+}
+
+async function loadBotStatus(){
+    const el=$('st-bot');if(!el)return;
+    try{
+        const r=await fetch('/api/bot-status',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        if(j.online){
+            el.textContent='Работает';el.className='tag st-ok';
+            const b=j.bot||{};
+            const lat=$('st-bot-latency');if(lat)lat.textContent=b.latency_ms!=null?(b.latency_ms+' мс'):'—';
+            const g=$('st-bot-guilds');if(g)g.textContent=Array.isArray(b.guilds)?b.guilds.length:'—';
+        }else{
+            el.textContent='Оффлайн';el.className='tag st-no';
+            const lat=$('st-bot-latency');if(lat)lat.textContent='—';
+            const g=$('st-bot-guilds');if(g)g.textContent='—';
+        }
+    }catch(e){
+        el.textContent='Оффлайн';el.className='tag st-no';
+    }
+}
+
+async function loadAnalytics(){
+    const el=$('analyticsChart');if(!el)return;
+    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+    try{
+        const r=await fetch('/api/analytics',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        renderAnalytics(j.points||[]);
+    }catch(e){
+        el.textContent='';el.appendChild(emptyNode('Аналитика недоступна: '+e.message));
+    }
+}
+
+function renderAnalytics(points){
+    const el=$('analyticsChart');if(!el)return;
+    el.textContent='';
+    if(!Array.isArray(points)||!points.length){
+        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
+        if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням.';
+        return;
+    }
+    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const byDay={};
+    points.forEach(p=>{
+        const d=new Date(Number(p.ts)*1000);
+        if(isNaN(d))return;
+        const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        (byDay[key]=byDay[key]||[]).push(Number(p.online)||0);
+    });
+    const days=Object.keys(byDay).sort().slice(-7);
+    if(!days.length){
+        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
+        return;
+    }
+    const week=days.map(k=>({k:k,avg:Math.round(byDay[k].reduce((a,b)=>a+b,0)/byDay[k].length)}));
+    const max=Math.max(1,...week.map(d=>d.avg));
+    week.forEach(d=>{
+        const col=document.createElement('div');col.className='act-col';
+        const num=document.createElement('div');num.className='act-num';num.textContent=d.avg;
+        const bar=document.createElement('div');bar.className='act-bar';
+        bar.style.height=Math.max(2,Math.round((d.avg/max)*130))+'px';
+        if(d.avg===0)bar.style.background='#2a2540';
+        const parts=d.k.split('-');
+        const idx=((new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2])).getDay())+6)%7;
+        const day=document.createElement('div');day.className='act-day';day.textContent=dayNames[idx];
+        col.append(num,bar,day);el.appendChild(col);
+    });
+    const avgAll=Math.round(week.reduce((a,d)=>a+d.avg,0)/week.length);
+    if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням (запись раз в 10 минут). Среднее за период: '+avgAll+'.';
+}
+
+function initSettings(){
+    const w=$('set-welcome');
+    if(!w)return;
+    if(!w._init){
+        w._init=true;
+        w.onchange=()=>saveSetting('welcome_enabled',w.checked,w);
+        $('set-goodbye').onchange=()=>saveSetting('goodbye_enabled',$('set-goodbye').checked,$('set-goodbye'));
+        $('set-welcome-save').onclick=()=>saveTextSetting('welcome_text','set-welcome-text',$('set-welcome-save'));
+        $('set-goodbye-save').onclick=()=>saveTextSetting('goodbye_text','set-goodbye-text',$('set-goodbye-save'));
+    }
+    loadSettings();
+}
+
+async function loadSettings(){
+    const w=$('set-welcome');if(!w)return;
+    const g=$('set-goodbye');
+    const wt=$('set-welcome-text');
+    const gt=$('set-goodbye-text');
+    const ws=$('set-welcome-save');
+    const gs=$('set-goodbye-save');
+    if(ME.panelRole!=='owner'){
+        w.disabled=true;g.disabled=true;wt.disabled=true;gt.disabled=true;ws.disabled=true;gs.disabled=true;
+        if($('set-note'))$('set-note').textContent='Менять эти настройки может только OWNER.';
+        return;
+    }
+    if($('set-note'))$('set-note').textContent='Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).';
+    try{
+        const r=await fetch('/api/bot-settings',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const s=j.settings||{};
+        w.checked=!!s.welcome_enabled;
+        g.checked=!!s.goodbye_enabled;
+        wt.value=s.welcome_text||'';
+        gt.value=s.goodbye_text||'';
+        w.disabled=false;g.disabled=false;wt.disabled=false;gt.disabled=false;ws.disabled=false;gs.disabled=false;
+    }catch(e){
+        toast('Настройки недоступны: '+e.message,true);
+    }
+}
+
+async function saveTextSetting(key,inputId,btn){
+    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
+    const input=$(inputId);
+    const body={};body[key]=input?input.value.trim():'';
+    if(btn)btn.disabled=true;
+    try{
+        const r=await fetch('/api/bot-settings',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const s=j.settings||{};
+        if(input)input.value=s[key]||'';
+        toast('Сохранено');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        if(btn)btn.disabled=false;
+    }
+}
+
+async function saveSetting(key,value,el){
+    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
+    if(el)el.disabled=true;
+    try{
+        const body={};body[key]=!!value;
+        const r=await fetch('/api/bot-settings',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Сохранено');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+        if(el)el.checked=!value;
+    }finally{
+        if(el)el.disabled=false;
+    }
 }
 
 function showPage(id){
@@ -502,15 +832,21 @@ function showPage(id){
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
     if(id==='logs')renderLogs();
     if(id==='qsettings')initQSettings();
+    if(id==='invites')renderInvites();
+    if(id==='moderation')initModeration();
+    if(id==='stats'){loadBotStatus();loadAnalytics();}
+    if(id==='settings')initSettings();
 }
 
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
 
 function applyMe(d){
   ME.user=d.user||null;ME.staff=!!d.is_staff;ME.tickets=d.tickets||null;ME.panelRole=d.panel_role||null;
+  ME.inviteLeaderboard=Array.isArray(d.invite_leaderboard)?d.invite_leaderboard:[];
   renderStats(d.stats,d.stats_updated_at);
   renderActivity(d.joins_7d,d.server_time);
   renderTickets();
+  renderInvites();
   if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
   if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
   if($('userRole'))$('userRole').textContent=(ME.panelRole==='owner'?'OWNER':'STAFF')+' · Discord';
