@@ -94,6 +94,15 @@ def init_db():
             target_name TEXT,
             details TEXT
         );
+        CREATE TABLE IF NOT EXISTS invite_leaderboard (
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            invites INTEGER NOT NULL,
+            active INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY (guild_id, user_id)
+        );
         """)
         conn.execute("INSERT OR IGNORE INTO stats(id) VALUES(1)")
         conn.execute("INSERT OR IGNORE INTO staff_meta(id) VALUES(1)")
@@ -351,6 +360,48 @@ def update_tickets():
                      (now, guild_id))
     return jsonify({"ok": True, "count": len(items)})
 
+@app.post("/api/update-invites")
+def update_invites():
+    provided = request.headers.get("X-Falcons-Secret", "")
+    if not API_SECRET_KEY or not hmac.compare_digest(provided.encode(), API_SECRET_KEY.encode()):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    if data.get("complete") is not True:
+        return jsonify({"ok": False, "error": "incomplete"}), 400
+    guild_id = _id_str(data.get("guild_id"))
+    if guild_id is None:
+        return jsonify({"ok": False, "error": "invalid guild_id"}), 400
+    raw = data.get("top")
+    if not isinstance(raw, list) or len(raw) > 20:
+        return jsonify({"ok": False, "error": "invalid top"}), 400
+    items = []
+    for i, t in enumerate(raw):
+        if not isinstance(t, dict):
+            return jsonify({"ok": False, "error": f"invalid entry {i}"}), 400
+        user_id = _id_str(t.get("user_id"))
+        if user_id is None:
+            return jsonify({"ok": False, "error": f"invalid user_id in entry {i}"}), 400
+        user_name = t.get("user_name")
+        if not isinstance(user_name, str) or len(user_name) > 100:
+            return jsonify({"ok": False, "error": f"invalid user_name in entry {i}"}), 400
+        invites = t.get("invites")
+        active = t.get("active")
+        if isinstance(invites, bool) or not isinstance(invites, int) or invites < 0:
+            return jsonify({"ok": False, "error": f"invalid invites in entry {i}"}), 400
+        if isinstance(active, bool) or not isinstance(active, int) or active < 0:
+            return jsonify({"ok": False, "error": f"invalid active in entry {i}"}), 400
+        items.append((guild_id, user_id, user_name, invites, active))
+    now = int(time.time())
+    with _db() as conn:
+        conn.execute("DELETE FROM invite_leaderboard WHERE guild_id=?", (guild_id,))
+        for it in items:
+            conn.execute(
+                "INSERT INTO invite_leaderboard(guild_id, user_id, user_name, invites, active, updated_at) VALUES(?,?,?,?,?,?)",
+                (*it, now))
+    return jsonify({"ok": True, "count": len(items)})
+
 @app.post("/api/log")
 def api_log():
     provided = request.headers.get("X-Falcons-Secret", "")
@@ -443,12 +494,16 @@ def me():
             joins_7d = json.loads(s["joins_7d"])
         except (ValueError, TypeError):
             joins_7d = None
+    with _db() as conn:
+        leaderboard_rows = conn.execute(
+            "SELECT user_id, user_name, invites, active FROM invite_leaderboard ORDER BY active DESC, invites DESC LIMIT 20").fetchall()
     payload = {
         "authenticated": bool(user),
         "user": user,
         "stats": {"total": s["total"], "online": s["online"], "clan": s["clan"]} if s else {"total": 0, "online": 0, "clan": 0},
         "stats_updated_at": s["updated_at"] if s else None,
         "joins_7d": joins_7d,
+        "invite_leaderboard": [dict(r) for r in leaderboard_rows],
         "is_staff": staff,
         "server_time": int(time.time()),
     }
