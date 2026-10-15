@@ -440,6 +440,20 @@ def _bot_post(path, payload):
         body = {"ok": False, "error": "invalid bot response", "raw": r.text[:300]}
     return (200 <= r.status_code < 300), r.status_code, body
 
+def _bot_get(path):
+    if not BOT_API_URL:
+        return False, 503, {"ok": False, "error": "BOT_API_URL not configured"}
+    url = BOT_API_URL + path
+    try:
+        r = requests.get(url, headers={"X-Falcons-Secret": BOT_API_SECRET}, timeout=15)
+    except requests.RequestException as e:
+        return False, 502, {"ok": False, "error": f"bot unreachable: {e}"}
+    try:
+        body = r.json()
+    except ValueError:
+        body = {"ok": False, "error": "invalid bot response", "raw": r.text[:300]}
+    return (200 <= r.status_code < 300), r.status_code, body
+
 @app.post("/api/ticket/accept")
 def api_ticket_accept():
     user = _current_user()
@@ -480,6 +494,42 @@ def api_ticket_close():
         return jsonify({"ok": False, "error": "invalid channel_id"}), 400
     ok, status, body = _bot_post("/bot/ticket/close", {
         "channel_id": channel_id, "actor_id": user.get("id")})
+    return jsonify(body), status
+
+@app.get("/api/questions")
+def api_questions_get():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    ok, status, body = _bot_get("/bot/questions")
+    return jsonify(body), status
+
+@app.post("/api/questions")
+def api_questions_set():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    category = data.get("category")
+    if category not in TICKET_CATEGORIES:
+        return jsonify({"ok": False, "error": "invalid category"}), 400
+    raw = data.get("questions")
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 30:
+        return jsonify({"ok": False, "error": "invalid questions"}), 400
+    questions = []
+    for q in raw:
+        if not isinstance(q, str) or not q.strip() or len(q.strip()) > 500:
+            return jsonify({"ok": False, "error": "invalid question"}), 400
+        questions.append(q.strip())
+    ok, status, body = _bot_post("/bot/questions", {"category": category, "questions": questions})
+    return jsonify(body), status
+
+@app.post("/api/reload-config")
+def api_reload_config():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    ok, status, body = _bot_post("/bot/reload_config", {})
     return jsonify(body), status
 
 @app.get("/api/me")
