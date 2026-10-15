@@ -35,7 +35,7 @@ a.tag:hover{background:#4a2390}
 .btn.accept{background:#1a7a4f}.btn.accept:hover{background:#22a86a}
 .btn.reject{background:#7a1a2c}.btn.reject:hover{background:#a8223a}
 .btn.call{background:#2a3a8a}.btn.call:hover{background:#3d52b8}
-.btn.close{background:#3a3a4a}.btn.close:hover{background:#55556a}
+.btn.close{background:#a01836}.btn.close:hover{background:#c72449}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .ticket-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .quick button{width:100%;text-align:left;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:11px;margin:4px 0}
@@ -57,10 +57,13 @@ a.tag:hover{background:#4a2390}
 .act-bar{width:100%;background:linear-gradient(#a85aff,#5520c8);border-radius:5px 5px 0 0;box-shadow:0 0 12px #6b25ca55;min-height:2px;transition:.3s}
 .act-bar:hover{filter:brightness(1.2)}
 .act-num{font-size:12px;font-weight:700;color:#e8e5ff}
-.act-day{font-size:11px;color:#9294b3;text-transform:lowercase}
+.act-day{font-size:11px;color:#9294b3}
 [hidden]{display:none!important}
 button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
 .tag.st-ok{background:#0f3b2c;color:#6ff2c0}.tag.st-no{background:#2a2540;color:#a9a6c9}
+.q-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+.q-input{flex:1;min-width:0;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:10px 12px;font:inherit}
+.q-input:focus{border-color:var(--purple2);outline:none}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.sidefoot{display:none}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
 </style></head><body>
 
@@ -85,6 +88,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
     <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
     <button data-page="stats"><span class="ico">▥</span>Статистика</button>
     <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
+    <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
     <button data-page="roles"><span class="ico">♛</span>Роли и права</button>
   </nav>
   <div class="sidefoot">🦅 <b style="color:#eee">Falcons Bot</b><br><br>Панель<br><span style="color:#a35cff">♥</span> Сделано для Falcons</div>
@@ -177,6 +181,29 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
   </div>
 </section>
 
+<section class="page" id="qsettings">
+  <div class="hero"><h1>Настройки анкет</h1><p>Вопросы, которые бот задаёт при создании тикета</p></div>
+  <div class="card">
+    <div class="setting">
+      <div><b>Категория</b><div class="sub">clan / partner / question / report / other</div></div>
+      <select id="q-category" class="pill">
+        <option value="clan">Набор в клан</option>
+        <option value="partner">Партнёрство</option>
+        <option value="question">Вопрос по клану</option>
+        <option value="report">Жалоба на игрока</option>
+        <option value="other">Другое обращение</option>
+      </select>
+    </div>
+    <div id="q-list"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="pill" id="q-add">+ Добавить вопрос</button>
+      <button class="btn accept" id="q-save">Сохранить</button>
+      <button class="pill" id="q-reload">Перезагрузить конфиг</button>
+    </div>
+    <div class="mutednote">Изменения применяются к новым тикетам. Открытые тикеты не меняются.</div>
+  </div>
+</section>
+
 <section class="page" id="roles">
   <div class="hero"><h1>Роли и права доступа</h1><p>Разграничение доступа к панели</p></div>
   <div class="card">
@@ -235,28 +262,35 @@ function renderStats(stats,updatedAt){
     : 'Данные ещё не приходили от бота.';
 }
 
-function renderActivity(joins7d){
-  const el=$('activityChart');
-  if(!el)return;
-  el.textContent='';
-  if(!Array.isArray(joins7d)||joins7d.length!==7){
-    el.appendChild(emptyNode('Данные о заходах пока не собраны. Появятся когда бот начнёт считать новых участников.'));
-    if($('activityNote'))$('activityNote').textContent='Сколько человек зашло на сервер каждый день.';
-    return;
-  }
-  const max=Math.max(1,...joins7d);
-  const days=['6 дн','5 дн','4 дн','3 дн','2 дн','вчера','сегодня'];
-  joins7d.forEach((val,i)=>{
-    const col=document.createElement('div');col.className='act-col';
-    const num=document.createElement('div');num.className='act-num';num.textContent=val;
-    const bar=document.createElement('div');bar.className='act-bar';
-    bar.style.height=Math.max(2,Math.round((val/max)*130))+'px';
-    if(val===0)bar.style.background='#2a2540';
-    const day=document.createElement('div');day.className='act-day';day.textContent=days[i];
-    col.append(num,bar,day);el.appendChild(col);
-  });
-  const total=joins7d.reduce((a,b)=>a+b,0);
-  if($('activityNote'))$('activityNote').textContent='Всего за 7 дней: '+total+' новых участников.';
+function renderActivity(joins7d,serverTime){
+    const el=$('activityChart');
+    if(!el)return;
+    el.textContent='';
+    if(!Array.isArray(joins7d)||joins7d.length!==7){
+        el.appendChild(emptyNode('Данные о заходах пока не собраны. Появятся когда бот начнёт считать новых участников.'));
+        if($('activityNote'))$('activityNote').textContent='Сколько человек зашло на сервер каждый день.';
+        return;
+    }
+    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const tsNum=Number(serverTime);
+    const nowTs=Number.isFinite(tsNum)&&tsNum>0?tsNum:Math.floor(Date.now()/1000);
+    const todayIdx=((new Date(nowTs*1000).getDay())+6)%7;
+    const week=[];
+    for(let i=0;i<7;i++){
+        week.push(i<=todayIdx?joins7d[6-(todayIdx-i)]:0);
+    }
+    const max=Math.max(1,...week);
+    week.forEach((val,i)=>{
+        const col=document.createElement('div');col.className='act-col';
+        const num=document.createElement('div');num.className='act-num';num.textContent=val;
+        const bar=document.createElement('div');bar.className='act-bar';
+        bar.style.height=Math.max(2,Math.round((val/max)*130))+'px';
+        if(val===0)bar.style.background='#2a2540';
+        const day=document.createElement('div');day.className='act-day';day.textContent=dayNames[i];
+        col.append(num,bar,day);el.appendChild(col);
+    });
+    const total=joins7d.reduce((a,b)=>a+b,0);
+    if($('activityNote'))$('activityNote').textContent='Всего за 7 дней: '+total+' новых участников.';
 }
 
 function ticketRow(t,opts){
@@ -274,17 +308,19 @@ function ticketRow(t,opts){
     a.target='_blank';a.rel='noopener noreferrer';a.textContent='Discord';
     right.appendChild(a);
   }
-  if(opts.actions&&t.category==='clan'){
+  if(opts.actions){
     const actions=document.createElement('div');actions.className='ticket-actions';
     const mk=(label,cls,fn)=>{const btn=document.createElement('button');btn.className='btn '+cls;btn.textContent=label;btn.onclick=()=>fn(btn);return btn;};
-    actions.appendChild(mk('Принять','accept',b=>ticketAction('accept',t.channel_id,null,b)));
-    actions.appendChild(mk('Обзвон','call',b=>ticketAction('call',t.channel_id,null,b)));
-    actions.appendChild(mk('Отклонить','reject',b=>{
-      const reason=prompt('Причина отказа:');
-      if(reason===null)return;
-      if(!reason.trim())return toast('Причина обязательна',true);
-      ticketAction('reject',t.channel_id,reason.trim(),b);
-    }));
+    if(t.category==='clan'){
+      actions.appendChild(mk('Принять','accept',b=>ticketAction('accept',t.channel_id,null,b)));
+      actions.appendChild(mk('Обзвон','call',b=>ticketAction('call',t.channel_id,null,b)));
+      actions.appendChild(mk('Отклонить','reject',b=>{
+        const reason=prompt('Причина отказа:');
+        if(reason===null)return;
+        if(!reason.trim())return toast('Причина обязательна',true);
+        ticketAction('reject',t.channel_id,reason.trim(),b);
+      }));
+    }
     actions.appendChild(mk('Закрыть','close',b=>ticketAction('close',t.channel_id,null,b)));
     right.appendChild(actions);
   }
@@ -366,10 +402,106 @@ async function renderLogs(){
   }catch(e){el.textContent='';el.appendChild(emptyNode('Ошибка загрузки логов.'));}
 }
 
+function qRow(text){
+    const row=document.createElement('div');row.className='q-row';
+    const input=document.createElement('input');input.className='q-input';input.value=text||'';
+    input.placeholder='Текст вопроса…';input.maxLength=500;
+    const del=document.createElement('button');del.className='btn reject';del.textContent='Удалить';
+    del.onclick=()=>row.remove();
+    row.append(input,del);
+    return row;
+}
+
+function renderQuestionRows(list){
+    const el=$('q-list');
+    if(!el)return;
+    el.textContent='';
+    (list||[]).forEach(q=>el.appendChild(qRow(q)));
+}
+
+async function loadQuestions(){
+    const el=$('q-list');
+    if(!el)return;
+    if(!ME.staff){
+        el.textContent='';
+        el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+        return;
+    }
+    const cat=$('q-category').value;
+    el.textContent='';
+    el.appendChild(emptyNode('Загрузка…'));
+    try{
+        const r=await fetch('/api/questions',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        renderQuestionRows((j.questions&&j.questions[cat])||[]);
+    }catch(e){
+        el.textContent='';
+        el.appendChild(emptyNode('Не удалось загрузить вопросы: '+e.message));
+    }
+}
+
+async function saveQuestions(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const cat=$('q-category').value;
+    const inputs=[...document.querySelectorAll('#q-list .q-input')];
+    const values=inputs.map(i=>i.value.trim());
+    if(!values.length||values.some(v=>!v))return toast('Заполни все вопросы или удали пустые',true);
+    if(values.length>30)return toast('Максимум 30 вопросов',true);
+    const btn=$('q-save');btn.disabled=true;
+    try{
+        const r=await fetch('/api/questions',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({category:cat,questions:values})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Сохранено: '+values.length+' вопросов');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+async function reloadConfig(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const btn=$('q-reload');btn.disabled=true;
+    try{
+        const r=await fetch('/api/reload-config',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:'{}'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Конфиг перезагружен');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+function initQSettings(){
+    const sel=$('q-category');
+    if(!sel)return;
+    if(!sel._init){
+        sel._init=true;
+        $('q-add').onclick=()=>{
+            const el=$('q-list');
+            const emp=el.querySelector('.empty');
+            if(emp)emp.remove();
+            el.appendChild(qRow(''));
+        };
+        sel.onchange=loadQuestions;
+        $('q-save').onclick=saveQuestions;
+        $('q-reload').onclick=reloadConfig;
+    }
+    loadQuestions();
+}
+
 function showPage(id){
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
-  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
-  if(id==='logs')renderLogs();
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+    if(id==='logs')renderLogs();
+    if(id==='qsettings')initQSettings();
 }
 
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
@@ -377,7 +509,7 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
 function applyMe(d){
   ME.user=d.user||null;ME.staff=!!d.is_staff;ME.tickets=d.tickets||null;ME.panelRole=d.panel_role||null;
   renderStats(d.stats,d.stats_updated_at);
-  renderActivity(d.joins_7d);
+  renderActivity(d.joins_7d,d.server_time);
   renderTickets();
   if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
   if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
