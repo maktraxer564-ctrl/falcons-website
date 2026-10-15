@@ -1022,11 +1022,60 @@ async def http_reject_ticket(request):
     asyncio.create_task(push_tickets(guild))
     return aiohttp_web.json_response({"ok": True})
 
+async def http_get_questions(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    questions = {cat: load_questions(cat) for cat in CATEGORY_QUESTIONS}
+    return aiohttp_web.json_response({"ok": True, "questions": questions})
+
+async def http_set_questions(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    if not isinstance(data, dict):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    category = data.get("category")
+    if category not in CATEGORY_QUESTIONS:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid category"}, status=400)
+    raw = data.get("questions")
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 30:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid questions"}, status=400)
+    questions = []
+    for q in raw:
+        if not isinstance(q, str):
+            return aiohttp_web.json_response({"ok": False, "error": "invalid question"}, status=400)
+        q = q.strip()
+        if not q or len(q) > 500:
+            return aiohttp_web.json_response({"ok": False, "error": "invalid question"}, status=400)
+        questions.append(q)
+    save_questions(category, questions)
+    log.info("Анкета %s обновлена с сайта: %s вопросов", category, len(questions))
+    return aiohttp_web.json_response({"ok": True, "count": len(questions)})
+
+async def http_reload_config(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    log.info("Конфиг перезагружен с сайта")
+    guild = bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
+    if guild is not None:
+        try:
+            await send_staff_log(guild, make_log_embed("🔄 Конфиг перезагружен", discord.Color.blurple(),
+                [("Источник", "Панель управления (сайт)")]))
+        except Exception:
+            log.exception("reload_config: не удалось отправить лог")
+    return aiohttp_web.json_response({"ok": True})
+
 async def start_bot_http():
     app = aiohttp_web.Application()
     app.router.add_post("/bot/ticket/close", http_close_ticket)
     app.router.add_post("/bot/ticket/accept", http_accept_ticket)
     app.router.add_post("/bot/ticket/reject", http_reject_ticket)
+    app.router.add_get("/bot/questions", http_get_questions)
+    app.router.add_post("/bot/questions", http_set_questions)
+    app.router.add_post("/bot/reload_config", http_reload_config)
     runner = aiohttp_web.AppRunner(app)
     await runner.setup()
     site = aiohttp_web.TCPSite(runner, BOT_HTTP_HOST, BOT_HTTP_PORT)
