@@ -314,6 +314,8 @@ def _current_guild_config(guild):
         "transcript_channel": _config_mention(guild, "transcript_channel", TRANSCRIPT_CHANNEL_ID, guild.get_channel),
         "log_channel": _config_mention(guild, "log_channel", STAFF_LOG_CHANNEL_ID, guild.get_channel),
         "meeting_channel": _config_mention(guild, "meeting_channel", MEETING_CHANNEL_ID, guild.get_channel),
+        "newcomer_role": _config_mention(guild, "newcomer_role", NEWCOMER_ROLE_ID, guild.get_role),
+        "main_role": _config_mention(guild, "main_role", MAIN_ROLE_ID, guild.get_role),
     }
 
 def get_previous_tickets(guild_id, owner_id, limit=5):
@@ -704,17 +706,17 @@ async def on_guild_join(guild):
 
 @bot.event
 async def on_member_join(member):
-    is_main = not GUILD_ID or member.guild.id == GUILD_ID
     try:
         with _db() as conn:
             conn.execute("INSERT INTO joins(guild_id, user_id, ts) VALUES(?,?,?)",
                          (str(member.guild.id), str(member.id), int(time.time())))
     except Exception:
         log.exception("Не удалось записать join")
-    if is_main and NEWCOMER_ROLE_ID:
-        role = member.guild.get_role(NEWCOMER_ROLE_ID)
+    newcomer_id = _config_id(member.guild, "newcomer_role", NEWCOMER_ROLE_ID)
+    if newcomer_id:
+        role = member.guild.get_role(newcomer_id)
         if role is None:
-            log.warning("NEWCOMER_ROLE_ID=%s не найден на сервере", NEWCOMER_ROLE_ID)
+            log.warning("newcomer_role=%s не найден на сервере %s", newcomer_id, member.guild.id)
         else:
             try:
                 await member.add_roles(role, reason="Автороль новичка")
@@ -1169,11 +1171,15 @@ class SelfRolesView(discord.ui.View):
             self.add_item(SelfRoleSelect(roles))
 
 async def promote_newcomer(member, chosen):
-    if not chosen or not NEWCOMER_ROLE_ID or not MAIN_ROLE_ID:
+    if not chosen:
         return None
     guild = member.guild
-    newcomer = guild.get_role(NEWCOMER_ROLE_ID)
-    main_role = guild.get_role(MAIN_ROLE_ID)
+    newcomer_id = _config_id(guild, "newcomer_role", NEWCOMER_ROLE_ID)
+    main_id = _config_id(guild, "main_role", MAIN_ROLE_ID)
+    if not newcomer_id or not main_id:
+        return None
+    newcomer = guild.get_role(newcomer_id)
+    main_role = guild.get_role(main_id)
     if newcomer is None or main_role is None or newcomer not in member.roles:
         return None
     try:
@@ -1239,6 +1245,8 @@ async def falcons_stats(interaction):
 @bot.tree.command(name="setup_server", description="Настроить роли и каналы бота для этого сервера")
 @app_commands.describe(staff_role="Роль Ticket Staff этого сервера",
                        clan_role="Роль клана (для счётчика «Клан»)",
+                       newcomer_role="Роль новичка (выдаётся при входе на сервер)",
+                       main_role="Основная роль (выдаётся новичку после выбора само-роли)",
                        welcome_channel="Канал приветствий",
                        goodbye_channel="Канал прощаний",
                        transcript_channel="Канал для транскриптов тикетов",
@@ -1247,6 +1255,8 @@ async def falcons_stats(interaction):
 async def setup_server(interaction,
                        staff_role: discord.Role = None,
                        clan_role: discord.Role = None,
+                       newcomer_role: discord.Role = None,
+                       main_role: discord.Role = None,
                        welcome_channel: discord.TextChannel = None,
                        goodbye_channel: discord.TextChannel = None,
                        transcript_channel: discord.TextChannel = None,
@@ -1257,6 +1267,7 @@ async def setup_server(interaction,
     if not has_staff_perms(interaction.user):
         return await interaction.response.send_message("Нужны права стаффа (или «Управлять сервером»).", ephemeral=True)
     mapping = [("staff_role", staff_role), ("clan_role", clan_role),
+               ("newcomer_role", newcomer_role), ("main_role", main_role),
                ("welcome_channel", welcome_channel), ("goodbye_channel", goodbye_channel),
                ("transcript_channel", transcript_channel), ("log_channel", log_channel),
                ("meeting_channel", meeting_channel)]
@@ -1268,6 +1279,7 @@ async def setup_server(interaction,
     current = _current_guild_config(interaction.guild)
     lines = []
     for key, label in (("staff_role", "Стафф-роль"), ("clan_role", "Клан-роль"),
+                       ("newcomer_role", "Роль новичка"), ("main_role", "MAIN-роль"),
                        ("welcome_channel", "Приветствия"), ("goodbye_channel", "Прощания"),
                        ("transcript_channel", "Транскрипты"), ("log_channel", "Логи"),
                        ("meeting_channel", "Собрание")):
