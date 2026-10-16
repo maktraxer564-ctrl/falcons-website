@@ -91,6 +91,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
     <button data-page="members"><span class="ico">♟</span>Роли и участники</button>
     <button data-page="invites"><span class="ico">↗</span>Инвайты</button>
     <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
+    <button data-page="meeting"><span class="ico">🚨</span>Собрание</button>
     <button data-page="stats"><span class="ico">▥</span>Статистика</button>
     <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
     <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
@@ -102,6 +103,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 <header class="top">
   <div class="avatar" id="avatar">?</div>
   <div><b id="userName">…</b><div class="sub" id="userRole">Вход через Discord</div></div>
+  <select id="guildSelect" class="pill" style="display:none;max-width:280px" onchange="changeGuild(this.value)" title="Выбор сервера"></select>
   <button class="pill" onclick="logout()">Выйти</button>
 </header>
 <div class="content">
@@ -193,6 +195,18 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
       <button class="pill" id="hist-go">Показать</button>
     </div>
     <div id="hist-list" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section class="page" id="meeting">
+  <div class="hero"><h1>🚨 Собрание клана</h1><p>Массовое оповещение: пинг в канал и ЛС участникам клана</p></div>
+  <div class="card">
+    <h2>🔊 Куда собираемся</h2>
+    <div class="q-row">
+      <select id="meeting-channel" class="q-input"><option value="">Загрузка…</option></select>
+      <button class="btn reject" id="meeting-go">ОБЪЯВИТЬ СОБРАНИЕ</button>
+    </div>
+    <div class="mutednote">Бот пингует @everyone 3 раза в течение 2 минут и пишет в ЛС участникам клана, которые онлайн и ещё не в войсе.</div>
   </div>
 </section>
 
@@ -827,6 +841,57 @@ async function saveSetting(key,value,el){
     }
 }
 
+async function loadVoiceChannels(){
+    const sel=$('meeting-channel');if(!sel)return;
+    sel.innerHTML='';
+    const load=document.createElement('option');load.value='';load.textContent='Загрузка…';sel.appendChild(load);
+    try{
+        const r=await fetch('/api/voice-channels',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const chs=Array.isArray(j.channels)?j.channels:[];
+        sel.innerHTML='';
+        if(!chs.length){const e=document.createElement('option');e.value='';e.textContent='Нет голосовых каналов';sel.appendChild(e);return;}
+        chs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='🔊 '+c.name;sel.appendChild(o);});
+    }catch(e){
+        sel.innerHTML='';
+        const er=document.createElement('option');er.value='';er.textContent='Ошибка загрузки';sel.appendChild(er);
+        toast('Ошибка: '+e.message,true);
+    }
+}
+
+function initMeeting(){
+    const go=$('meeting-go');
+    if(!go)return;
+    if(!go._init){
+        go._init=true;
+        go.onclick=announceMeeting;
+    }
+    go.disabled=!ME.staff;
+    loadVoiceChannels();
+}
+
+async function announceMeeting(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const sel=$('meeting-channel');
+    const ch=sel?sel.value:'';
+    if(!ch)return toast('Выбери голосовой канал',true);
+    const label=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:ch;
+    if(!confirm('Объявить собрание клана?\n'+label))return;
+    const btn=$('meeting-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/meeting',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify({voice_channel_id:ch})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Собрание объявлено. Рассылка идёт в фоне.');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
 function showPage(id){
     document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
@@ -834,6 +899,7 @@ function showPage(id){
     if(id==='qsettings')initQSettings();
     if(id==='invites')renderInvites();
     if(id==='moderation')initModeration();
+    if(id==='meeting')initMeeting();
     if(id==='stats'){loadBotStatus();loadAnalytics();}
     if(id==='settings')initSettings();
 }
@@ -858,11 +924,44 @@ async function reloadMe(){
   return r.json();
 }
 
+async function loadGuilds(){
+  try{
+    const r=await fetch('/api/guilds',{credentials:'same-origin'});
+    const j=await r.json().catch(()=>({}));
+    const sel=$('guildSelect');
+    if(!sel||!r.ok||!j.ok)return;
+    const gs=Array.isArray(j.guilds)?j.guilds:[];
+    sel.innerHTML='';
+    gs.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name+' · '+g.members;sel.appendChild(o);});
+    if(j.guild_id)sel.value=j.guild_id;
+    sel.style.display=gs.length>1?'inline-block':'none';
+  }catch(e){}
+}
+
+async function changeGuild(id){
+  if(!id)return;
+  try{
+    const r=await fetch('/api/select-guild',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({guild_id:id})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    toast('Сервер: '+(j.name||id));
+    const d=await reloadMe();
+    if(d.authenticated)applyMe(d);
+    const active=document.querySelector('.nav button.active');
+    if(active&&active.dataset.page==='stats'){loadBotStatus();loadAnalytics();}
+    if(active&&active.dataset.page==='meeting'){loadVoiceChannels();}
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+    loadGuilds();
+  }
+}
+
 async function init(){
   try{
     const data=await reloadMe();
     if(!data.authenticated||!data.user){showLogin(data.notice||undefined);return;}
-    showApp(data.user);applyMe(data);
+    showApp(data.user);applyMe(data);loadGuilds();
     setInterval(async()=>{
       try{
         const d=await reloadMe();
