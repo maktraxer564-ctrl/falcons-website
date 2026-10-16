@@ -111,6 +111,14 @@ def init_db():
             clan INTEGER NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_stats_history_ts ON stats_history(ts);
+        CREATE TABLE IF NOT EXISTS guild_stats (
+            guild_id TEXT PRIMARY KEY,
+            total INTEGER NOT NULL DEFAULT 0,
+            online INTEGER NOT NULL DEFAULT 0,
+            clan INTEGER NOT NULL DEFAULT 0,
+            updated_at INTEGER,
+            joins_7d TEXT
+        );
         """)
         conn.execute("INSERT OR IGNORE INTO stats(id) VALUES(1)")
         conn.execute("INSERT OR IGNORE INTO staff_meta(id) VALUES(1)")
@@ -118,6 +126,16 @@ def init_db():
         cols = {row[1] for row in conn.execute("PRAGMA table_info(stats)").fetchall()}
         if "joins_7d" not in cols:
             conn.execute("ALTER TABLE stats ADD COLUMN joins_7d TEXT")
+        hcols = {row[1] for row in conn.execute("PRAGMA table_info(stats_history)").fetchall()}
+        if "guild_id" not in hcols:
+            conn.execute("ALTER TABLE stats_history ADD COLUMN guild_id TEXT")
+        conn.execute("UPDATE stats_history SET guild_id=? WHERE guild_id IS NULL", (GUILD_ID,))
+        empty = conn.execute("SELECT COUNT(*) AS c FROM guild_stats").fetchone()["c"] == 0
+        old = conn.execute("SELECT total, online, clan, updated_at, joins_7d FROM stats WHERE id=1").fetchone()
+        if empty and old is not None and GUILD_ID:
+            conn.execute(
+                "INSERT OR IGNORE INTO guild_stats(guild_id, total, online, clan, updated_at, joins_7d) VALUES(?,?,?,?,?,?)",
+                (GUILD_ID, old["total"], old["online"], old["clan"], old["updated_at"], old["joins_7d"]))
 
 init_db()
 
@@ -139,12 +157,27 @@ def _get_staff_ids():
         meta = conn.execute("SELECT updated_at, complete FROM staff_meta WHERE id=1").fetchone()
     return {r["user_id"] for r in rows}, (meta["updated_at"] if meta else None), bool(meta["complete"]) if meta else False
 
-def _get_tickets():
+def _current_guild():
+    gid = str(session.get("guild_id") or "").strip()
+    if gid.isascii() and gid.isdigit() and 1 <= len(gid) <= 25:
+        return gid
+    return GUILD_ID
+
+def _get_tickets(guild_id):
     with _db() as conn:
-        rows = conn.execute("SELECT channel_id, guild_id, number, category, owner_id, owner_name, created_at FROM tickets ORDER BY number DESC").fetchall()
-        meta = conn.execute("SELECT updated_at, complete, guild_id FROM tickets_meta WHERE id=1").fetchone()
+        rows = conn.execute(
+            "SELECT channel_id, guild_id, number, category, owner_id, owner_name, created_at FROM tickets WHERE guild_id=? ORDER BY number DESC",
+            (guild_id,)).fetchall()
+        meta = conn.execute("SELECT updated_at, complete FROM tickets_meta WHERE id=1").fetchone()
     items = [dict(r) for r in rows]
-    return items, (meta["updated_at"] if meta else None), bool(meta["complete"]) if meta else False, (meta["guild_id"] if meta else None)
+    return items, (meta["updated_at"] if meta else None), bool(meta["complete"]) if meta else False
+
+def _get_guild_stats(guild_id):
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT total, online, clan, updated_at, joins_7d FROM guild_stats WHERE guild_id=?",
+            (guild_id,)).fetchone()
+    return row
 
 @app.get("/")
 def index():
@@ -264,6 +297,10 @@ def update_stats():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"ok": False, "error": "invalid json"}), 400
+    raw_gid = data.get("guild_id")
+    guild_id = GUILD_ID if raw_gid is None else _id_str(raw_gid)
+    if not guild_id:
+        return jsonify({"ok": False, "error": "invalid guild_id"}), 400
     values = {}
     for key in ("total", "online", "clan"):
         v = data.get(key)
@@ -285,11 +322,13 @@ def update_stats():
     now = int(time.time())
     with _db() as conn:
         conn.execute(
-            "UPDATE stats SET total=?, online=?, clan=?, updated_at=?, joins_7d=COALESCE(?, joins_7d) WHERE id=1",
-            (values["total"], values["online"], values["clan"], now, joins_json))
+            "INSERT INTO guild_stats(guild_id, total, online, clan, updated_at, joins_7d) VALUES(?,?,?,?,?,?) "
+            "ON CONFLICT(guild_id) DO UPDATE SET total=excluded.total, online=excluded.online, clan=excluded.clan, "
+            "updated_at=excluded.updated_at, joins_7d=COALESCE(excluded.joins_7d, guild_stats.joins_7d)",
+            (guild_id, values["total"], values["online"], values["clan"], now, joins_json))
         conn.execute(
-            "INSERT INTO stats_history(ts, total, online, clan) VALUES(?,?,?,?)",
-            (now, values["total"], values["online"], values["clan"]))
+            "INSERT INTO stats_history(ts, total, online, clan, guild_id) VALUES(?,?,?,?,?)",
+            (now, values["total"], values["online"], values["clan"], guild_id))
     return jsonify({"ok": True})
 
 @app.post("/api/update-staff")
@@ -363,13 +402,14 @@ def update_tickets():
         items.append((channel_id, guild_id, number, category, owner_id, owner_name, created_at))
     now = int(time.time())
     with _db() as conn:
-        conn.execute("DELETE FROM tickets")
+        conn.execute("DELETE FROM tickets WHERE guild_id=?", (guild_id,))
         for it in items:
             conn.execute(
                 "INSERT INTO tickets(channel_id, guild_id, number, category, owner_id, owner_name, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)",
                 (*it, now))
-        conn.execute("UPDATE tickets_meta SET updated_at=?, complete=1, guild_id=? WHERE id=1",
-                     (now, guild_id))
+        if not GUILD_ID or guild_id == GUILD_ID:
+            conn.execute("UPDATE tickets_meta SET updated_at=?, complete=1, guild_id=? WHERE id=1",
+                         (now, guild_id))
     return jsonify({"ok": True, "count": len(items)})
 
 @app.post("/api/update-invites")
@@ -559,7 +599,7 @@ def api_punishments():
     except (TypeError, ValueError):
         limit = 10
     limit = max(1, min(limit, 50))
-    ok, status, body = _bot_get(f"/bot/punishments?user_id={user_id}&limit={limit}")
+    ok, status, body = _bot_get(f"/bot/punishments?user_id={user_id}&limit={limit}&guild_id={_current_guild()}")
     return jsonify(body), status
 
 @app.post("/api/punish")
@@ -577,13 +617,35 @@ def api_punish():
     reason = str(data.get("reason", "")).strip()
     if not reason or len(reason) > 500:
         return jsonify({"ok": False, "error": "invalid reason"}), 400
-    payload = {"actor_id": user.get("id"), "action": action, "user_id": user_id, "reason": reason}
+    payload = {"actor_id": user.get("id"), "action": action, "user_id": user_id, "reason": reason,
+               "guild_id": _current_guild()}
     if action == "timeout":
         minutes = data.get("duration_minutes")
         if isinstance(minutes, bool) or not isinstance(minutes, int) or not 1 <= minutes <= 40320:
             return jsonify({"ok": False, "error": "invalid duration"}), 400
         payload["duration_minutes"] = minutes
     ok, status, body = _bot_post("/bot/punish", payload)
+    return jsonify(body), status
+
+@app.get("/api/voice-channels")
+def api_voice_channels():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    ok, status, body = _bot_get(f"/bot/voice-channels?guild_id={_current_guild()}")
+    return jsonify(body), status
+
+@app.post("/api/meeting")
+def api_meeting():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    voice_id = _id_str(data.get("voice_channel_id"))
+    if not voice_id:
+        return jsonify({"ok": False, "error": "invalid voice_channel_id"}), 400
+    ok, status, body = _bot_post("/bot/meeting", {"voice_channel_id": voice_id, "actor_id": user.get("id"),
+                                                  "guild_id": _current_guild()})
     return jsonify(body), status
 
 @app.post("/api/invites/reward")
@@ -595,7 +657,8 @@ def api_invites_reward():
     user_id = _id_str(data.get("user_id"))
     if not user_id:
         return jsonify({"ok": False, "error": "invalid user_id"}), 400
-    ok, status, body = _bot_post("/bot/invites/reward", {"user_id": user_id, "actor_id": user.get("id")})
+    ok, status, body = _bot_post("/bot/invites/reward", {"user_id": user_id, "actor_id": user.get("id"),
+                                                         "guild_id": _current_guild()})
     return jsonify(body), status
 
 @app.get("/api/bot-status")
@@ -652,16 +715,73 @@ def api_analytics():
     since = int(time.time()) - 7 * 86400
     with _db() as conn:
         rows = conn.execute(
-            "SELECT ts, total, online, clan FROM stats_history WHERE ts>=? ORDER BY ts ASC LIMIT 2000",
-            (since,)).fetchall()
+            "SELECT ts, total, online, clan FROM stats_history WHERE guild_id=? AND ts>=? ORDER BY ts ASC LIMIT 2000",
+            (_current_guild(), since)).fetchall()
     return jsonify({"ok": True, "points": [dict(r) for r in rows]})
+
+def _fetch_bot_guilds():
+    ok, status, body = _bot_get("/bot/status")
+    if not ok or not isinstance(body, dict):
+        return None
+    guilds = body.get("guilds")
+    if not isinstance(guilds, list):
+        return None
+    out = []
+    for g in guilds:
+        if not isinstance(g, dict):
+            continue
+        gid = _id_str(g.get("id"))
+        if gid is None:
+            continue
+        name = g.get("name")
+        members = g.get("members")
+        out.append({"id": gid,
+                    "name": name if isinstance(name, str) and name else f"Сервер {gid}",
+                    "members": members if isinstance(members, int) and members >= 0 else 0})
+    return out
+
+@app.get("/api/guilds")
+def api_guilds():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    guilds = _fetch_bot_guilds()
+    if guilds is None:
+        guilds = [{"id": GUILD_ID, "name": "Основной сервер", "members": 0}] if GUILD_ID else []
+    current = _current_guild()
+    if not any(g["id"] == current for g in guilds):
+        current = guilds[0]["id"] if guilds else None
+    return jsonify({"ok": True, "guilds": guilds, "guild_id": current})
+
+@app.post("/api/select-guild")
+def api_select_guild():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    guild_id = _id_str(data.get("guild_id"))
+    if guild_id is None:
+        return jsonify({"ok": False, "error": "invalid guild_id"}), 400
+    guilds = _fetch_bot_guilds()
+    if guilds is None:
+        if GUILD_ID and guild_id == GUILD_ID:
+            session["guild_id"] = guild_id
+            return jsonify({"ok": True, "guild_id": guild_id, "name": "Основной сервер"})
+        return jsonify({"ok": False, "error": "bot unreachable"}), 503
+    match = next((g for g in guilds if g["id"] == guild_id), None)
+    if match is None:
+        return jsonify({"ok": False, "error": "guild not available"}), 404
+    session["guild_id"] = guild_id
+    return jsonify({"ok": True, "guild_id": guild_id, "name": match["name"]})
 
 @app.get("/api/me")
 def me():
     user = _current_user()
     staff = bool(user)
-    with _db() as conn:
-        s = conn.execute("SELECT total, online, clan, updated_at, joins_7d FROM stats WHERE id=1").fetchone()
+    guild_id = _current_guild()
+    s = _get_guild_stats(guild_id)
     joins_7d = None
     if s and s["joins_7d"]:
         try:
@@ -670,10 +790,12 @@ def me():
             joins_7d = None
     with _db() as conn:
         leaderboard_rows = conn.execute(
-            "SELECT user_id, user_name, invites, active FROM invite_leaderboard ORDER BY active DESC, invites DESC LIMIT 20").fetchall()
+            "SELECT user_id, user_name, invites, active FROM invite_leaderboard WHERE guild_id=? ORDER BY active DESC, invites DESC LIMIT 20",
+            (guild_id,)).fetchall()
     payload = {
         "authenticated": bool(user),
         "user": user,
+        "guild_id": guild_id or None,
         "stats": {"total": s["total"], "online": s["online"], "clan": s["clan"]} if s else {"total": 0, "online": 0, "clan": 0},
         "stats_updated_at": s["updated_at"] if s else None,
         "joins_7d": joins_7d,
@@ -688,8 +810,8 @@ def me():
         if notice:
             payload["notice"] = notice
     if staff:
-        items, updated, complete, guild_id = _get_tickets()
-        payload["tickets"] = {"items": items, "guild_id": guild_id,
+        items, updated, complete = _get_tickets(guild_id)
+        payload["tickets"] = {"items": items, "guild_id": guild_id or None,
                               "updated_at": updated, "complete": complete}
     resp = jsonify(payload)
     resp.headers["Cache-Control"] = "no-store"
@@ -703,8 +825,8 @@ def api_logs():
     limit = min(int(request.args.get("limit", 100)), 500)
     with _db() as conn:
         rows = conn.execute(
-            "SELECT ts, action, actor_id, actor_name, target_id, target_name, details FROM logs ORDER BY ts DESC LIMIT ?",
-            (limit,)).fetchall()
+            "SELECT ts, action, actor_id, actor_name, target_id, target_name, details FROM logs WHERE guild_id=? ORDER BY ts DESC LIMIT ?",
+            (_current_guild(), limit)).fetchall()
     return jsonify({"ok": True, "logs": [dict(r) for r in rows]})
 
 @app.post("/auth/logout")
