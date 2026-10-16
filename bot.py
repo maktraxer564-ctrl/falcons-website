@@ -36,7 +36,8 @@ STAFF_LOG_CHANNEL_ID = int(_log_env) if _log_env.isdigit() else 0
 VOICE_CATEGORY_NAME = os.getenv("VOICE_CATEGORY_NAME", "").strip()
 CATEGORY_NAME = os.getenv("STATS_CATEGORY_NAME", "▪・ꜱᴇʀᴠᴇʀ ꜱᴛᴀᴛꜱ").strip()
 TICKET_CATEGORY_NAME = os.getenv("TICKET_CATEGORY_NAME", "FLCN TICKETS").strip()
-UPDATE_SECONDS = max(300, int(os.getenv("UPDATE_SECONDS", "600") or 600))
+UPDATE_SECONDS = max(60, int(os.getenv("UPDATE_SECONDS", "60") or 60))
+VOICE_UPDATE_SECONDS = max(60, int(os.getenv("VOICE_UPDATE_SECONDS", "420") or 420))
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://falcons-panel.onrender.com").strip().rstrip("/")
 API_SECRET_KEY = os.getenv("API_SECRET_KEY", "").strip()
 BOT_HTTP_PORT = int(os.getenv("BOT_HTTP_PORT", os.getenv("SERVER_PORT", "8080")) or 8080)
@@ -50,6 +51,7 @@ INVITE_REWARDS = ((10, REWARD_ROLE_10), (25, REWARD_ROLE_25), (50, REWARD_ROLE_5
 INVITE_FAKE_SECONDS = 600
 
 TRANSCRIPT_CHANNEL_ID = int(os.getenv("TRANSCRIPT_CHANNEL_ID", "0") or 0)
+MEETING_CHANNEL_ID = int(os.getenv("MEETING_CHANNEL_ID", "1560429785119723590") or 1560429785119723590)
 TICKET_REMINDER_MINUTES = int(os.getenv("TICKET_REMINDER_MINUTES", "30") or 30)
 RUST_MIN_HOURS = int(os.getenv("RUST_MIN_HOURS", "3000") or 3000)
 WARN_TIMEOUT_COUNT = int(os.getenv("WARN_TIMEOUT_COUNT", "3") or 3)
@@ -174,6 +176,12 @@ def init_db():
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS guild_config (
+            guild_id TEXT NOT NULL,
+            key TEXT NOT NULL,
+            value TEXT NOT NULL,
+            PRIMARY KEY (guild_id, key)
+        );
         CREATE INDEX IF NOT EXISTS idx_invites_invited ON invites(guild_id, invited_id);
         """)
         ticket_cols = {row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
@@ -261,6 +269,51 @@ def setting_bool(key, default):
         return default
     return raw == "1"
 
+def get_guild_config(guild_id, key):
+    with _db() as conn:
+        row = conn.execute("SELECT value FROM guild_config WHERE guild_id=? AND key=?",
+                           (str(guild_id), str(key))).fetchone()
+    return row["value"] if row else None
+
+def set_guild_config(guild_id, key, value):
+    with _db() as conn:
+        if value:
+            conn.execute(
+                "INSERT INTO guild_config(guild_id, key, value) VALUES(?,?,?)"
+                " ON CONFLICT(guild_id, key) DO UPDATE SET value=excluded.value",
+                (str(guild_id), str(key), str(value)))
+        else:
+            conn.execute("DELETE FROM guild_config WHERE guild_id=? AND key=?",
+                         (str(guild_id), str(key)))
+
+def _config_id(guild, key, env_value):
+    value = get_guild_config(guild.id, key)
+    if value is not None and value.isdigit():
+        return int(value)
+    if not GUILD_ID or guild.id == GUILD_ID:
+        return env_value
+    return 0
+
+def _config_mention(guild, key, env_value, getter):
+    value = _config_id(guild, key, env_value)
+    obj = getter(value) if value else None
+    return obj.mention if obj is not None else None
+
+def _current_guild_config(guild):
+    staff = get_staff_role(guild)
+    clan_id = _config_id(guild, "clan_role", CLAN_ROLE_ID)
+    clan = guild.get_role(clan_id) if clan_id else None
+    if clan is None:
+        clan = discord.utils.find(lambda r: r.name.casefold() == "clan", guild.roles)
+    return {
+        "staff_role": staff.mention if staff is not None else None,
+        "clan_role": clan.mention if clan is not None else None,
+        "welcome_channel": _config_mention(guild, "welcome_channel", WELCOME_CHANNEL_ID, guild.get_channel),
+        "goodbye_channel": _config_mention(guild, "goodbye_channel", GOODBYE_CHANNEL_ID, guild.get_channel),
+        "transcript_channel": _config_mention(guild, "transcript_channel", TRANSCRIPT_CHANNEL_ID, guild.get_channel),
+        "log_channel": _config_mention(guild, "log_channel", STAFF_LOG_CHANNEL_ID, guild.get_channel),
+    }
+
 def get_previous_tickets(guild_id, owner_id, limit=5):
     with _db() as conn:
         rows = conn.execute(
@@ -308,17 +361,14 @@ class FalconsBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
+        await self.tree.sync()
         if GUILD_ID:
             guild_obj = discord.Object(id=GUILD_ID)
             self.tree.copy_global_to(guild=guild_obj)
             await self.tree.sync(guild=guild_obj)
-        else:
-            await self.tree.sync()
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
-        if parse_self_roles():
-            self.add_view(SelfRolesView())
         self.loop.create_task(start_bot_http())
 
 bot = FalconsBot()
@@ -330,17 +380,24 @@ def has_staff_perms(member):
         return True
     if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
         return True
+    staff_role = get_staff_role(member.guild) if member.guild else None
+    if staff_role is not None and staff_role in member.roles:
+        return True
     for r in member.roles:
         if TICKET_STAFF_ROLE_ID and r.id == TICKET_STAFF_ROLE_ID:
             return True
         if DEP_LEADER_ROLE_ID and r.id == DEP_LEADER_ROLE_ID:
             return True
-        if r.name.casefold() == "ticket staff":
+        name = r.name.casefold()
+        if name == "ticket staff":
+            return True
+        if "dep" in name and "lead" in name:
             return True
     return False
 
 def get_staff_role(guild):
-    role = guild.get_role(TICKET_STAFF_ROLE_ID) if TICKET_STAFF_ROLE_ID else None
+    role_id = _config_id(guild, "staff_role", TICKET_STAFF_ROLE_ID)
+    role = guild.get_role(role_id) if role_id else None
     if role is None:
         role = discord.utils.find(lambda r: "ticket" in r.name.casefold() and "staff" in r.name.casefold(), guild.roles)
     return role
@@ -351,9 +408,10 @@ def is_staff_interaction(interaction):
     return has_staff_perms(interaction.user)
 
 async def send_staff_log(guild, embed):
-    if not STAFF_LOG_CHANNEL_ID:
+    channel_id = _config_id(guild, "log_channel", STAFF_LOG_CHANNEL_ID)
+    if not channel_id:
         return
-    ch = guild.get_channel(STAFF_LOG_CHANNEL_ID)
+    ch = guild.get_channel(channel_id)
     if ch is None:
         return
     try:
@@ -390,6 +448,7 @@ async def update_counter(guild, category, key, count):
         await channel.edit(category=category, reason="Organize FLCN stats")
 
 refresh_lock = asyncio.Lock()
+_last_voice_update = {}
 
 async def push_stats(guild, total, online, clan):
     if not API_SECRET_KEY:
@@ -399,7 +458,7 @@ async def push_stats(guild, total, online, clan):
         timeout = aiohttp.ClientTimeout(total=20)
         async with aiohttp.ClientSession(timeout=timeout) as s:
             async with s.post(f"{WEBSITE_URL}/api/update-stats",
-                              json={"total": total, "online": online, "clan": clan,
+                              json={"guild_id": str(guild.id), "total": total, "online": online, "clan": clan,
                                     "joins_7d": joins_7d},
                               headers={"X-Falcons-Secret": API_SECRET_KEY}) as r:
                 if r.status != 200:
@@ -409,6 +468,8 @@ async def push_stats(guild, total, online, clan):
 
 async def push_staff(guild):
     if not API_SECRET_KEY or not TICKET_STAFF_ROLE_ID:
+        return
+    if GUILD_ID and guild.id != GUILD_ID:
         return
     try:
         role = guild.get_role(TICKET_STAFF_ROLE_ID)
@@ -462,37 +523,51 @@ async def push_tickets(guild):
 
 async def refresh(guild):
     async with refresh_lock:
-        if GUILD_ID and guild.id != GUILD_ID:
-            return
         try:
             await guild.chunk(cache=True)
+        except discord.HTTPException as e:
+            if e.status == 429:
+                log.warning("chunk rate limited, skipping refresh for guild %s", guild.id)
+                return
+            log.exception("chunk failed")
         except Exception:
             log.exception("chunk failed")
         members = list(guild.members)
         total = guild.member_count if guild.member_count is not None else len(members)
         online = sum(1 for m in members if m.status not in (discord.Status.offline, discord.Status.invisible))
-        clan_role = guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
+        clan_role_id = _config_id(guild, "clan_role", CLAN_ROLE_ID)
+        clan_role = guild.get_role(clan_role_id) if clan_role_id else None
+        if clan_role is None:
+            clan_role = discord.utils.find(lambda r: r.name.casefold() == "clan", guild.roles)
         clan = sum(1 for m in members if clan_role and clan_role in m.roles)
         await push_stats(guild, total, online, clan)
         await push_invites(guild)
         await push_staff(guild)
         await push_tickets(guild)
-        try:
-            category = await get_category(guild)
-            for key, count in (("members", total), ("online", online), ("clan", clan)):
-                await update_counter(guild, category, key, count)
-                await asyncio.sleep(1.2)
-        except Exception:
-            log.exception("counters failed")
+        if not GUILD_ID or guild.id == GUILD_ID:
+            if time.time() - _last_voice_update.get(guild.id, 0) < VOICE_UPDATE_SECONDS:
+                return
+            try:
+                category = await get_category(guild)
+                for key, count in (("members", total), ("online", online), ("clan", clan)):
+                    await update_counter(guild, category, key, count)
+                    await asyncio.sleep(1.2)
+                _last_voice_update[guild.id] = time.time()
+            except discord.HTTPException as e:
+                if e.status == 429:
+                    log.warning("counters rate limited, skipping voice update for guild %s", guild.id)
+                else:
+                    log.exception("counters failed")
+            except Exception:
+                log.exception("counters failed")
 
 @tasks.loop(seconds=UPDATE_SECONDS)
 async def updater():
     for guild in bot.guilds:
-        if not GUILD_ID or guild.id == GUILD_ID:
-            try:
-                await refresh(guild)
-            except Exception:
-                log.exception("auto refresh failed")
+        try:
+            await refresh(guild)
+        except Exception:
+            log.exception("auto refresh failed")
 
 @updater.before_loop
 async def before_updater():
@@ -521,11 +596,10 @@ async def remind_stale_tickets(guild):
 @tasks.loop(minutes=5)
 async def ticket_reminder():
     for guild in bot.guilds:
-        if not GUILD_ID or guild.id == GUILD_ID:
-            try:
-                await remind_stale_tickets(guild)
-            except Exception:
-                log.exception("ticket_reminder failed")
+        try:
+            await remind_stale_tickets(guild)
+        except Exception:
+            log.exception("ticket_reminder failed")
 
 @ticket_reminder.before_loop
 async def before_ticket_reminder():
@@ -593,64 +667,84 @@ async def on_ready():
     if not auto_announce_loop.is_running():
         auto_announce_loop.start()
     for guild in bot.guilds:
-        if not GUILD_ID or guild.id == GUILD_ID:
-            try:
-                await refresh(guild)
-            except Exception:
-                log.exception("initial refresh failed")
+        try:
+            await refresh(guild)
+        except Exception:
+            log.exception("initial refresh failed")
     for guild in bot.guilds:
-        if not GUILD_ID or guild.id == GUILD_ID:
-            try:
-                await collect_invites(guild)
-            except Exception:
-                log.exception("Не удалось собрать кэш инвайтов")
+        try:
+            await collect_invites(guild)
+        except Exception:
+            log.exception("Не удалось собрать кэш инвайтов")
+    for guild in bot.guilds:
+        if GUILD_ID and guild.id == GUILD_ID:
+            continue
+        try:
+            await bot.tree.sync(guild=discord.Object(id=guild.id))
+        except Exception:
+            log.exception("sync команд не удался для сервера %s", guild.id)
+
+@bot.event
+async def on_guild_join(guild):
+    log.info("Бот добавлен на сервер %s (%s)", guild.name, guild.id)
+    try:
+        await bot.tree.sync(guild=discord.Object(id=guild.id))
+    except Exception:
+        log.exception("sync команд не удался для сервера %s", guild.id)
+    try:
+        await refresh(guild)
+    except Exception:
+        log.exception("initial refresh failed")
+    try:
+        await collect_invites(guild)
+    except Exception:
+        log.exception("Не удалось собрать кэш инвайтов")
 
 @bot.event
 async def on_member_join(member):
-    if not GUILD_ID or member.guild.id == GUILD_ID:
-        try:
-            with _db() as conn:
-                conn.execute("INSERT INTO joins(guild_id, user_id, ts) VALUES(?,?,?)",
-                             (str(member.guild.id), str(member.id), int(time.time())))
-        except Exception:
-            log.exception("Не удалось записать join")
-        if NEWCOMER_ROLE_ID:
-            role = member.guild.get_role(NEWCOMER_ROLE_ID)
-            if role is None:
-                log.warning("NEWCOMER_ROLE_ID=%s не найден на сервере", NEWCOMER_ROLE_ID)
-            else:
-                try:
-                    await member.add_roles(role, reason="Автороль новичка")
-                except (discord.Forbidden, discord.HTTPException):
-                    log.exception("Не удалось выдать автороль новичку")
-        try:
-            await handle_invite_join(member)
-        except Exception:
-            log.exception("Обработка инвайта не удалась")
-        try:
-            await send_welcome(member)
-        except Exception:
-            log.exception("Приветствие не отправлено")
-        try:
-            await refresh(member.guild)
-        except Exception:
-            pass
+    is_main = not GUILD_ID or member.guild.id == GUILD_ID
+    try:
+        with _db() as conn:
+            conn.execute("INSERT INTO joins(guild_id, user_id, ts) VALUES(?,?,?)",
+                         (str(member.guild.id), str(member.id), int(time.time())))
+    except Exception:
+        log.exception("Не удалось записать join")
+    if is_main and NEWCOMER_ROLE_ID:
+        role = member.guild.get_role(NEWCOMER_ROLE_ID)
+        if role is None:
+            log.warning("NEWCOMER_ROLE_ID=%s не найден на сервере", NEWCOMER_ROLE_ID)
+        else:
+            try:
+                await member.add_roles(role, reason="Автороль новичка")
+            except (discord.Forbidden, discord.HTTPException):
+                log.exception("Не удалось выдать автороль новичку")
+    try:
+        await handle_invite_join(member)
+    except Exception:
+        log.exception("Обработка инвайта не удалась")
+    try:
+        await send_welcome(member)
+    except Exception:
+        log.exception("Приветствие не отправлено")
+    try:
+        await refresh(member.guild)
+    except Exception:
+        pass
 
 @bot.event
 async def on_member_remove(member):
-    if not GUILD_ID or member.guild.id == GUILD_ID:
-        try:
-            await refresh(member.guild)
-        except Exception:
-            pass
-        try:
-            mark_invite_left(member.guild.id, member.id)
-        except Exception:
-            log.exception("Не удалось отметить выход по инвайту")
-        try:
-            await send_goodbye(member)
-        except Exception:
-            log.exception("Прощание не отправлено")
+    try:
+        await refresh(member.guild)
+    except Exception:
+        pass
+    try:
+        mark_invite_left(member.guild.id, member.id)
+    except Exception:
+        log.exception("Не удалось отметить выход по инвайту")
+    try:
+        await send_goodbye(member)
+    except Exception:
+        log.exception("Прощание не отправлено")
             
 
 
@@ -699,7 +793,10 @@ def build_history_text(guild, owner_id):
     return "\n".join(lines)[:1024]
 
 async def save_transcript(channel, ticket):
-    if not TRANSCRIPT_CHANNEL_ID or channel.guild is None:
+    if channel.guild is None:
+        return
+    transcript_channel_id = _config_id(channel.guild, "transcript_channel", TRANSCRIPT_CHANNEL_ID)
+    if not transcript_channel_id:
         return
     lines = []
     try:
@@ -722,9 +819,9 @@ async def save_transcript(channel, ticket):
     header = (f"Тикет #{number} · {CATEGORY_LABELS.get(t.get('category'), t.get('category') or '?')}\n"
               f"Открыл: {t.get('owner_name', '?')} ({t.get('owner_id', '?')})\n" + "-" * 40)
     body = (header + "\n" + "\n".join(lines)).encode("utf-8")
-    target = channel.guild.get_channel(TRANSCRIPT_CHANNEL_ID)
+    target = channel.guild.get_channel(transcript_channel_id)
     if target is None:
-        log.warning("TRANSCRIPT_CHANNEL_ID=%s не найден", TRANSCRIPT_CHANNEL_ID)
+        log.warning("transcript_channel=%s не найден", transcript_channel_id)
         return
     try:
         await target.send(content=f"📄 Транскрипт тикета #{number}",
@@ -1032,49 +1129,81 @@ def parse_self_roles():
             roles.append((int(role_id), label[:80]))
     return roles[:25]
 
+def parse_guild_self_roles(guild):
+    raw = get_guild_config(guild.id, "self_roles")
+    if raw:
+        roles = []
+        for part in raw.split(";"):
+            part = part.strip()
+            if not part:
+                continue
+            role_id, _, label = part.partition(":")
+            role_id = role_id.strip()
+            if not (role_id.isascii() and role_id.isdigit()):
+                continue
+            role = guild.get_role(int(role_id))
+            if role is None:
+                continue
+            label = label.strip() or role.name
+            roles.append((int(role_id), label[:80]))
+        return roles[:25]
+    if not GUILD_ID or guild.id == GUILD_ID:
+        return [(rid, label) for rid, label in parse_self_roles() if guild.get_role(rid) is not None]
+    return []
+
 class SelfRoleSelect(discord.ui.Select):
-    def __init__(self):
-        options = [discord.SelectOption(label=label, value=str(rid)) for rid, label in parse_self_roles()]
+    def __init__(self, roles):
+        options = [discord.SelectOption(label=label, value=str(rid)) for rid, label in roles]
         super().__init__(placeholder="Выбери роли…", min_values=0, max_values=max(1, len(options)),
                          options=options, custom_id="flcn:selfroles")
 
     async def callback(self, interaction):
-        if interaction.guild is None or not isinstance(interaction.user, discord.Member):
-            return await interaction.response.send_message("Только на сервере.", ephemeral=True)
-        member = interaction.user
-        chosen = {int(v) for v in self.values}
-        added, removed = [], []
-        for role_id, _ in parse_self_roles():
-            role = interaction.guild.get_role(role_id)
-            if role is None:
-                continue
-            try:
-                if role_id in chosen and role not in member.roles:
-                    await member.add_roles(role, reason="FLCN self-roles")
-                    added.append(role.name)
-                elif role_id not in chosen and role in member.roles:
-                    await member.remove_roles(role, reason="FLCN self-roles")
-                    removed.append(role.name)
-            except (discord.Forbidden, discord.HTTPException):
-                log.exception("self-roles: не удалось изменить роль %s", role_id)
-        parts = []
-        if added:
-            parts.append("выдано: " + ", ".join(added))
-        if removed:
-            parts.append("снято: " + ", ".join(removed))
-        await interaction.response.send_message(
-            "Готово. " + ("; ".join(parts) if parts else "Изменений нет."), ephemeral=True)
+        pass
 
 class SelfRolesView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, roles):
         super().__init__(timeout=None)
-        if parse_self_roles():
-            self.add_item(SelfRoleSelect())
+        if roles:
+            self.add_item(SelfRoleSelect(roles))
+
+@bot.event
+async def on_interaction(interaction):
+    if interaction.type is not discord.InteractionType.component:
+        return
+    data = interaction.data or {}
+    if data.get("custom_id") != "flcn:selfroles":
+        return
+    if interaction.guild is None or not isinstance(interaction.user, discord.Member):
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    member = interaction.user
+    chosen = set()
+    for v in data.get("values") or []:
+        if str(v).isdigit():
+            chosen.add(int(v))
+    added, removed = [], []
+    for role_id, _ in parse_guild_self_roles(interaction.guild):
+        role = interaction.guild.get_role(role_id)
+        if role is None:
+            continue
+        try:
+            if role_id in chosen and role not in member.roles:
+                await member.add_roles(role, reason="FLCN self-roles")
+                added.append(role.name)
+            elif role_id not in chosen and role in member.roles:
+                await member.remove_roles(role, reason="FLCN self-roles")
+                removed.append(role.name)
+        except (discord.Forbidden, discord.HTTPException):
+            log.exception("self-roles: не удалось изменить роль %s", role_id)
+    parts = []
+    if added:
+        parts.append("выдано: " + ", ".join(added))
+    if removed:
+        parts.append("снято: " + ", ".join(removed))
+    await interaction.response.send_message(
+        "Готово. " + ("; ".join(parts) if parts else "Изменений нет."), ephemeral=True)
 
 @bot.tree.command(name="falcons_stats", description="Обновить счётчики сервера")
 async def falcons_stats(interaction):
-    if GUILD_ID and interaction.guild_id != GUILD_ID:
-        return await interaction.response.send_message("Только для настроенного сервера.", ephemeral=True)
     if interaction.guild is None:
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
     if not interaction.user.guild_permissions.manage_guild:
@@ -1082,10 +1211,48 @@ async def falcons_stats(interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
     try:
         await refresh(interaction.guild)
-        await interaction.followup.send("Счётчики, staff и тикеты обновлены.", ephemeral=True)
+        await interaction.followup.send("Статистика, staff и тикеты обновлены.", ephemeral=True)
     except Exception:
         log.exception("Manual refresh failed")
         await interaction.followup.send("Ошибка. Смотри логи.", ephemeral=True)
+
+@bot.tree.command(name="setup_server", description="Настроить роли и каналы бота для этого сервера")
+@app_commands.describe(staff_role="Роль Ticket Staff этого сервера",
+                       clan_role="Роль клана (для счётчика «Клан»)",
+                       welcome_channel="Канал приветствий",
+                       goodbye_channel="Канал прощаний",
+                       transcript_channel="Канал для транскриптов тикетов",
+                       log_channel="Канал для логов стаффа")
+async def setup_server(interaction,
+                       staff_role: discord.Role = None,
+                       clan_role: discord.Role = None,
+                       welcome_channel: discord.TextChannel = None,
+                       goodbye_channel: discord.TextChannel = None,
+                       transcript_channel: discord.TextChannel = None,
+                       log_channel: discord.TextChannel = None):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    if not has_staff_perms(interaction.user):
+        return await interaction.response.send_message("Нужны права стаффа (или «Управлять сервером»).", ephemeral=True)
+    mapping = [("staff_role", staff_role), ("clan_role", clan_role),
+               ("welcome_channel", welcome_channel), ("goodbye_channel", goodbye_channel),
+               ("transcript_channel", transcript_channel), ("log_channel", log_channel)]
+    saved = []
+    for key, value in mapping:
+        if value is not None:
+            set_guild_config(interaction.guild.id, key, str(value.id))
+            saved.append(key)
+    current = _current_guild_config(interaction.guild)
+    lines = []
+    for key, label in (("staff_role", "Стафф-роль"), ("clan_role", "Клан-роль"),
+                       ("welcome_channel", "Приветствия"), ("goodbye_channel", "Прощания"),
+                       ("transcript_channel", "Транскрипты"), ("log_channel", "Логи")):
+        lines.append(f"**{label}:** {current.get(key) or '— (не задано)'}")
+    lines.append(f"**Само-роли:** {len(parse_guild_self_roles(interaction.guild))} шт. (добавить: /selfrole_add)")
+    if saved:
+        lines.append("")
+        lines.append(f"Обновлено: {', '.join(saved)}")
+    await interaction.response.send_message("\n".join(lines), ephemeral=True)
 
 @bot.tree.command(name="setup_tickets", description="Создать панель заявок FLCN")
 async def setup_tickets(interaction):
@@ -1109,14 +1276,53 @@ async def setup_roles(interaction):
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
-    roles = parse_self_roles()
+    roles = parse_guild_self_roles(interaction.guild)
     if not roles:
-        return await interaction.response.send_message("SELF_ROLES не настроены в .env.", ephemeral=True)
+        return await interaction.response.send_message(
+            "Само-роли для этого сервера не настроены. Добавь их командой /selfrole_add.", ephemeral=True)
     embed = discord.Embed(title="🎭 Само-роли", color=discord.Color.blurple(),
                           description="Выбери роли в меню ниже. Можно выбрать несколько или снять уже выбранные.")
     embed.add_field(name="Доступные роли", value="\n".join(label for _, label in roles)[:1024], inline=False)
-    await interaction.channel.send(embed=embed, view=SelfRolesView())
+    await interaction.channel.send(embed=embed, view=SelfRolesView(roles))
     await interaction.response.send_message("Панель само-ролей опубликована.", ephemeral=True)
+
+@bot.tree.command(name="selfrole_add", description="Добавить роль в панель само-ролей этого сервера")
+@app_commands.describe(role="Роль, которую смогут брать участники")
+async def selfrole_add(interaction, role: discord.Role):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    if not has_staff_perms(interaction.user):
+        return await interaction.response.send_message("Нужны права стаффа (или «Управлять сервером»).", ephemeral=True)
+    current = get_guild_config(interaction.guild.id, "self_roles") or ""
+    if not current and (not GUILD_ID or interaction.guild.id == GUILD_ID):
+        current = ";".join(str(rid) for rid, _ in parse_self_roles() if interaction.guild.get_role(rid))
+    parts = [p.strip() for p in current.split(";") if p.strip()]
+    if str(role.id) in {p.partition(":")[0].strip() for p in parts}:
+        return await interaction.response.send_message("Эта роль уже в панели.", ephemeral=True)
+    if len(parts) >= 25:
+        return await interaction.response.send_message("Максимум 25 ролей в панели.", ephemeral=True)
+    parts.append(str(role.id))
+    set_guild_config(interaction.guild.id, "self_roles", ";".join(parts))
+    await interaction.response.send_message(
+        f"Добавил {role.mention}. Всего: {len(parts)}. Запусти /setup_roles, чтобы опубликовать панель.", ephemeral=True)
+
+@bot.tree.command(name="selfrole_remove", description="Убрать роль из панели само-ролей этого сервера")
+@app_commands.describe(role="Роль, которую убрать из панели")
+async def selfrole_remove(interaction, role: discord.Role):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    if not has_staff_perms(interaction.user):
+        return await interaction.response.send_message("Нужны права стаффа (или «Управлять сервером»).", ephemeral=True)
+    current = get_guild_config(interaction.guild.id, "self_roles") or ""
+    if not current and (not GUILD_ID or interaction.guild.id == GUILD_ID):
+        current = ";".join(str(rid) for rid, _ in parse_self_roles() if interaction.guild.get_role(rid))
+    parts = [p.strip() for p in current.split(";") if p.strip()]
+    kept = [p for p in parts if p.partition(":")[0].strip() != str(role.id)]
+    if len(kept) == len(parts):
+        return await interaction.response.send_message("Этой роли нет в панели.", ephemeral=True)
+    set_guild_config(interaction.guild.id, "self_roles", ";".join(kept))
+    await interaction.response.send_message(
+        f"Убрал {role.mention}. Осталось: {len(kept)}. Запусти /setup_roles, чтобы обновить панель.", ephemeral=True)
 
 @bot.tree.command(name="ticket_add_question", description="Добавить вопрос в анкету")
 @app_commands.describe(category="clan / partner / question / report / other", question="Текст вопроса")
@@ -1247,12 +1453,20 @@ def _check_secret(request):
     return request.headers.get("X-Falcons-Secret", "") == API_SECRET_KEY
 
 def _get_guild_and_actor(data):
-    guild = bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
+    guild = _resolve_guild(data.get("guild_id"))
     if guild is None:
         return None, None, None
     actor = guild.get_member(int(data.get("actor_id", 0)))
     channel = guild.get_channel(int(data.get("channel_id", 0)))
     return guild, actor, channel
+
+def _resolve_guild(guild_id):
+    gid = str(guild_id or "").strip()
+    if gid.isascii() and gid.isdigit():
+        guild = bot.get_guild(int(gid))
+        if guild is not None:
+            return guild
+    return bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
 
 async def http_close_ticket(request):
     if not _check_secret(request):
@@ -1396,7 +1610,7 @@ async def http_get_punishments(request):
         limit = max(1, min(int(request.query.get("limit", "10")), 50))
     except (TypeError, ValueError):
         limit = 10
-    guild = bot.get_guild(GUILD_ID) if GUILD_ID else (bot.guilds[0] if bot.guilds else None)
+    guild = _resolve_guild(request.query.get("guild_id"))
     if guild is None:
         return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
     member = guild.get_member(int(user_id))
@@ -1547,6 +1761,107 @@ async def http_set_settings(request):
             log.exception("settings: не удалось отправить лог")
     return aiohttp_web.json_response({"ok": True, "settings": _current_settings()})
 
+_meetings_running = set()
+
+async def run_meeting(guild, voice, actor):
+    try:
+        meeting_channel_id = _config_id(guild, "meeting_channel", MEETING_CHANNEL_ID)
+        meeting_channel = guild.get_channel(meeting_channel_id) if meeting_channel_id else None
+        if meeting_channel is not None:
+            for i in range(3):
+                if i:
+                    await asyncio.sleep(60)
+                try:
+                    await meeting_channel.send(
+                        f"🚨 @everyone Собрание клана! Заходим в войс: 🔊 {voice.name}",
+                        allowed_mentions=discord.AllowedMentions(everyone=True))
+                except discord.HTTPException as e:
+                    if e.status == 429:
+                        log.warning("Собрание: пинги остановлены (rate limit), guild %s", guild.id)
+                    else:
+                        log.exception("Собрание: пинг не отправлен")
+                    break
+        clan_role_id = _config_id(guild, "clan_role", CLAN_ROLE_ID)
+        clan_role = guild.get_role(clan_role_id) if clan_role_id else None
+        if clan_role is None:
+            clan_role = discord.utils.find(lambda r: r.name.casefold() == "clan", guild.roles)
+        candidates = []
+        if clan_role is not None:
+            for m in guild.members:
+                if m.bot or clan_role not in m.roles:
+                    continue
+                if m.status in (discord.Status.offline, discord.Status.invisible):
+                    continue
+                if m.voice is not None:
+                    continue
+                candidates.append(m)
+        sent = 0
+        for idx, member in enumerate(candidates):
+            if idx:
+                await asyncio.sleep(15)
+            text = f"🚨 {member.display_name}, собрание клана! Заходим в войс: 🔊 {voice.name}"
+            try:
+                await member.send(text)
+                sent += 1
+            except discord.Forbidden:
+                log.info("Собрание: ЛС закрыты у %s", member.id)
+            except discord.HTTPException as e:
+                if e.status == 429:
+                    log.warning("Собрание: rate limit на ЛС, пауза 60 сек")
+                    await asyncio.sleep(60)
+                    try:
+                        await member.send(text)
+                        sent += 1
+                    except Exception:
+                        log.exception("Собрание: ЛС не отправлено")
+                else:
+                    log.exception("Собрание: ЛС не отправлено")
+            except Exception:
+                log.exception("Собрание: ЛС не отправлено")
+        fields = [("Войс-канал", f"🔊 {voice.name} (`{voice.id}`)"),
+                  ("Запустил", f"{actor} (`{actor.id}`)"),
+                  ("ЛС", f"Отправлено {sent} из {len(candidates)}")]
+        await send_staff_log(guild, make_log_embed("🚨 Собрание объявлено", discord.Color.red(), fields))
+    except Exception:
+        log.exception("Собрание: непредвиденная ошибка")
+    finally:
+        _meetings_running.discard(guild.id)
+
+async def http_meeting(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    if not isinstance(data, dict):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid json"}, status=400)
+    guild = _resolve_guild(data.get("guild_id"))
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    actor_id = str(data.get("actor_id") or "").strip()
+    actor = guild.get_member(int(actor_id)) if actor_id.isdigit() else None
+    if actor is None or not has_staff_perms(actor):
+        return aiohttp_web.json_response({"ok": False, "error": "no perms"}, status=403)
+    voice_id = str(data.get("voice_channel_id") or "").strip()
+    voice = guild.get_channel(int(voice_id)) if voice_id.isdigit() else None
+    if voice is None or not isinstance(voice, discord.VoiceChannel):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid voice_channel_id"}, status=400)
+    if guild.id in _meetings_running:
+        return aiohttp_web.json_response({"ok": False, "error": "meeting already running"}, status=409)
+    _meetings_running.add(guild.id)
+    asyncio.create_task(run_meeting(guild, voice, actor))
+    return aiohttp_web.json_response({"ok": True})
+
+async def http_voice_channels(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    guild = _resolve_guild(request.query.get("guild_id"))
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    channels = [{"id": str(c.id), "name": c.name} for c in sorted(guild.voice_channels, key=lambda c: c.position)]
+    return aiohttp_web.json_response({"ok": True, "channels": channels})
+
 async def start_bot_http():
     app = aiohttp_web.Application()
     app.router.add_post("/bot/ticket/close", http_close_ticket)
@@ -1561,6 +1876,8 @@ async def start_bot_http():
     app.router.add_get("/bot/status", http_bot_status)
     app.router.add_get("/bot/settings", http_get_settings)
     app.router.add_post("/bot/settings", http_set_settings)
+    app.router.add_post("/bot/meeting", http_meeting)
+    app.router.add_get("/bot/voice-channels", http_voice_channels)
     runner = aiohttp_web.AppRunner(app)
     await runner.setup()
     site = aiohttp_web.TCPSite(runner, BOT_HTTP_HOST, BOT_HTTP_PORT)
@@ -1940,11 +2257,12 @@ def _format_member_text(template, member, fallback):
 async def send_welcome(member):
     if not setting_bool("welcome_enabled", True):
         return
-    if not WELCOME_CHANNEL_ID:
+    channel_id = _config_id(member.guild, "welcome_channel", WELCOME_CHANNEL_ID)
+    if not channel_id:
         return
-    channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
+    channel = member.guild.get_channel(channel_id)
     if channel is None:
-        log.warning("WELCOME_CHANNEL_ID=%s не найден", WELCOME_CHANNEL_ID)
+        log.warning("welcome_channel=%s не найден", channel_id)
         return
     template = get_setting("welcome_text") or WELCOME_TEXT
     text = _format_member_text(template, member, f"Добро пожаловать, {member.mention}!")
@@ -1959,11 +2277,14 @@ async def send_welcome(member):
         log.exception("Не удалось отправить приветствие")
 
 async def send_goodbye(member):
-    if not setting_bool("goodbye_enabled", GOODBYE_ENABLED) or not GOODBYE_CHANNEL_ID:
+    if not setting_bool("goodbye_enabled", GOODBYE_ENABLED):
         return
-    channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
+    channel_id = _config_id(member.guild, "goodbye_channel", GOODBYE_CHANNEL_ID)
+    if not channel_id:
+        return
+    channel = member.guild.get_channel(channel_id)
     if channel is None:
-        log.warning("GOODBYE_CHANNEL_ID=%s не найден", GOODBYE_CHANNEL_ID)
+        log.warning("goodbye_channel=%s не найден", channel_id)
         return
     template = get_setting("goodbye_text") or GOODBYE_TEXT
     text = _format_member_text(template, member, f"{member.display_name} покинул сервер FALCONS.")
