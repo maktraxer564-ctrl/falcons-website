@@ -312,6 +312,7 @@ def _current_guild_config(guild):
         "goodbye_channel": _config_mention(guild, "goodbye_channel", GOODBYE_CHANNEL_ID, guild.get_channel),
         "transcript_channel": _config_mention(guild, "transcript_channel", TRANSCRIPT_CHANNEL_ID, guild.get_channel),
         "log_channel": _config_mention(guild, "log_channel", STAFF_LOG_CHANNEL_ID, guild.get_channel),
+        "meeting_channel": _config_mention(guild, "meeting_channel", MEETING_CHANNEL_ID, guild.get_channel),
     }
 
 def get_previous_tickets(guild_id, owner_id, limit=5):
@@ -1222,21 +1223,24 @@ async def falcons_stats(interaction):
                        welcome_channel="Канал приветствий",
                        goodbye_channel="Канал прощаний",
                        transcript_channel="Канал для транскриптов тикетов",
-                       log_channel="Канал для логов стаффа")
+                       log_channel="Канал для логов стаффа",
+                       meeting_channel="Канал для пингов собрания")
 async def setup_server(interaction,
                        staff_role: discord.Role = None,
                        clan_role: discord.Role = None,
                        welcome_channel: discord.TextChannel = None,
                        goodbye_channel: discord.TextChannel = None,
                        transcript_channel: discord.TextChannel = None,
-                       log_channel: discord.TextChannel = None):
+                       log_channel: discord.TextChannel = None,
+                       meeting_channel: discord.TextChannel = None):
     if interaction.guild is None:
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
     if not has_staff_perms(interaction.user):
         return await interaction.response.send_message("Нужны права стаффа (или «Управлять сервером»).", ephemeral=True)
     mapping = [("staff_role", staff_role), ("clan_role", clan_role),
                ("welcome_channel", welcome_channel), ("goodbye_channel", goodbye_channel),
-               ("transcript_channel", transcript_channel), ("log_channel", log_channel)]
+               ("transcript_channel", transcript_channel), ("log_channel", log_channel),
+               ("meeting_channel", meeting_channel)]
     saved = []
     for key, value in mapping:
         if value is not None:
@@ -1246,7 +1250,8 @@ async def setup_server(interaction,
     lines = []
     for key, label in (("staff_role", "Стафф-роль"), ("clan_role", "Клан-роль"),
                        ("welcome_channel", "Приветствия"), ("goodbye_channel", "Прощания"),
-                       ("transcript_channel", "Транскрипты"), ("log_channel", "Логи")):
+                       ("transcript_channel", "Транскрипты"), ("log_channel", "Логи"),
+                       ("meeting_channel", "Собрание")):
         lines.append(f"**{label}:** {current.get(key) or '— (не задано)'}")
     lines.append(f"**Само-роли:** {len(parse_guild_self_roles(interaction.guild))} шт. (добавить: /selfrole_add)")
     if saved:
@@ -1765,26 +1770,31 @@ _meetings_running = set()
 
 async def run_meeting(guild, voice, actor):
     try:
+        log.info("Собрание: старт, guild %s, войс %s", guild.id, voice.id)
+        clan_role_id = _config_id(guild, "clan_role", CLAN_ROLE_ID)
+        clan_role = guild.get_role(clan_role_id) if clan_role_id else None
+        if clan_role is None:
+            clan_role = discord.utils.find(lambda r: r.name.casefold() == "clan", guild.roles)
+        ping_mention = clan_role.mention if clan_role is not None else "@everyone"
         meeting_channel_id = _config_id(guild, "meeting_channel", MEETING_CHANNEL_ID)
         meeting_channel = guild.get_channel(meeting_channel_id) if meeting_channel_id else None
-        if meeting_channel is not None:
+        if meeting_channel is None:
+            log.warning("Собрание: канал пингов не найден (id %s), guild %s", meeting_channel_id, guild.id)
+        else:
             for i in range(3):
                 if i:
                     await asyncio.sleep(60)
                 try:
                     await meeting_channel.send(
-                        f"🚨 @everyone Собрание клана! Заходим в войс: 🔊 {voice.name}",
-                        allowed_mentions=discord.AllowedMentions(everyone=True))
+                        f"🚨 {ping_mention} Собрание клана! Заходим в войс: 🔊 {voice.name}",
+                        allowed_mentions=discord.AllowedMentions(everyone=True, roles=True))
+                    log.info("Собрание: пинг %s/3 отправлен (%s), guild %s", i + 1, ping_mention, guild.id)
                 except discord.HTTPException as e:
                     if e.status == 429:
                         log.warning("Собрание: пинги остановлены (rate limit), guild %s", guild.id)
                     else:
                         log.exception("Собрание: пинг не отправлен")
                     break
-        clan_role_id = _config_id(guild, "clan_role", CLAN_ROLE_ID)
-        clan_role = guild.get_role(clan_role_id) if clan_role_id else None
-        if clan_role is None:
-            clan_role = discord.utils.find(lambda r: r.name.casefold() == "clan", guild.roles)
         candidates = []
         if clan_role is not None:
             for m in guild.members:
@@ -1795,6 +1805,7 @@ async def run_meeting(guild, voice, actor):
                 if m.voice is not None:
                     continue
                 candidates.append(m)
+        log.info("Собрание: ЛС-кандидатов %s, guild %s", len(candidates), guild.id)
         sent = 0
         for idx, member in enumerate(candidates):
             if idx:
@@ -1821,6 +1832,7 @@ async def run_meeting(guild, voice, actor):
         fields = [("Войс-канал", f"🔊 {voice.name} (`{voice.id}`)"),
                   ("Запустил", f"{actor} (`{actor.id}`)"),
                   ("ЛС", f"Отправлено {sent} из {len(candidates)}")]
+        log.info("Собрание: ЛС отправлено %s из %s, guild %s", sent, len(candidates), guild.id)
         await send_staff_log(guild, make_log_embed("🚨 Собрание объявлено", discord.Color.red(), fields))
     except Exception:
         log.exception("Собрание: непредвиденная ошибка")
@@ -1851,6 +1863,7 @@ async def http_meeting(request):
         return aiohttp_web.json_response({"ok": False, "error": "meeting already running"}, status=409)
     _meetings_running.add(guild.id)
     asyncio.create_task(run_meeting(guild, voice, actor))
+    log.info("Собрание запущено с сайта: guild %s, войс %s, запустил %s", guild.id, voice.id, actor.id)
     return aiohttp_web.json_response({"ok": True})
 
 async def http_voice_channels(request):
