@@ -368,8 +368,12 @@ class FalconsBot(commands.Bot):
         await self.tree.sync()
         if GUILD_ID:
             guild_obj = discord.Object(id=GUILD_ID)
-            self.tree.copy_global_to(guild=guild_obj)
-            await self.tree.sync(guild=guild_obj)
+            try:
+                self.tree.copy_global_to(guild=guild_obj)
+                await self.tree.sync(guild=guild_obj)
+                log.info("commands synced for guild %s", GUILD_ID)
+            except Exception:
+                log.exception("sync failed for guild %s", GUILD_ID)
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
@@ -684,7 +688,9 @@ async def on_ready():
         if GUILD_ID and guild.id == GUILD_ID:
             continue
         try:
-            await bot.tree.sync(guild=discord.Object(id=guild.id))
+            bot.tree.copy_global_to(guild=guild)
+            await bot.tree.sync(guild=guild)
+            log.info("commands synced for guild %s", guild.id)
         except Exception:
             log.exception("sync команд не удался для сервера %s", guild.id)
 
