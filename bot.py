@@ -668,6 +668,7 @@ async def before_auto_announce():
 @bot.event
 async def on_ready():
     log.info("Connected as %s (%s)", bot.user, bot.user.id)
+    log.info("on_ready: найдено %s гилдов: %s", len(bot.guilds), [g.id for g in bot.guilds])
     if not updater.is_running():
         updater.start()
     if not ticket_reminder.is_running():
