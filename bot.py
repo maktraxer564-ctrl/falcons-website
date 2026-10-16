@@ -43,6 +43,7 @@ API_SECRET_KEY = os.getenv("API_SECRET_KEY", "").strip()
 BOT_HTTP_PORT = int(os.getenv("BOT_HTTP_PORT", os.getenv("SERVER_PORT", "8080")) or 8080)
 BOT_HTTP_HOST = os.getenv("BOT_HTTP_HOST", "0.0.0.0").strip()
 NEWCOMER_ROLE_ID = int(os.getenv("NEWCOMER_ROLE_ID", "0") or 0)
+MAIN_ROLE_ID = int(os.getenv("MAIN_ROLE_ID", "0") or 0)
 REWARD_ROLE_10 = int(os.getenv("REWARD_ROLE_10", "0") or 0)
 REWARD_ROLE_25 = int(os.getenv("REWARD_ROLE_25", "0") or 0)
 REWARD_ROLE_50 = int(os.getenv("REWARD_ROLE_50", "0") or 0)
@@ -1167,6 +1168,23 @@ class SelfRolesView(discord.ui.View):
         if roles:
             self.add_item(SelfRoleSelect(roles))
 
+async def promote_newcomer(member, chosen):
+    if not chosen or not NEWCOMER_ROLE_ID or not MAIN_ROLE_ID:
+        return None
+    guild = member.guild
+    newcomer = guild.get_role(NEWCOMER_ROLE_ID)
+    main_role = guild.get_role(MAIN_ROLE_ID)
+    if newcomer is None or main_role is None or newcomer not in member.roles:
+        return None
+    try:
+        await member.remove_roles(newcomer, reason="FLCN self-roles")
+        if main_role not in member.roles:
+            await member.add_roles(main_role, reason="FLCN self-roles")
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("self-roles: не удалось перевести новичка в main")
+        return None
+    return main_role.name
+
 @bot.event
 async def on_interaction(interaction):
     if interaction.type is not discord.InteractionType.component:
@@ -1195,6 +1213,7 @@ async def on_interaction(interaction):
                 removed.append(role.name)
         except (discord.Forbidden, discord.HTTPException):
             log.exception("self-roles: не удалось изменить роль %s", role_id)
+    await promote_newcomer(member, chosen)
     parts = []
     if added:
         parts.append("выдано: " + ", ".join(added))
