@@ -8,6 +8,7 @@ import sqlite3
 import time
 import datetime
 from pathlib import Path
+from html import unescape
 
 import aiohttp
 from aiohttp import web as aiohttp_web
@@ -38,6 +39,9 @@ CATEGORY_NAME = os.getenv("STATS_CATEGORY_NAME", "▪・ꜱᴇʀᴠᴇʀ ꜱᴛ�
 TICKET_CATEGORY_NAME = os.getenv("TICKET_CATEGORY_NAME", "FLCN TICKETS").strip()
 UPDATE_SECONDS = max(60, int(os.getenv("UPDATE_SECONDS", "60") or 60))
 VOICE_UPDATE_SECONDS = max(60, int(os.getenv("VOICE_UPDATE_SECONDS", "420") or 420))
+CHUNK_TIMEOUT_SECONDS = max(5, int(os.getenv("CHUNK_TIMEOUT_SECONDS", "90") or 90))
+_stats_env = os.getenv("STATS_GUILD_IDS", "").strip()
+STATS_GUILD_IDS = {int(x) for x in _stats_env.split(",") if x.strip().isdigit()}
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://falcons-panel.onrender.com").strip().rstrip("/")
 API_SECRET_KEY = os.getenv("API_SECRET_KEY", "").strip()
 BOT_HTTP_PORT = int(os.getenv("BOT_HTTP_PORT", os.getenv("SERVER_PORT", "8080")) or 8080)
@@ -182,6 +186,26 @@ def init_db():
             key TEXT NOT NULL,
             value TEXT NOT NULL,
             PRIMARY KEY (guild_id, key)
+        );
+        CREATE TABLE IF NOT EXISTS wipe_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            channel_id TEXT NOT NULL,
+            message_id TEXT,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            wipe_at INTEGER NOT NULL,
+            server_name TEXT NOT NULL DEFAULT '',
+            ask_for_reason INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS wipe_responses (
+            event_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            reason TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (event_id, user_id)
         );
         CREATE INDEX IF NOT EXISTS idx_invites_invited ON invites(guild_id, invited_id);
         """)
@@ -365,6 +389,24 @@ class FalconsBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
+        state = self._connection
+        _orig_proc = state.process_chunk_requests
+
+        def _log_chunk_requests(guild_id, nonce, members, complete):
+            print(f"[CHUNK-RAW] guild={guild_id} nonce={nonce} members={len(members)} complete={complete}", flush=True)
+            guild = bot.get_guild(guild_id)
+            if guild is not None:
+                for member in members:
+                    existing = guild.get_member(member.id)
+                    if existing is None or existing.joined_at is None:
+                        guild._add_member(member)
+                if complete:
+                    waiter = _chunk_waiters.get(guild_id)
+                    if waiter is not None and not waiter.is_set():
+                        waiter.set()
+            return _orig_proc(guild_id, nonce, members, complete)
+
+        state.process_chunk_requests = _log_chunk_requests
         await self.tree.sync()
         if GUILD_ID:
             guild_obj = discord.Object(id=GUILD_ID)
@@ -377,6 +419,10 @@ class FalconsBot(commands.Bot):
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
+        with _db() as conn:
+            wipe_ids = [row[0] for row in conn.execute("SELECT id FROM wipe_events WHERE message_id IS NOT NULL")]
+        for wipe_id in wipe_ids:
+            self.add_view(WipeResponseView(wipe_id))
         self.loop.create_task(start_bot_http())
 
 bot = FalconsBot()
@@ -457,6 +503,7 @@ async def update_counter(guild, category, key, count):
 
 refresh_lock = asyncio.Lock()
 _last_voice_update = {}
+_chunk_waiters = {}
 
 async def push_stats(guild, total, online, clan):
     if not API_SECRET_KEY:
@@ -529,17 +576,25 @@ async def push_tickets(guild):
     except Exception:
         log.exception("push_tickets failed")
 
+async def fetch_members_via_gateway(guild):
+    waiter = asyncio.Event()
+    _chunk_waiters[guild.id] = waiter
+    try:
+        await guild._state.chunker(guild.id, nonce=os.urandom(16).hex())
+        await asyncio.wait_for(waiter.wait(), timeout=CHUNK_TIMEOUT_SECONDS)
+        return True
+    except asyncio.TimeoutError:
+        return False
+    finally:
+        if _chunk_waiters.get(guild.id) is waiter:
+            _chunk_waiters.pop(guild.id, None)
+
 async def refresh(guild):
     async with refresh_lock:
-        try:
-            await guild.chunk(cache=True)
-        except discord.HTTPException as e:
-            if e.status == 429:
-                log.warning("chunk rate limited, skipping refresh for guild %s", guild.id)
-                return
-            log.exception("chunk failed")
-        except Exception:
-            log.exception("chunk failed")
+        ok = await fetch_members_via_gateway(guild)
+        if not ok:
+            log.warning("chunk timed out, skipping refresh for guild %s", guild.id)
+            return
         members = list(guild.members)
         total = guild.member_count if guild.member_count is not None else len(members)
         online = sum(1 for m in members if m.status not in (discord.Status.offline, discord.Status.invisible))
@@ -552,7 +607,8 @@ async def refresh(guild):
         await push_invites(guild)
         await push_staff(guild)
         await push_tickets(guild)
-        if not GUILD_ID or guild.id == GUILD_ID:
+        counters_here = guild.id in STATS_GUILD_IDS if STATS_GUILD_IDS else (not GUILD_ID or guild.id == GUILD_ID)
+        if counters_here:
             if time.time() - _last_voice_update.get(guild.id, 0) < VOICE_UPDATE_SECONDS:
                 return
             try:
@@ -676,6 +732,15 @@ async def on_ready():
     if not auto_announce_loop.is_running():
         auto_announce_loop.start()
     for guild in bot.guilds:
+        if GUILD_ID and guild.id == GUILD_ID:
+            continue
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            await bot.tree.sync(guild=guild)
+            print(f"[SYNC] commands synced for guild {guild.id}", flush=True)
+        except Exception as e:
+            print(f"[SYNC] failed for guild {guild.id}: {e!r}", flush=True)
+    for guild in bot.guilds:
         try:
             await refresh(guild)
         except Exception:
@@ -685,15 +750,6 @@ async def on_ready():
             await collect_invites(guild)
         except Exception:
             log.exception("Не удалось собрать кэш инвайтов")
-    for guild in bot.guilds:
-        if GUILD_ID and guild.id == GUILD_ID:
-            continue
-        try:
-            bot.tree.copy_global_to(guild=guild)
-            await bot.tree.sync(guild=guild)
-            log.info("commands synced for guild %s", guild.id)
-        except Exception:
-            log.exception("sync команд не удался для сервера %s", guild.id)
 
 @bot.event
 async def on_guild_join(guild):
@@ -756,6 +812,23 @@ async def on_member_remove(member):
         await send_goodbye(member)
     except Exception:
         log.exception("Прощание не отправлено")
+
+@bot.event
+async def on_member_update(before, after):
+    if after.guild is None or after.guild.id != 1560405533360525392:
+        return
+    if before.roles == after.roles:
+        return
+    main_role = after.guild.get_role(1560405533372977242)
+    if main_role is None:
+        return
+    if main_role in after.roles and main_role not in before.roles:
+        nick = "FLCN. | ник стим | имя"
+        try:
+            await after.edit(nick=nick, reason="FLCN MAIN role")
+        except Exception:
+            log.exception("Не удалось установить ник FLCN")
+        log_action(after.guild.id, "nick_set", target=after, details=nick)
             
 
 
@@ -894,6 +967,50 @@ async def create_ticket(interaction, category_key, answers):
          ("Категория", CATEGORY_LABELS.get(category_key, category_key)), ("Номер", f"#{ticket_number}")]))
     asyncio.create_task(push_tickets(guild))
 
+STEAM_PROFILE_RE = re.compile(
+    r"https?://(?:www\.)?steamcommunity\.com/(?:profiles/\d+|id/[^/\s?#\"'<>]+)",
+    re.IGNORECASE)
+
+async def find_steam_profile_url(channel):
+    async for msg in channel.history(limit=100):
+        texts = [msg.content or ""]
+        for embed in msg.embeds:
+            texts.append(embed.description or "")
+            texts.extend(f.value or "" for f in embed.fields)
+        for text in texts:
+            m = STEAM_PROFILE_RE.search(text)
+            if m:
+                return m.group(0).rstrip(".,);:!?")
+    return None
+
+async def fetch_steam_nick(url):
+    timeout = aiohttp.ClientTimeout(total=15)
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+        async with session.get(url + "/?xml=1") as resp:
+            if resp.status == 200:
+                xml = await resp.text(errors="ignore")
+                m = re.search(r"<steamID><!\[CDATA\[(.*?)\]\]></steamID>", xml)
+                if m and m.group(1).strip():
+                    return m.group(1).strip()
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return None
+            page = await resp.text(errors="ignore")
+    m = re.search(r'class="actual_persona_name">([^<]+)<', page)
+    if m is None:
+        m = re.search(r'"personaname":"((?:[^"\\]|\\.)*)"', page)
+        if m:
+            try:
+                name = json.loads(f'"{m.group(1)}"')
+                return name.strip() or None
+            except Exception:
+                return None
+        m = re.search(r"<title>\s*Steam Community\s*::\s*(.*?)\s*</title>", page, re.DOTALL)
+    if m is None:
+        return None
+    return unescape(m.group(1)).strip() or None
+
 async def start_application(interaction, category_key):
     questions = load_questions(category_key)
     if not questions:
@@ -975,9 +1092,29 @@ class TicketActionsView(discord.ui.View):
             await member.add_roles(clan_role, reason=f"FLCN ticket #{t['number']}")
         except discord.Forbidden:
             return await interaction.response.send_message("Не удалось выдать роль клана (нет прав у бота).", ephemeral=True)
+        nick_line = ""
+        try:
+            steam_url = await find_steam_profile_url(interaction.channel)
+            if not steam_url:
+                nick_line = " Ник не изменён: в тикете нет ссылки Steam."
+            else:
+                steam_nick = await fetch_steam_nick(steam_url)
+                if steam_nick:
+                    nick = f"FLCN. | {' '.join(steam_nick.split())}"[:32]
+                    await member.edit(nick=nick, reason=f"FLCN ticket #{t['number']}")
+                    nick_line = f" Ник: `{nick}`."
+                    log_action(interaction.guild.id, "ticket_nick", actor=interaction.user,
+                               target=member, details=nick)
+                else:
+                    nick_line = " Ник не изменён: не удалось прочитать профиль Steam."
+        except discord.Forbidden:
+            nick_line = " Ник не изменён: боту не хватает прав на смену ника."
+            log.warning("Нет прав на смену ника игроку %s", member.id)
+        except Exception:
+            log.exception("Ошибка смены ника по Steam")
         record_ticket_decision(interaction.channel.id, "accepted", interaction.user)
         log_action(interaction.guild.id, "ticket_accept", actor=interaction.user, target=member, details=f"#{t['number']}")
-        await interaction.channel.send(f"✅ {member.mention} принят в клан. Решение принял {interaction.user.mention}.")
+        await interaction.channel.send(f"✅ {member.mention} принят в клан. Решение принял {interaction.user.mention}.{nick_line}")
         await send_staff_log(interaction.guild, make_log_embed("✅ Заявка принята", discord.Color.green(),
             [("Номер", f"#{t['number']}"), ("Игрок", f"{member} (`{member.id}`)"),
              ("Принял", f"{interaction.user} (`{interaction.user.id}`)")]))
@@ -1058,14 +1195,15 @@ class VoiceSelectView(discord.ui.View):
         embed.add_field(name="Сотрудник", value=interaction.user.mention, inline=False)
         embed.add_field(name="Голосовой канал", value=f"🔊 {voice.name}", inline=False)
         if invite_url:
-            embed.add_field(name="Ссылка для подключения", value=invite_url, inline=False)
+            embed.add_field(name="Ссылка (открой и зайди в войс)", value=invite_url, inline=False)
+            embed.add_field(name="Как зайти в войс", value=f"1. Нажми кнопку ниже\n2. В Discord слева нажми на канал 🔊 {voice.name}", inline=False)
         view = None
         if invite_url:
             view = discord.ui.View()
-            view.add_item(discord.ui.Button(label="Присоединиться к голосовому каналу",
+            view.add_item(discord.ui.Button(label="Открыть Discord",
                                              url=invite_url, style=discord.ButtonStyle.link))
         await ticket_channel.send(
-            content=f"{member.mention if member else ''} был вызван на **обзвон** модератором {interaction.user.mention} в канал 🔊 {voice.name}",
+            content=f"{member.mention if member else ''} был вызван на **обзвон** модератором {interaction.user.mention} в канал 🔊 {voice.name}. **Войди в этот канал вручную!**",
             embed=embed, view=view)
         log_action(interaction.guild.id, "ticket_call", actor=interaction.user, target=member,
                    details=f"#{self.ticket_number} → {voice.name}")
@@ -1234,6 +1372,129 @@ async def on_interaction(interaction):
         parts.append("снято: " + ", ".join(removed))
     await interaction.response.send_message(
         "Готово. " + ("; ".join(parts) if parts else "Изменений нет."), ephemeral=True)
+
+WIPE_TZ = datetime.timezone(datetime.timedelta(hours=3))
+
+def wipe_embed(event_id):
+    with _db() as conn:
+        event = conn.execute("SELECT * FROM wipe_events WHERE id=?", (event_id,)).fetchone()
+        responses = conn.execute("SELECT user_id,status,reason FROM wipe_responses WHERE event_id=? ORDER BY user_id", (event_id,)).fetchall()
+    if not event:
+        return discord.Embed(title="Wipe announcement", description="Event unavailable.")
+    embed = discord.Embed(title="📝 " + event["title"], description=event["description"], color=discord.Color.orange())
+    when = datetime.datetime.fromtimestamp(event["wipe_at"], WIPE_TZ)
+    embed.add_field(name="Date & Time", value=when.strftime("%d.%m.%Y г. %H:%M (Europe/Moscow)"), inline=False)
+    embed.add_field(name="🗺️ Server", value=event["server_name"] or "—", inline=False)
+    groups = {"accepted": [], "declined": [], "late": []}
+    for row in responses:
+        label = f"<@{row['user_id']}>"
+        if row["reason"]:
+            comment = discord.utils.escape_mentions(discord.utils.escape_markdown(row["reason"][:200]))
+            label += f" — {comment}"
+        groups.setdefault(row["status"], []).append(label)
+    for key, label in (("accepted", "✅ Accepted"), ("declined", "❌ Declined"), ("late", "🕒 Late")):
+        names = groups[key]
+        embed.add_field(name=f"{label} ({len(names)})", value="\n".join(names[:25]) or "—", inline=True)
+    return embed
+
+async def set_wipe_response(interaction, event_id, status, reason=""):
+    with _db() as conn:
+        event = conn.execute("SELECT guild_id FROM wipe_events WHERE id=?", (event_id,)).fetchone()
+        if not event:
+            return await interaction.response.send_message("Это объявление больше недоступно.", ephemeral=True)
+        conn.execute("INSERT INTO wipe_responses(event_id,user_id,status,reason) VALUES(?,?,?,?) "
+                     "ON CONFLICT(event_id,user_id) DO UPDATE SET status=excluded.status,reason=excluded.reason",
+                     (event_id, str(interaction.user.id), status, reason[:500]))
+    await interaction.response.edit_message(embed=wipe_embed(event_id), view=WipeResponseView(event_id))
+
+class WipeReasonModal(discord.ui.Modal):
+    def __init__(self, event_id, status):
+        super().__init__(title="Комментарий к ответу")
+        self.event_id = event_id
+        self.status = status
+        self.reason = discord.ui.TextInput(label="Комментарий", required=True, max_length=500, style=discord.TextStyle.paragraph)
+        self.add_item(self.reason)
+
+    async def on_submit(self, interaction):
+        with _db() as conn:
+            conn.execute("INSERT INTO wipe_responses(event_id,user_id,status,reason) VALUES(?,?,?,?) "
+                         "ON CONFLICT(event_id,user_id) DO UPDATE SET status=excluded.status,reason=excluded.reason",
+                         (self.event_id, str(interaction.user.id), self.status, str(self.reason.value).strip()))
+            event = conn.execute("SELECT channel_id,message_id FROM wipe_events WHERE id=?", (self.event_id,)).fetchone()
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        if event and event["message_id"]:
+            channel = bot.get_channel(int(event["channel_id"]))
+            if channel:
+                try:
+                    message = await channel.fetch_message(int(event["message_id"]))
+                    await message.edit(embed=wipe_embed(self.event_id), view=WipeResponseView(self.event_id))
+                except discord.HTTPException:
+                    log.exception("Failed to update wipe response message")
+        await interaction.followup.send("Ответ и комментарий сохранены.", ephemeral=True)
+
+class WipeResponseView(discord.ui.View):
+    def __init__(self, event_id):
+        super().__init__(timeout=None)
+        self.event_id = event_id
+        for label, status, style in (("✅ Принял", "accepted", discord.ButtonStyle.success),
+                                     ("❌ Не смогу", "declined", discord.ButtonStyle.danger),
+                                     ("🕒 Опоздаю", "late", discord.ButtonStyle.primary)):
+            button = discord.ui.Button(label=label, style=style, custom_id=f"flcn:wipe:{event_id}:{status}")
+            button.callback = self._callback(status)
+            self.add_item(button)
+
+    def _callback(self, status):
+        async def callback(interaction):
+            with _db() as conn:
+                row = conn.execute("SELECT ask_for_reason FROM wipe_events WHERE id=?", (self.event_id,)).fetchone()
+            if row and row[0]:
+                return await interaction.response.send_modal(WipeReasonModal(self.event_id, status))
+            await set_wipe_response(interaction, self.event_id, status)
+        return callback
+
+async def publish_wipe(guild, channel, title, description, wipe_at, server_name="", ask_for_reason=False, actor_id=None):
+    with _db() as conn:
+        cur = conn.execute("INSERT INTO wipe_events(guild_id,channel_id,title,description,wipe_at,server_name,ask_for_reason,created_by,created_at) "
+                            "VALUES(?,?,?,?,?,?,?,?,?)",
+                            (str(guild.id), str(channel.id), title, description, wipe_at, server_name, int(ask_for_reason), str(actor_id or ""), int(time.time())))
+        event_id = cur.lastrowid
+    view = WipeResponseView(event_id)
+    try:
+        message = await channel.send(embed=wipe_embed(event_id), view=view, allowed_mentions=discord.AllowedMentions.none())
+    except Exception:
+        with _db() as conn:
+            conn.execute("DELETE FROM wipe_responses WHERE event_id=?", (event_id,))
+            conn.execute("DELETE FROM wipe_events WHERE id=?", (event_id,))
+        raise
+    with _db() as conn:
+        conn.execute("UPDATE wipe_events SET message_id=? WHERE id=?", (str(message.id), event_id))
+    return message
+
+@bot.tree.command(name="wipe", description="Опубликовать объявление о вайпе")
+@app_commands.describe(title="Заголовок", description="Описание", date="Дата DD.MM.YYYY", time="Время HH:MM, Москва",
+                       server="Название Rust-сервера", channel="Канал объявления", ask_for_reason="Добавить кнопку для комментария")
+async def wipe_command(interaction: discord.Interaction, title: str, description: str, date: str, time: str,
+                       server: str = "", channel: discord.TextChannel = None, ask_for_reason: bool = False):
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Недостаточно прав: нужна роль стаффа или права управления сервером.", ephemeral=True)
+    try:
+        when = datetime.datetime.strptime(f"{date} {time}", "%d.%m.%Y %H:%M").replace(tzinfo=WIPE_TZ)
+    except ValueError:
+        return await interaction.response.send_message("Дата/время должны быть в формате DD.MM.YYYY и HH:MM.", ephemeral=True)
+    if not title.strip() or len(title) > 256 or not description.strip() or len(description) > 3500 or len(server) > 100:
+        return await interaction.response.send_message("Проверь длину заголовка, описания и названия сервера.", ephemeral=True)
+    channel = channel or interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        return await interaction.response.send_message("Выбери текстовый канал.", ephemeral=True)
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    try:
+        await publish_wipe(interaction.guild, channel, title.strip(), description.strip(), int(when.timestamp()), server.strip(), ask_for_reason, interaction.user.id)
+    except discord.Forbidden:
+        return await interaction.followup.send("У бота нет прав отправлять сообщения или встраивать ссылки в выбранном канале.", ephemeral=True)
+    except discord.HTTPException:
+        log.exception("Failed to publish wipe announcement")
+        return await interaction.followup.send("Discord не принял объявление. Проверь текст и попробуй ещё раз.", ephemeral=True)
+    await interaction.followup.send(f"Объявление о вайпе опубликовано в {channel.mention}.", ephemeral=True)
 
 @bot.tree.command(name="falcons_stats", description="Обновить счётчики сервера")
 async def falcons_stats(interaction):
@@ -1904,6 +2165,49 @@ async def http_meeting(request):
     log.info("Собрание запущено с сайта: guild %s, войс %s, запустил %s", guild.id, voice.id, actor.id)
     return aiohttp_web.json_response({"ok": True})
 
+async def http_announce_wipe(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    data = await request.json()
+    guild = _resolve_guild(data.get("guild_id"))
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    actor = guild.get_member(int(data.get("actor_id", 0)))
+    if not has_staff_perms(actor):
+        return aiohttp_web.json_response({"ok": False, "error": "staff access required"}, status=403)
+    channel = guild.get_channel(int(data.get("channel_id", 0)))
+    if not isinstance(channel, discord.TextChannel):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid text channel"}, status=400)
+    title = str(data.get("title", "")).strip()
+    description = str(data.get("description", "")).strip()
+    server = str(data.get("server", "")).strip()
+    date_text = str(data.get("date", "")).strip()
+    time_text = str(data.get("time", "")).strip()
+    if not title or len(title) > 256 or not description or len(description) > 3500 or len(server) > 100:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid title, description or server"}, status=400)
+    try:
+        when = datetime.datetime.strptime(f"{date_text} {time_text}", "%Y-%m-%d %H:%M").replace(tzinfo=WIPE_TZ)
+    except ValueError:
+        return aiohttp_web.json_response({"ok": False, "error": "invalid date/time"}, status=400)
+    try:
+        message = await publish_wipe(guild, channel, title, description, int(when.timestamp()), server,
+                                     bool(data.get("ask_for_reason")), actor.id)
+    except discord.Forbidden:
+        return aiohttp_web.json_response({"ok": False, "error": "bot cannot post in that channel"}, status=403)
+    except discord.HTTPException:
+        log.exception("Failed to publish wipe from panel")
+        return aiohttp_web.json_response({"ok": False, "error": "Discord rejected the announcement"}, status=502)
+    return aiohttp_web.json_response({"ok": True, "message_id": str(message.id)})
+
+async def http_text_channels(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    guild = _resolve_guild(request.query.get("guild_id"))
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    channels = [{"id": str(c.id), "name": c.name} for c in sorted(guild.text_channels, key=lambda c: c.position)]
+    return aiohttp_web.json_response({"ok": True, "channels": channels})
+
 async def http_voice_channels(request):
     if not _check_secret(request):
         return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
@@ -1929,6 +2233,8 @@ async def start_bot_http():
     app.router.add_post("/bot/settings", http_set_settings)
     app.router.add_post("/bot/meeting", http_meeting)
     app.router.add_get("/bot/voice-channels", http_voice_channels)
+    app.router.add_post("/bot/wipe", http_announce_wipe)
+    app.router.add_get("/bot/text-channels", http_text_channels)
     runner = aiohttp_web.AppRunner(app)
     await runner.setup()
     site = aiohttp_web.TCPSite(runner, BOT_HTTP_HOST, BOT_HTTP_PORT)
