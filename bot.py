@@ -1388,8 +1388,8 @@ def wipe_embed(event_id):
     if not event:
         return discord.Embed(title="Wipe announcement", description="Event unavailable.")
     embed = discord.Embed(title="📝 " + event["title"], description=event["description"], color=discord.Color.orange())
-    when = datetime.datetime.fromtimestamp(event["wipe_at"], WIPE_TZ)
-    embed.add_field(name="Date & Time", value=when.strftime("%d.%m.%Y г. %H:%M (Europe/Moscow)"), inline=False)
+    ts = int(event["wipe_at"])
+    embed.add_field(name="Date & Time", value=f"<t:{ts}:F> (<t:{ts}:R>)", inline=False)
     embed.add_field(name="🗺️ Server", value=event["server_name"] or "—", inline=False)
     groups = {"accepted": [], "declined": [], "late": []}
     for row in responses:
