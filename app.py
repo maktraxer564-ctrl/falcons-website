@@ -677,10 +677,15 @@ def api_wipe():
         return jsonify({"ok": False, "error": "invalid date/time"}), 400
     if not isinstance(data.get("ask_for_reason", False), bool):
         return jsonify({"ok": False, "error": "invalid ask_for_reason"}), 400
+    mention = str(data.get("mention", "main")).strip() or "main"
+    image_url = str(data.get("image_url", "")).strip()
+    if image_url and not image_url.lower().startswith(("http://", "https://")):
+        return jsonify({"ok": False, "error": "invalid image_url"}), 400
     ok, status, body = _bot_post("/bot/wipe", {
         "guild_id": _current_guild(), "actor_id": user.get("id"), "channel_id": channel_id,
         "title": title, "description": description, "server": server,
-        "date": date_text, "time": time_text, "ask_for_reason": data.get("ask_for_reason", False)
+        "date": date_text, "time": time_text, "ask_for_reason": data.get("ask_for_reason", False),
+        "mention": mention, "image_url": image_url
     })
     return jsonify(body), status
 
