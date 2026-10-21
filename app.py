@@ -184,6 +184,12 @@ def _get_guild_stats(guild_id):
 def index():
     return send_from_directory(".", "index.html")
 
+@app.get("/wipe.png")
+def wipe_image():
+    resp = send_from_directory(".", "wipe.png")
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
+
 @app.get("/health")
 def health():
     return {"ok": True}
