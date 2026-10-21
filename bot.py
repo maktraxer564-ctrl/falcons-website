@@ -214,6 +214,11 @@ def init_db():
             conn.execute("ALTER TABLE tickets ADD COLUMN claimed_by TEXT")
         if "reminded" not in ticket_cols:
             conn.execute("ALTER TABLE tickets ADD COLUMN reminded INTEGER NOT NULL DEFAULT 0")
+        wipe_cols = {row[1] for row in conn.execute("PRAGMA table_info(wipe_events)").fetchall()}
+        if "image_url" not in wipe_cols:
+            conn.execute("ALTER TABLE wipe_events ADD COLUMN image_url TEXT")
+        if "mention_mode" not in wipe_cols:
+            conn.execute("ALTER TABLE wipe_events ADD COLUMN mention_mode TEXT")
 
 def next_ticket_number(guild_id):
     with _db() as conn:
@@ -1395,6 +1400,9 @@ def wipe_embed(event_id):
     for key, label in (("accepted", "✅ Accepted"), ("declined", "❌ Declined"), ("late", "🕒 Late")):
         names = groups[key]
         embed.add_field(name=f"{label} ({len(names)})", value="\n".join(names[:25]) or "—", inline=True)
+    image_url = event["image_url"] if "image_url" in event.keys() else None
+    if image_url:
+        embed.set_image(url=image_url)
     return embed
 
 async def set_wipe_response(interaction, event_id, status, reason=""):
@@ -1452,15 +1460,30 @@ class WipeResponseView(discord.ui.View):
             await set_wipe_response(interaction, self.event_id, status)
         return callback
 
-async def publish_wipe(guild, channel, title, description, wipe_at, server_name="", ask_for_reason=False, actor_id=None):
+def _wipe_mention_payload(guild, mention_mode):
+    mode = str(mention_mode or "main").strip()
+    if mode.lower() in ("none", "нет", "-", "0"):
+        return None, discord.AllowedMentions.none()
+    if mode.lower() in ("everyone", "all", "@everyone", "@all", "все"):
+        return "@everyone", discord.AllowedMentions(everyone=True)
+    name = mode.lower().lstrip("@")
+    role = discord.utils.find(lambda r: r.name.lower() == name, guild.roles)
+    if role:
+        return role.mention, discord.AllowedMentions(roles=[role])
+    return "@everyone", discord.AllowedMentions(everyone=True)
+
+async def publish_wipe(guild, channel, title, description, wipe_at, server_name="", ask_for_reason=False, actor_id=None,
+                       mention_mode=None, image_url=None):
     with _db() as conn:
-        cur = conn.execute("INSERT INTO wipe_events(guild_id,channel_id,title,description,wipe_at,server_name,ask_for_reason,created_by,created_at) "
-                            "VALUES(?,?,?,?,?,?,?,?,?)",
-                            (str(guild.id), str(channel.id), title, description, wipe_at, server_name, int(ask_for_reason), str(actor_id or ""), int(time.time())))
+        cur = conn.execute("INSERT INTO wipe_events(guild_id,channel_id,title,description,wipe_at,server_name,ask_for_reason,created_by,created_at,image_url,mention_mode) "
+                            "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                            (str(guild.id), str(channel.id), title, description, wipe_at, server_name, int(ask_for_reason), str(actor_id or ""), int(time.time()),
+                             (image_url or None), (str(mention_mode).strip() if mention_mode else None)))
         event_id = cur.lastrowid
     view = WipeResponseView(event_id)
+    content, allowed = _wipe_mention_payload(guild, mention_mode)
     try:
-        message = await channel.send(embed=wipe_embed(event_id), view=view, allowed_mentions=discord.AllowedMentions.none())
+        message = await channel.send(content=content, embed=wipe_embed(event_id), view=view, allowed_mentions=allowed)
     except Exception:
         with _db() as conn:
             conn.execute("DELETE FROM wipe_responses WHERE event_id=?", (event_id,))
@@ -1472,9 +1495,11 @@ async def publish_wipe(guild, channel, title, description, wipe_at, server_name=
 
 @bot.tree.command(name="wipe", description="Опубликовать объявление о вайпе")
 @app_commands.describe(title="Заголовок", description="Описание", date="Дата DD.MM.YYYY", time="Время HH:MM, Москва",
-                       server="Название Rust-сервера", channel="Канал объявления", ask_for_reason="Добавить кнопку для комментария")
+                       server="Название Rust-сервера", channel="Канал объявления", ask_for_reason="Добавить кнопку для комментария",
+                       mention="Кого тегать: main (роль) / everyone / нет", image="Фото для объявления (прикрепи картинку)")
 async def wipe_command(interaction: discord.Interaction, title: str, description: str, date: str, time: str,
-                       server: str = "", channel: discord.TextChannel = None, ask_for_reason: bool = False):
+                       server: str = "", channel: discord.TextChannel = None, ask_for_reason: bool = False,
+                       mention: str = "main", image: discord.Attachment = None):
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Недостаточно прав: нужна роль стаффа или права управления сервером.", ephemeral=True)
     try:
@@ -1486,9 +1511,16 @@ async def wipe_command(interaction: discord.Interaction, title: str, description
     channel = channel or interaction.channel
     if not isinstance(channel, discord.TextChannel):
         return await interaction.response.send_message("Выбери текстовый канал.", ephemeral=True)
+    image_url = None
+    if image is not None:
+        ct = (image.content_type or "").lower()
+        if not ct.startswith("image/"):
+            return await interaction.response.send_message("Прикрепи файл-картинку (jpg/png/webp/gif).", ephemeral=True)
+        image_url = image.url
     await interaction.response.defer(ephemeral=True, thinking=True)
     try:
-        await publish_wipe(interaction.guild, channel, title.strip(), description.strip(), int(when.timestamp()), server.strip(), ask_for_reason, interaction.user.id)
+        await publish_wipe(interaction.guild, channel, title.strip(), description.strip(), int(when.timestamp()), server.strip(), ask_for_reason, interaction.user.id,
+                           mention_mode=mention, image_url=image_url)
     except discord.Forbidden:
         return await interaction.followup.send("У бота нет прав отправлять сообщения или встраивать ссылки в выбранном канале.", ephemeral=True)
     except discord.HTTPException:
@@ -2189,9 +2221,13 @@ async def http_announce_wipe(request):
         when = datetime.datetime.strptime(f"{date_text} {time_text}", "%Y-%m-%d %H:%M").replace(tzinfo=WIPE_TZ)
     except ValueError:
         return aiohttp_web.json_response({"ok": False, "error": "invalid date/time"}, status=400)
+    mention_mode = str(data.get("mention", "main")).strip() or "main"
+    image_url = str(data.get("image_url", "")).strip() or None
+    if image_url and not image_url.lower().startswith(("http://", "https://")):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid image_url"}, status=400)
     try:
         message = await publish_wipe(guild, channel, title, description, int(when.timestamp()), server,
-                                     bool(data.get("ask_for_reason")), actor.id)
+                                     bool(data.get("ask_for_reason")), actor.id, mention_mode=mention_mode, image_url=image_url)
     except discord.Forbidden:
         return aiohttp_web.json_response({"ok": False, "error": "bot cannot post in that channel"}, status=403)
     except discord.HTTPException:
