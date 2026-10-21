@@ -15,3 +15,9 @@ Environment variables:
 Add the exact same redirect URI in Discord Developer Portal → OAuth2 → Redirects.
 
 Only Discord profile login is implemented. The dashboard's member counts, tickets, roles, and statistics remain demo content until the bot/guild integration is added.
+
+## Wipe announcements
+
+Staff can publish a wipe announcement from the dashboard's **Вайп** page or with the Discord slash command `/wipe`. Both options post an embed with date/time in Europe/Moscow and buttons for **Принял**, **Не смогу**, and **Опоздаю**. A user's latest response replaces their previous response. Enable `ask_for_reason` to request a short comment when a member responds.
+
+The dashboard uses the existing bot HTTP API configuration (`BOT_API_URL` and `API_SECRET_KEY`). The bot needs permission to view and send messages and embed links in the chosen text channel. The bot database stores wipe announcements and responses so the buttons remain active after a restart.
