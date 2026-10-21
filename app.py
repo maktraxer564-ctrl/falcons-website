@@ -4,6 +4,7 @@ import time
 import secrets
 import sqlite3
 import json
+import re
 from urllib.parse import urlencode
 from pathlib import Path
 
@@ -646,6 +647,41 @@ def api_meeting():
         return jsonify({"ok": False, "error": "invalid voice_channel_id"}), 400
     ok, status, body = _bot_post("/bot/meeting", {"voice_channel_id": voice_id, "actor_id": user.get("id"),
                                                   "guild_id": _current_guild()})
+    return jsonify(body), status
+
+@app.get("/api/text-channels")
+def api_text_channels():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    ok, status, body = _bot_get(f"/bot/text-channels?guild_id={_current_guild()}")
+    return jsonify(body), status
+
+@app.post("/api/wipe")
+def api_wipe():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    channel_id = _id_str(data.get("channel_id"))
+    title = str(data.get("title", "")).strip()
+    description = str(data.get("description", "")).strip()
+    server = str(data.get("server", "")).strip()
+    date_text = str(data.get("date", "")).strip()
+    time_text = str(data.get("time", "")).strip()
+    if not channel_id or not title or len(title) > 256 or not description or len(description) > 3500 or len(server) > 100:
+        return jsonify({"ok": False, "error": "invalid channel or announcement text"}), 400
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_text) or not re.fullmatch(r"\d{2}:\d{2}", time_text):
+        return jsonify({"ok": False, "error": "invalid date/time"}), 400
+    if not isinstance(data.get("ask_for_reason", False), bool):
+        return jsonify({"ok": False, "error": "invalid ask_for_reason"}), 400
+    ok, status, body = _bot_post("/bot/wipe", {
+        "guild_id": _current_guild(), "actor_id": user.get("id"), "channel_id": channel_id,
+        "title": title, "description": description, "server": server,
+        "date": date_text, "time": time_text, "ask_for_reason": data.get("ask_for_reason", False)
+    })
     return jsonify(body), status
 
 @app.post("/api/invites/reward")
