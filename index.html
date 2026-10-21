@@ -120,6 +120,7 @@ body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),v
   <div class="avatar" id="avatar">?</div>
   <div><b id="userName">…</b><div class="sub" id="userRole">Вход через Discord</div></div>
   <select id="guildSelect" class="pill" style="display:none;max-width:280px" onchange="changeGuild(this.value)" title="Выбор сервера"></select>
+  <span class="pill" id="localClock" title="Твоё локальное время" style="padding:8px 14px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap">--:--:--</span>
   <button class="pill" onclick="logout()">Выйти</button>
 </header>
 <div class="content">
@@ -346,6 +347,21 @@ const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',
 const MOD_LABEL={warn:'Предупреждение',timeout:'Таймаут',untimeout:'Снятие таймаута',kick:'Кик',ban:'Бан',unban:'Разбан'};
 const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—';};
 const fmtTs=ts=>{if(!ts)return '';const d=new Date(ts<1e12?ts*1000:ts);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+
+function tickClock(){
+  const el=$('localClock');if(!el)return;
+  const d=new Date();
+  const t=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  let tz='';
+  try{
+    const parts=new Intl.DateTimeFormat('ru-RU',{timeZoneName:'short'}).formatToParts(d);
+    const p=parts.find(p=>p.type==='timeZoneName');
+    tz=p&&p.value?p.value:'';
+  }catch(e){}
+  el.textContent='🕐 '+t+(tz?' · '+tz:'');
+}
+setInterval(tickClock,1000);
+tickClock();
 
 function showLogin(msg){
   $('app').hidden=true;$('loginScreen').hidden=false;
