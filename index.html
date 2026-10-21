@@ -233,9 +233,11 @@ body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),v
       <div><div class="sub">Заголовок</div><input id="wipe-title" class="q-input" maxlength="256" placeholder="Например: Вайп Rust Way Chill 2"></div>
       <div><div class="sub">Rust-сервер</div><input id="wipe-server" class="q-input" maxlength="100" placeholder="Название сервера"></div>
       <div><div class="sub">Канал объявления</div><select id="wipe-channel" class="q-input"><option value="">Загрузка…</option></select></div>
+      <div><div class="sub">Кого тегать</div><select id="wipe-mention" class="q-input"><option value="main">@main (роль)</option><option value="everyone">@everyone</option><option value="none">Не тегать</option></select></div>
       <div><div class="sub">Дата</div><input id="wipe-date" class="q-input" type="date"></div>
       <div><div class="sub">Время (Москва)</div><input id="wipe-time" class="q-input" type="time"></div>
     </div>
+    <div style="margin-top:12px"><div class="sub">Фото для объявления (ссылка)</div><input id="wipe-image" class="q-input" maxlength="400" placeholder="https://... — картинка прикрепится к объявлению (в Discord можно просто прикрепить файл через /wipe)"></div>
     <div style="margin-top:12px"><div class="sub">Описание</div><textarea id="wipe-description" class="q-input" maxlength="3500" rows="4" style="width:100%;resize:vertical" placeholder="Подробности вайпа"></textarea></div>
     <div class="setting"><div><b>Просить участников указать причину</b><div class="sub">Добавить кнопку для комментария рядом с ответами</div></div><input type="checkbox" id="wipe-reason"></div>
     <div class="q-row"><button class="btn reject" id="wipe-go">Опубликовать вайп</button></div>
@@ -928,7 +930,8 @@ async function publishWipeFromPanel(){
     if(!ME.staff)return toast('Доступ только для стаффа панели',true);
     const data={title:$('wipe-title').value.trim(),description:$('wipe-description').value.trim(),
         server:$('wipe-server').value.trim(),channel_id:$('wipe-channel').value,
-        date:$('wipe-date').value,time:$('wipe-time').value,ask_for_reason:$('wipe-reason').checked};
+        date:$('wipe-date').value,time:$('wipe-time').value,ask_for_reason:$('wipe-reason').checked,
+        mention:($('wipe-mention')?$('wipe-mention').value:'main'),image_url:($('wipe-image')?$('wipe-image').value.trim():'')};
     if(!data.channel_id||!data.title||!data.description||!data.date||!data.time)return toast('Заполни заголовок, описание, канал, дату и время',true);
     if(!confirm('Опубликовать объявление о вайпе в выбранный канал?'))return;
     const btn=$('wipe-go');btn.disabled=true;
@@ -937,7 +940,7 @@ async function publishWipeFromPanel(){
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         toast('Объявление о вайпе опубликовано');
-        $('wipe-title').value='';$('wipe-description').value='';$('wipe-server').value='';$('wipe-reason').checked=false;
+        $('wipe-title').value='';$('wipe-description').value='';$('wipe-server').value='';$('wipe-reason').checked=false;if($('wipe-image'))$('wipe-image').value='';
     }catch(e){toast('Ошибка: '+e.message,true);}
     finally{btn.disabled=!ME.staff;}
 }
