@@ -1,7 +1,7 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FALCONS — Панель управления</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FALCONS вЂ” РџР°РЅРµР»СЊ СѓРїСЂР°РІР»РµРЅРёСЏ</title>
 <style>
 :root{--bg:#070811;--panel:#0c0d19;--line:#242239;--muted:#9294b3;--text:#eef0ff;--purple:#782cff;--purple2:#a35cff;--green:#21e6a0;--red:#ff4d6d}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#20103b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.4 Inter,Segoe UI,Arial,sans-serif}
@@ -19,7 +19,7 @@ button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:245px
 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .content{padding:27px;max-width:1600px;margin:auto}
 .hero{padding:26px;border-radius:16px;border:1px solid #292044;background:linear-gradient(110deg,#111020f2 0%,#151025e8 50%,#241044c9 100%);position:relative;overflow:hidden;margin-bottom:20px}
-.hero:after{content:'🦅';position:absolute;right:38px;top:-34px;font-size:155px;opacity:.13;transform:rotate(-12deg)}
+.hero:after{content:'рџ¦…';position:absolute;right:38px;top:-34px;font-size:155px;opacity:.13;transform:rotate(-12deg)}
 h1{margin:0 0 7px;font-size:29px}h1 span{color:var(--purple2)}p{margin:0;color:var(--muted)}
 .stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:14px;margin-bottom:16px}
 .card{background:linear-gradient(145deg,#0e0f1c,#090a14);border:1px solid var(--line);border-radius:13px;padding:18px;min-width:0}
@@ -70,244 +70,259 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
 .setting input[type=checkbox]{width:18px;height:18px;accent-color:var(--purple2);cursor:pointer}
 .setting input[type=checkbox]:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.sidefoot{display:none}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
+:root{--bg:#0b0e11;--panel:#11161b;--line:#232c33;--muted:#8c999f;--text:#f2f5f6;--purple:#54c49d;--purple2:#9ce6cd;--green:#69d6a5;--red:#ef7b77}
+body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),var(--bg);font-family:'DM Sans','Segoe UI',Arial,sans-serif}
+.app{grid-template-columns:252px minmax(0,1fr)}
+.side{position:sticky;top:0;height:100vh;padding:26px 16px 18px;border-right:1px solid var(--line);background:#0e1215}
+.brand{gap:12px;padding:3px 11px 32px}.bird{height:38px;width:38px;border-radius:12px;background:var(--purple2);color:#0a1713;display:grid;place-items:center;font-size:21px;filter:none}.brand b{font-size:16px;letter-spacing:2.3px}.brand small{letter-spacing:1.6px}
+.nav{gap:4px}.nav button{position:relative;color:#9aa7ac;padding:10px 12px;border-radius:9px;font-size:13px}.nav button:hover{background:#17201f;color:#e9f4ef}.nav button.active{background:linear-gradient(100deg,#19342d,#15231f);color:var(--purple2)}.nav button.active:before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:24px;background:var(--purple);border-radius:4px}
+.ico{width:19px;font-size:16px}.sidefoot{border-color:var(--line);border-radius:12px;background:#11161b}
+.top{height:72px;border-color:var(--line);padding:0 clamp(20px,4vw,54px);background:#0c1013}.pill{border-color:var(--line);border-radius:9px;background:#11171b;color:#dbe5e2}.pill:hover{border-color:#3c6657}#guildSelect{font-size:12px}
+.content{max-width:1500px;padding:36px clamp(20px,4vw,54px) 60px}.hero{padding:27px;border-radius:13px;border-color:#294038;background:linear-gradient(110deg,#111b19f2 0%,#15211ee8 55%,#18352bc9 100%);margin-bottom:17px}.hero:after{content:'F';font-family:Arial,sans-serif;font-weight:800;color:var(--purple2);right:32px;top:-37px;font-size:170px;opacity:.07;transform:none}h1{font-family:'Manrope','Segoe UI',sans-serif;font-size:clamp(26px,3vw,36px);letter-spacing:-1px}h1 span{color:var(--purple2)}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:17px}.card{background:var(--panel);border-color:var(--line);border-radius:13px;padding:18px}.stat-icon{color:var(--purple2)}.label{color:#a6b2b4}.num{font-family:'Manrope','Segoe UI',sans-serif;font-size:27px;letter-spacing:-.6px}.sub{color:var(--muted)}
+.grid{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr) minmax(250px,.8fr);gap:15px}.card h2{font-family:'Manrope','Segoe UI',sans-serif;font-size:14px;font-weight:650;margin-bottom:15px}.rowitem{border-color:#20282d}.tag{background:#183127;color:var(--purple2)}a.tag:hover{background:#23483a}.btn{border-radius:8px}.btn.accept{background:#1a7a4f}.btn.reject{background:#753b3b}.btn.call{background:#294850}.btn.close{background:#923947}.quick button{background:#141c1c;border-color:#26352f;color:#e3ece9}.quick button:hover{border-color:var(--purple);background:#17251f}
+.empty{border-color:#30413a;color:#92a39e}.mutednote{color:#81918c}.loginbtn{background:linear-gradient(100deg,#27634f,#54c49d);color:#07130e}.toast{background:#14211d;border-color:#39705b}.activity{height:205px;border-color:#273137;background:repeating-linear-gradient(to bottom,transparent 0 49px,#20292e 50px)}.act-bar{background:linear-gradient(180deg,#a2e8cf,#3f9b79);box-shadow:0 0 12px #58c49d2b;border-radius:6px 6px 2px 2px}.act-num{color:#c5d5d0}.act-day{color:#849197}.tag.st-ok{background:#183127;color:#9ce6cd}.tag.st-no{background:#292a28;color:#c5b996}
+.q-input{background:#11171b;border-color:#263238;color:var(--text);border-radius:9px}.q-input:focus{border-color:var(--purple);box-shadow:0 0 0 3px #54c49d20}.setting{border-color:#20282d}.setting input[type=checkbox]{accent-color:var(--purple)}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-column:1/-1}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.side{position:relative;height:auto;padding:12px 14px 10px;border-right:0;border-bottom:1px solid var(--line)}.side .brand{padding:0 4px 12px}.brand .bird{width:30px;height:30px;font-size:17px}.brand b{font-size:14px}.nav{display:flex;overflow:auto;gap:5px}.nav button{white-space:nowrap;padding:8px 10px;font-size:11px}.nav button.active:before{display:none}.sidefoot{display:none}.content{padding:24px 16px 45px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid{grid-template-columns:1fr}.quick{grid-column:auto}.hero:after{right:0;font-size:100px}.top{height:62px;padding:0 16px}.activity{height:175px}}
 </style></head><body>
 
 <div class="loginwrap" id="loginScreen" hidden>
   <div class="card logincard">
-    <div class="brand" style="justify-content:center;padding:0 0 18px"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
-    <p id="loginMsg">Войдите через Discord, чтобы открыть панель.</p>
-    <a class="loginbtn" href="/auth/discord">Войти через Discord</a>
+    <div class="brand" style="justify-content:center;padding:0 0 18px"><div class="bird">вћ¤</div><div><b>FALCONS</b><small>РџРђРќР•Р›Р¬ РЈРџР РђР’Р›Р•РќРРЇ</small></div></div>
+    <p id="loginMsg">Р’РѕР№РґРёС‚Рµ С‡РµСЂРµР· Discord, С‡С‚РѕР±С‹ РѕС‚РєСЂС‹С‚СЊ РїР°РЅРµР»СЊ.</p>
+    <a class="loginbtn" href="/auth/discord">Р’РѕР№С‚Рё С‡РµСЂРµР· Discord</a>
   </div>
 </div>
 
 <div class="app" id="app" hidden>
 <aside class="side">
-  <div class="brand"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
+  <div class="brand"><div class="bird">вћ¤</div><div><b>FALCONS</b><small>РџРђРќР•Р›Р¬ РЈРџР РђР’Р›Р•РќРРЇ</small></div></div>
   <nav class="nav" id="nav">
-    <button class="active" data-page="home"><span class="ico">⌂</span>Главная</button>
-    <button data-page="tickets"><span class="ico">▤</span>Тикеты</button>
-    <button data-page="apps"><span class="ico">▣</span>Заявки в клан</button>
-    <button data-page="logs"><span class="ico">◷</span>Логи</button>
-    <button data-page="members"><span class="ico">♟</span>Роли и участники</button>
-    <button data-page="invites"><span class="ico">↗</span>Инвайты</button>
-    <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
-    <button data-page="meeting"><span class="ico">🚨</span>Собрание</button>
-    <button data-page="wipe"><span class="ico">📝</span>Вайп</button>
-    <button data-page="stats"><span class="ico">▥</span>Статистика</button>
-    <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
-    <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
-    <button data-page="roles"><span class="ico">♛</span>Роли и права</button>
+    <button class="active" data-page="home"><span class="ico">вЊ‚</span>Р“Р»Р°РІРЅР°СЏ</button>
+    <button data-page="tickets"><span class="ico">в–¤</span>РўРёРєРµС‚С‹</button>
+    <button data-page="apps"><span class="ico">в–Ј</span>Р—Р°СЏРІРєРё РІ РєР»Р°РЅ</button>
+    <button data-page="logs"><span class="ico">в—·</span>Р›РѕРіРё</button>
+    <button data-page="members"><span class="ico">в™џ</span>Р РѕР»Рё Рё СѓС‡Р°СЃС‚РЅРёРєРё</button>
+    <button data-page="invites"><span class="ico">в†—</span>РРЅРІР°Р№С‚С‹</button>
+    <button data-page="moderation"><span class="ico">в¬Ў</span>РњРѕРґРµСЂР°С†РёСЏ</button>
+    <button data-page="meeting"><span class="ico">рџљЁ</span>РЎРѕР±СЂР°РЅРёРµ</button>
+    <button data-page="wipe"><span class="ico">рџ“ќ</span>Р’Р°Р№Рї</button>
+    <button data-page="stats"><span class="ico">в–Ґ</span>РЎС‚Р°С‚РёСЃС‚РёРєР°</button>
+    <button data-page="settings"><span class="ico">вљ™</span>РќР°СЃС‚СЂРѕР№РєРё</button>
+    <button data-page="qsettings"><span class="ico">вљ™</span>РќР°СЃС‚СЂРѕР№РєРё Р°РЅРєРµС‚</button>
+    <button data-page="roles"><span class="ico">в™›</span>Р РѕР»Рё Рё РїСЂР°РІР°</button>
   </nav>
-  <div class="sidefoot">🦅 <b style="color:#eee">Falcons Bot</b><br><br>Панель<br><span style="color:#a35cff">♥</span> Сделано для Falcons</div>
+  <div class="sidefoot">рџ¦… <b style="color:#eee">Falcons Bot</b><br><br>РџР°РЅРµР»СЊ<br><span style="color:#a35cff">в™Ґ</span> РЎРґРµР»Р°РЅРѕ РґР»СЏ Falcons</div>
 </aside>
 <main class="main">
 <header class="top">
   <div class="avatar" id="avatar">?</div>
-  <div><b id="userName">…</b><div class="sub" id="userRole">Вход через Discord</div></div>
-  <select id="guildSelect" class="pill" style="display:none;max-width:280px" onchange="changeGuild(this.value)" title="Выбор сервера"></select>
-  <button class="pill" onclick="logout()">Выйти</button>
+  <div><b id="userName">вЂ¦</b><div class="sub" id="userRole">Р’С…РѕРґ С‡РµСЂРµР· Discord</div></div>
+  <select id="guildSelect" class="pill" style="display:none;max-width:280px" onchange="changeGuild(this.value)" title="Р’С‹Р±РѕСЂ СЃРµСЂРІРµСЂР°"></select>
+  <button class="pill" onclick="logout()">Р’С‹Р№С‚Рё</button>
 </header>
 <div class="content">
 <section class="page active" id="home">
-  <div class="hero"><h1>Добро пожаловать,</h1><h1><span id="heroName">…</span></h1><p>Панель управления Discord-сервером FALCONS</p></div>
+  <div class="hero"><h1>Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ,</h1><h1><span id="heroName">вЂ¦</span></h1><p>РџР°РЅРµР»СЊ СѓРїСЂР°РІР»РµРЅРёСЏ Discord-СЃРµСЂРІРµСЂРѕРј FALCONS</p></div>
   <div class="stats">
-    <div class="card"><div class="stat-icon">♟</div><div class="label">Участников</div><div class="num" id="s-total">—</div><div class="sub">данные бота</div></div>
-    <div class="card"><div class="stat-icon">●</div><div class="label">Онлайн</div><div class="num" id="s-online">—</div><div class="sub">данные бота</div></div>
-    <div class="card"><div class="stat-icon">♛</div><div class="label">Клан</div><div class="num" id="s-clan">—</div><div class="sub">данные бота</div></div>
-    <div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num" id="s-tickets">—</div><div class="sub" id="s-tickets-sub">ожидание</div></div>
-    <div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num" id="s-apps">—</div><div class="sub" id="s-apps-sub">ожидание</div></div>
-    <div class="card"><div class="stat-icon">↗</div><div class="label">Рекрутеров</div><div class="num dim" id="s-invites">—</div><div class="sub" id="s-invites-sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">в™џ</div><div class="label">РЈС‡Р°СЃС‚РЅРёРєРѕРІ</div><div class="num" id="s-total">вЂ”</div><div class="sub">РґР°РЅРЅС‹Рµ Р±РѕС‚Р°</div></div>
+    <div class="card"><div class="stat-icon">в—Џ</div><div class="label">РћРЅР»Р°Р№РЅ</div><div class="num" id="s-online">вЂ”</div><div class="sub">РґР°РЅРЅС‹Рµ Р±РѕС‚Р°</div></div>
+    <div class="card"><div class="stat-icon">в™›</div><div class="label">РљР»Р°РЅ</div><div class="num" id="s-clan">вЂ”</div><div class="sub">РґР°РЅРЅС‹Рµ Р±РѕС‚Р°</div></div>
+    <div class="card"><div class="stat-icon">в–¤</div><div class="label">РћС‚РєСЂС‹С‚С‹Рµ С‚РёРєРµС‚С‹</div><div class="num" id="s-tickets">вЂ”</div><div class="sub" id="s-tickets-sub">РѕР¶РёРґР°РЅРёРµ</div></div>
+    <div class="card"><div class="stat-icon">в–Ј</div><div class="label">Р—Р°СЏРІРєРё РІ РєР»Р°РЅ</div><div class="num" id="s-apps">вЂ”</div><div class="sub" id="s-apps-sub">РѕР¶РёРґР°РЅРёРµ</div></div>
+    <div class="card"><div class="stat-icon">в†—</div><div class="label">Р РµРєСЂСѓС‚РµСЂРѕРІ</div><div class="num dim" id="s-invites">вЂ”</div><div class="sub" id="s-invites-sub">РґР°РЅРЅС‹Рµ Р±РѕС‚Р°</div></div>
   </div>
   <div class="card" style="margin-bottom:15px">
-    <h2>📊 Активность за 7 дней</h2>
-    <div class="activity" id="activityChart"><div class="empty">Загрузка…</div></div>
-    <div class="sub" id="activityNote">Сколько человек зашло на сервер каждый день.</div>
+    <h2>рџ“Љ РђРєС‚РёРІРЅРѕСЃС‚СЊ Р·Р° 7 РґРЅРµР№</h2>
+    <div class="activity" id="activityChart"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div>
+    <div class="sub" id="activityNote">РЎРєРѕР»СЊРєРѕ С‡РµР»РѕРІРµРє Р·Р°С€Р»Рѕ РЅР° СЃРµСЂРІРµСЂ РєР°Р¶РґС‹Р№ РґРµРЅСЊ.</div>
   </div>
   <div class="grid">
-    <div class="card"><h2>▤ Последние тикеты</h2><div id="recent-tickets"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
-    <div class="card"><h2>▣ Последние заявки</h2><div id="recent-apps"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('apps')">Все заявки →</button></div>
-    <div class="card quick"><h2>ϟ Быстрые действия</h2>
-      <button onclick="showPage('tickets')">▤ Открыть тикеты</button>
-      <button onclick="showPage('apps')">▣ Заявки в клан</button>
-      <button onclick="showPage('logs')">◷ Логи стаффа</button>
+    <div class="card"><h2>в–¤ РџРѕСЃР»РµРґРЅРёРµ С‚РёРєРµС‚С‹</h2><div id="recent-tickets"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Р’СЃРµ С‚РёРєРµС‚С‹ в†’</button></div>
+    <div class="card"><h2>в–Ј РџРѕСЃР»РµРґРЅРёРµ Р·Р°СЏРІРєРё</h2><div id="recent-apps"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('apps')">Р’СЃРµ Р·Р°СЏРІРєРё в†’</button></div>
+    <div class="card quick"><h2>Пџ Р‘С‹СЃС‚СЂС‹Рµ РґРµР№СЃС‚РІРёСЏ</h2>
+      <button onclick="showPage('tickets')">в–¤ РћС‚РєСЂС‹С‚СЊ С‚РёРєРµС‚С‹</button>
+      <button onclick="showPage('apps')">в–Ј Р—Р°СЏРІРєРё РІ РєР»Р°РЅ</button>
+      <button onclick="showPage('logs')">в—· Р›РѕРіРё СЃС‚Р°С„С„Р°</button>
     </div>
   </div>
-  <div class="mutednote" id="statsNote">Данные обновляются ботом раз в 10 минут.</div>
+  <div class="mutednote" id="statsNote">Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІР»СЏСЋС‚СЃСЏ Р±РѕС‚РѕРј СЂР°Р· РІ 10 РјРёРЅСѓС‚.</div>
 </section>
 
 <section class="page" id="tickets">
-  <div class="hero"><h1>Тикеты</h1><p>Все открытые обращения на сервере</p></div>
-  <div class="card" id="ticketsList"><div class="empty">Загрузка…</div></div>
+  <div class="hero"><h1>РўРёРєРµС‚С‹</h1><p>Р’СЃРµ РѕС‚РєСЂС‹С‚С‹Рµ РѕР±СЂР°С‰РµРЅРёСЏ РЅР° СЃРµСЂРІРµСЂРµ</p></div>
+  <div class="card" id="ticketsList"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div>
 </section>
 
 <section class="page" id="apps">
-  <div class="hero"><h1>Заявки в клан</h1><p>Тикеты категории «Набор в клан»</p></div>
-  <div class="card" id="appsList"><div class="empty">Загрузка…</div></div>
+  <div class="hero"><h1>Р—Р°СЏРІРєРё РІ РєР»Р°РЅ</h1><p>РўРёРєРµС‚С‹ РєР°С‚РµРіРѕСЂРёРё В«РќР°Р±РѕСЂ РІ РєР»Р°РЅВ»</p></div>
+  <div class="card" id="appsList"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div>
 </section>
 
 <section class="page" id="logs">
-  <div class="hero"><h1>Логи стаффа</h1><p>История действий администрации</p></div>
-  <div class="card" id="logsList"><div class="empty">Загрузка…</div></div>
+  <div class="hero"><h1>Р›РѕРіРё СЃС‚Р°С„С„Р°</h1><p>РСЃС‚РѕСЂРёСЏ РґРµР№СЃС‚РІРёР№ Р°РґРјРёРЅРёСЃС‚СЂР°С†РёРё</p></div>
+  <div class="card" id="logsList"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div>
 </section>
 
 <section class="page" id="members">
-  <div class="hero"><h1>Роли и участники</h1><p>Состав сервера</p></div>
+  <div class="hero"><h1>Р РѕР»Рё Рё СѓС‡Р°СЃС‚РЅРёРєРё</h1><p>РЎРѕСЃС‚Р°РІ СЃРµСЂРІРµСЂР°</p></div>
   <div class="card">
-    <div class="setting"><div><b>Участников на сервере</b><div class="sub">данные бота</div></div><b id="m-total">—</b></div>
-    <div class="setting"><div><b>Онлайн сейчас</b><div class="sub">данные бота</div></div><b id="m-online">—</b></div>
-    <div class="setting"><div><b>Участников клана</b><div class="sub">по роли клана</div></div><b id="m-clan">—</b></div>
+    <div class="setting"><div><b>РЈС‡Р°СЃС‚РЅРёРєРѕРІ РЅР° СЃРµСЂРІРµСЂРµ</b><div class="sub">РґР°РЅРЅС‹Рµ Р±РѕС‚Р°</div></div><b id="m-total">вЂ”</b></div>
+    <div class="setting"><div><b>РћРЅР»Р°Р№РЅ СЃРµР№С‡Р°СЃ</b><div class="sub">РґР°РЅРЅС‹Рµ Р±РѕС‚Р°</div></div><b id="m-online">вЂ”</b></div>
+    <div class="setting"><div><b>РЈС‡Р°СЃС‚РЅРёРєРѕРІ РєР»Р°РЅР°</b><div class="sub">РїРѕ СЂРѕР»Рё РєР»Р°РЅР°</div></div><b id="m-clan">вЂ”</b></div>
   </div>
-  <div class="mutednote">Управление ролями из панели пока не реализовано. Всё делается командами бота в Discord.</div>
+  <div class="mutednote">РЈРїСЂР°РІР»РµРЅРёРµ СЂРѕР»СЏРјРё РёР· РїР°РЅРµР»Рё РїРѕРєР° РЅРµ СЂРµР°Р»РёР·РѕРІР°РЅРѕ. Р’СЃС‘ РґРµР»Р°РµС‚СЃСЏ РєРѕРјР°РЅРґР°РјРё Р±РѕС‚Р° РІ Discord.</div>
 </section>
 
 <section class="page" id="invites">
-  <div class="hero"><h1>Инвайты и рекрутинг</h1><p>Топ рекрутеров по активным приглашениям</p></div>
-  <div class="card" id="invitesList"><div class="empty">Загрузка…</div></div>
-  <div class="mutednote">Кнопка «Выдать награду» повторно выдаёт роли за достигнутые пороги приглашений.</div>
+  <div class="hero"><h1>РРЅРІР°Р№С‚С‹ Рё СЂРµРєСЂСѓС‚РёРЅРі</h1><p>РўРѕРї СЂРµРєСЂСѓС‚РµСЂРѕРІ РїРѕ Р°РєС‚РёРІРЅС‹Рј РїСЂРёРіР»Р°С€РµРЅРёСЏРј</p></div>
+  <div class="card" id="invitesList"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div>
+  <div class="mutednote">РљРЅРѕРїРєР° В«Р’С‹РґР°С‚СЊ РЅР°РіСЂР°РґСѓВ» РїРѕРІС‚РѕСЂРЅРѕ РІС‹РґР°С‘С‚ СЂРѕР»Рё Р·Р° РґРѕСЃС‚РёРіРЅСѓС‚С‹Рµ РїРѕСЂРѕРіРё РїСЂРёРіР»Р°С€РµРЅРёР№.</div>
 </section>
 
 <section class="page" id="moderation">
-  <div class="hero"><h1>Модерация</h1><p>Наказания и история игрока</p></div>
+  <div class="hero"><h1>РњРѕРґРµСЂР°С†РёСЏ</h1><p>РќР°РєР°Р·Р°РЅРёСЏ Рё РёСЃС‚РѕСЂРёСЏ РёРіСЂРѕРєР°</p></div>
   <div class="card" style="margin-bottom:15px">
-    <h2>⬡ Выдать наказание</h2>
+    <h2>в¬Ў Р’С‹РґР°С‚СЊ РЅР°РєР°Р·Р°РЅРёРµ</h2>
     <div class="punish-form">
-      <div><div class="sub">Действие</div>
+      <div><div class="sub">Р”РµР№СЃС‚РІРёРµ</div>
         <select id="pun-action" class="q-input">
-          <option value="warn">Предупреждение</option>
-          <option value="timeout">Таймаут</option>
-          <option value="kick">Кик</option>
-          <option value="ban">Бан</option>
+          <option value="warn">РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ</option>
+          <option value="timeout">РўР°Р№РјР°СѓС‚</option>
+          <option value="kick">РљРёРє</option>
+          <option value="ban">Р‘Р°РЅ</option>
         </select></div>
-      <div><div class="sub">Discord ID игрока</div>
+      <div><div class="sub">Discord ID РёРіСЂРѕРєР°</div>
         <input id="pun-user" class="q-input" placeholder="123456789012345678" inputmode="numeric"></div>
-      <div id="pun-minutes-wrap"><div class="sub">Минуты (для таймаута)</div>
+      <div id="pun-minutes-wrap"><div class="sub">РњРёРЅСѓС‚С‹ (РґР»СЏ С‚Р°Р№РјР°СѓС‚Р°)</div>
         <input id="pun-minutes" class="q-input" type="number" min="1" max="40320" value="60"></div>
     </div>
     <div class="q-row">
-      <input id="pun-reason" class="q-input" placeholder="Причина (игрок получит её в ЛС)" maxlength="500">
-      <button class="btn reject" id="pun-go">Применить</button>
+      <input id="pun-reason" class="q-input" placeholder="РџСЂРёС‡РёРЅР° (РёРіСЂРѕРє РїРѕР»СѓС‡РёС‚ РµС‘ РІ Р›РЎ)" maxlength="500">
+      <button class="btn reject" id="pun-go">РџСЂРёРјРµРЅРёС‚СЊ</button>
     </div>
-    <div class="mutednote">Наказание выполняет бот от твоего имени. Нужны права Ticket Staff.</div>
+    <div class="mutednote">РќР°РєР°Р·Р°РЅРёРµ РІС‹РїРѕР»РЅСЏРµС‚ Р±РѕС‚ РѕС‚ С‚РІРѕРµРіРѕ РёРјРµРЅРё. РќСѓР¶РЅС‹ РїСЂР°РІР° Ticket Staff.</div>
   </div>
   <div class="card">
-    <h2>◷ Наказания игрока</h2>
+    <h2>в—· РќР°РєР°Р·Р°РЅРёСЏ РёРіСЂРѕРєР°</h2>
     <div class="q-row">
-      <input id="hist-user" class="q-input" placeholder="Discord ID игрока" inputmode="numeric">
-      <button class="pill" id="hist-go">Показать</button>
+      <input id="hist-user" class="q-input" placeholder="Discord ID РёРіСЂРѕРєР°" inputmode="numeric">
+      <button class="pill" id="hist-go">РџРѕРєР°Р·Р°С‚СЊ</button>
     </div>
     <div id="hist-list" style="margin-top:10px"></div>
   </div>
 </section>
 
 <section class="page" id="meeting">
-  <div class="hero"><h1>🚨 Собрание клана</h1><p>Массовое оповещение: пинг в канал и ЛС участникам клана</p></div>
+  <div class="hero"><h1>рџљЁ РЎРѕР±СЂР°РЅРёРµ РєР»Р°РЅР°</h1><p>РњР°СЃСЃРѕРІРѕРµ РѕРїРѕРІРµС‰РµРЅРёРµ: РїРёРЅРі РІ РєР°РЅР°Р» Рё Р›РЎ СѓС‡Р°СЃС‚РЅРёРєР°Рј РєР»Р°РЅР°</p></div>
   <div class="card">
-    <h2>🔊 Куда собираемся</h2>
+    <h2>рџ”Љ РљСѓРґР° СЃРѕР±РёСЂР°РµРјСЃСЏ</h2>
     <div class="q-row">
-      <select id="meeting-channel" class="q-input"><option value="">Загрузка…</option></select>
-      <button class="btn reject" id="meeting-go">ОБЪЯВИТЬ СОБРАНИЕ</button>
+      <select id="meeting-channel" class="q-input"><option value="">Р—Р°РіСЂСѓР·РєР°вЂ¦</option></select>
+      <button class="btn reject" id="meeting-go">РћР‘РЄРЇР’РРўР¬ РЎРћР‘Р РђРќРР•</button>
     </div>
-    <div class="mutednote">Бот пингует @everyone 3 раза в течение 2 минут и пишет в ЛС участникам клана, которые онлайн и ещё не в войсе.</div>
+    <div class="mutednote">Р‘РѕС‚ РїРёРЅРіСѓРµС‚ @everyone 3 СЂР°Р·Р° РІ С‚РµС‡РµРЅРёРµ 2 РјРёРЅСѓС‚ Рё РїРёС€РµС‚ РІ Р›РЎ СѓС‡Р°СЃС‚РЅРёРєР°Рј РєР»Р°РЅР°, РєРѕС‚РѕСЂС‹Рµ РѕРЅР»Р°Р№РЅ Рё РµС‰С‘ РЅРµ РІ РІРѕР№СЃРµ.</div>
   </div>
 </section>
 
 <section class="page" id="wipe">
-  <div class="hero"><h1>📝 Объявление о вайпе</h1><p>Опубликуй объявление с датой, временем и сбором ответов в Discord.</p></div>
+  <div class="hero"><h1>рџ“ќ РћР±СЉСЏРІР»РµРЅРёРµ Рѕ РІР°Р№РїРµ</h1><p>РћРїСѓР±Р»РёРєСѓР№ РѕР±СЉСЏРІР»РµРЅРёРµ СЃ РґР°С‚РѕР№, РІСЂРµРјРµРЅРµРј Рё СЃР±РѕСЂРѕРј РѕС‚РІРµС‚РѕРІ РІ Discord.</p></div>
   <div class="card">
     <div class="punish-form">
-      <div><div class="sub">Заголовок</div><input id="wipe-title" class="q-input" maxlength="256" placeholder="Например: Вайп Rust Way Chill 2"></div>
-      <div><div class="sub">Rust-сервер</div><input id="wipe-server" class="q-input" maxlength="100" placeholder="Название сервера"></div>
-      <div><div class="sub">Канал объявления</div><select id="wipe-channel" class="q-input"><option value="">Загрузка…</option></select></div>
-      <div><div class="sub">Дата</div><input id="wipe-date" class="q-input" type="date"></div>
-      <div><div class="sub">Время (Москва)</div><input id="wipe-time" class="q-input" type="time"></div>
+      <div><div class="sub">Р—Р°РіРѕР»РѕРІРѕРє</div><input id="wipe-title" class="q-input" maxlength="256" placeholder="РќР°РїСЂРёРјРµСЂ: Р’Р°Р№Рї Rust Way Chill 2"></div>
+      <div><div class="sub">Rust-СЃРµСЂРІРµСЂ</div><input id="wipe-server" class="q-input" maxlength="100" placeholder="РќР°Р·РІР°РЅРёРµ СЃРµСЂРІРµСЂР°"></div>
+      <div><div class="sub">РљР°РЅР°Р» РѕР±СЉСЏРІР»РµРЅРёСЏ</div><select id="wipe-channel" class="q-input"><option value="">Р—Р°РіСЂСѓР·РєР°вЂ¦</option></select></div>
+      <div><div class="sub">Р”Р°С‚Р°</div><input id="wipe-date" class="q-input" type="date"></div>
+      <div><div class="sub">Р’СЂРµРјСЏ (РњРѕСЃРєРІР°)</div><input id="wipe-time" class="q-input" type="time"></div>
     </div>
-    <div style="margin-top:12px"><div class="sub">Описание</div><textarea id="wipe-description" class="q-input" maxlength="3500" rows="4" style="width:100%;resize:vertical" placeholder="Подробности вайпа"></textarea></div>
-    <div class="setting"><div><b>Просить участников указать причину</b><div class="sub">Добавить кнопку для комментария рядом с ответами</div></div><input type="checkbox" id="wipe-reason"></div>
-    <div class="q-row"><button class="btn reject" id="wipe-go">Опубликовать вайп</button></div>
-    <div class="mutednote">В Discord будут кнопки «Принял», «Не смогу» и «Опоздаю». Повторный ответ обновит предыдущий.</div>
+    <div style="margin-top:12px"><div class="sub">РћРїРёСЃР°РЅРёРµ</div><textarea id="wipe-description" class="q-input" maxlength="3500" rows="4" style="width:100%;resize:vertical" placeholder="РџРѕРґСЂРѕР±РЅРѕСЃС‚Рё РІР°Р№РїР°"></textarea></div>
+    <div class="setting"><div><b>РџСЂРѕСЃРёС‚СЊ СѓС‡Р°СЃС‚РЅРёРєРѕРІ СѓРєР°Р·Р°С‚СЊ РїСЂРёС‡РёРЅСѓ</b><div class="sub">Р”РѕР±Р°РІРёС‚СЊ РєРЅРѕРїРєСѓ РґР»СЏ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ СЂСЏРґРѕРј СЃ РѕС‚РІРµС‚Р°РјРё</div></div><input type="checkbox" id="wipe-reason"></div>
+    <div class="q-row"><button class="btn reject" id="wipe-go">РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ РІР°Р№Рї</button></div>
+    <div class="mutednote">Р’ Discord Р±СѓРґСѓС‚ РєРЅРѕРїРєРё В«РџСЂРёРЅСЏР»В», В«РќРµ СЃРјРѕРіСѓВ» Рё В«РћРїРѕР·РґР°СЋВ». РџРѕРІС‚РѕСЂРЅС‹Р№ РѕС‚РІРµС‚ РѕР±РЅРѕРІРёС‚ РїСЂРµРґС‹РґСѓС‰РёР№.</div>
   </div>
 </section>
 
 <section class="page" id="stats">
-  <div class="hero"><h1>Статистика</h1><p>Обзор активности и состава сервера</p></div>
+  <div class="hero"><h1>РЎС‚Р°С‚РёСЃС‚РёРєР°</h1><p>РћР±Р·РѕСЂ Р°РєС‚РёРІРЅРѕСЃС‚Рё Рё СЃРѕСЃС‚Р°РІР° СЃРµСЂРІРµСЂР°</p></div>
   <div class="card">
-    <div class="setting"><div><b>Участников</b></div><b id="st-total">—</b></div>
-    <div class="setting"><div><b>Онлайн</b></div><b id="st-online">—</b></div>
-    <div class="setting"><div><b>Клан</b></div><b id="st-clan">—</b></div>
-    <div class="setting"><div><b>Обновлено</b></div><b id="st-updated">—</b></div>
+    <div class="setting"><div><b>РЈС‡Р°СЃС‚РЅРёРєРѕРІ</b></div><b id="st-total">вЂ”</b></div>
+    <div class="setting"><div><b>РћРЅР»Р°Р№РЅ</b></div><b id="st-online">вЂ”</b></div>
+    <div class="setting"><div><b>РљР»Р°РЅ</b></div><b id="st-clan">вЂ”</b></div>
+    <div class="setting"><div><b>РћР±РЅРѕРІР»РµРЅРѕ</b></div><b id="st-updated">вЂ”</b></div>
   </div>
   <div class="card" style="margin-top:15px">
-    <h2>📈 Онлайн за 7 дней</h2>
-    <div class="activity" id="analyticsChart"><div class="empty">Загрузка…</div></div>
-    <div class="sub" id="analyticsNote">Средний онлайн по дням.</div>
+    <h2>рџ“€ РћРЅР»Р°Р№РЅ Р·Р° 7 РґРЅРµР№</h2>
+    <div class="activity" id="analyticsChart"><div class="empty">Р—Р°РіСЂСѓР·РєР°вЂ¦</div></div>
+    <div class="sub" id="analyticsNote">РЎСЂРµРґРЅРёР№ РѕРЅР»Р°Р№РЅ РїРѕ РґРЅСЏРј.</div>
   </div>
   <div class="card" style="margin-top:15px">
-    <h2>🤖 Статус бота</h2>
-    <div class="setting"><div><b>Бот</b><div class="sub">Discord-подключение</div></div><span class="tag st-no" id="st-bot">проверка…</span></div>
-    <div class="setting"><div><b>Задержка</b></div><b id="st-bot-latency">—</b></div>
-    <div class="setting"><div><b>Серверы</b></div><b id="st-bot-guilds">—</b></div>
+    <h2>рџ¤– РЎС‚Р°С‚СѓСЃ Р±РѕС‚Р°</h2>
+    <div class="setting"><div><b>Р‘РѕС‚</b><div class="sub">Discord-РїРѕРґРєР»СЋС‡РµРЅРёРµ</div></div><span class="tag st-no" id="st-bot">РїСЂРѕРІРµСЂРєР°вЂ¦</span></div>
+    <div class="setting"><div><b>Р—Р°РґРµСЂР¶РєР°</b></div><b id="st-bot-latency">вЂ”</b></div>
+    <div class="setting"><div><b>РЎРµСЂРІРµСЂС‹</b></div><b id="st-bot-guilds">вЂ”</b></div>
   </div>
 </section>
 
 <section class="page" id="settings">
-  <div class="hero"><h1>Настройки</h1><p>Подключение и параметры панели</p></div>
+  <div class="hero"><h1>РќР°СЃС‚СЂРѕР№РєРё</h1><p>РџРѕРґРєР»СЋС‡РµРЅРёРµ Рё РїР°СЂР°РјРµС‚СЂС‹ РїР°РЅРµР»Рё</p></div>
   <div class="card">
-    <div class="setting"><div><b>Вход через Discord</b><div class="sub">OAuth2 · работает</div></div><span class="tag st-ok">Работает</span></div>
-    <div class="setting"><div><b>Твоя роль в панели</b></div><b id="st-panel-role">—</b></div>
-    <div class="setting"><div><b>ID пользователя</b></div><b id="st-uid" class="dim">—</b></div>
+    <div class="setting"><div><b>Р’С…РѕРґ С‡РµСЂРµР· Discord</b><div class="sub">OAuth2 В· СЂР°Р±РѕС‚Р°РµС‚</div></div><span class="tag st-ok">Р Р°Р±РѕС‚Р°РµС‚</span></div>
+    <div class="setting"><div><b>РўРІРѕСЏ СЂРѕР»СЊ РІ РїР°РЅРµР»Рё</b></div><b id="st-panel-role">вЂ”</b></div>
+    <div class="setting"><div><b>ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ</b></div><b id="st-uid" class="dim">вЂ”</b></div>
   </div>
   <div class="card" style="margin-top:15px">
-    <h2>👋 Приветствие и прощание</h2>
+    <h2>рџ‘‹ РџСЂРёРІРµС‚СЃС‚РІРёРµ Рё РїСЂРѕС‰Р°РЅРёРµ</h2>
     <div class="setting">
-      <div><b>Приветствие новых участников</b><div class="sub">сообщение при входе на сервер</div></div>
+      <div><b>РџСЂРёРІРµС‚СЃС‚РІРёРµ РЅРѕРІС‹С… СѓС‡Р°СЃС‚РЅРёРєРѕРІ</b><div class="sub">СЃРѕРѕР±С‰РµРЅРёРµ РїСЂРё РІС…РѕРґРµ РЅР° СЃРµСЂРІРµСЂ</div></div>
       <input type="checkbox" id="set-welcome">
     </div>
     <div class="setting">
-      <div><b>Прощание при выходе</b><div class="sub">сообщение, когда участник покидает сервер</div></div>
+      <div><b>РџСЂРѕС‰Р°РЅРёРµ РїСЂРё РІС‹С…РѕРґРµ</b><div class="sub">СЃРѕРѕР±С‰РµРЅРёРµ, РєРѕРіРґР° СѓС‡Р°СЃС‚РЅРёРє РїРѕРєРёРґР°РµС‚ СЃРµСЂРІРµСЂ</div></div>
       <input type="checkbox" id="set-goodbye">
     </div>
     <div class="q-row">
-      <input id="set-welcome-text" class="q-input" maxlength="500" placeholder="Текст приветствия">
-      <button class="pill" id="set-welcome-save">Сохранить</button>
+      <input id="set-welcome-text" class="q-input" maxlength="500" placeholder="РўРµРєСЃС‚ РїСЂРёРІРµС‚СЃС‚РІРёСЏ">
+      <button class="pill" id="set-welcome-save">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
     </div>
     <div class="q-row">
-      <input id="set-goodbye-text" class="q-input" maxlength="500" placeholder="Текст прощания">
-      <button class="pill" id="set-goodbye-save">Сохранить</button>
+      <input id="set-goodbye-text" class="q-input" maxlength="500" placeholder="РўРµРєСЃС‚ РїСЂРѕС‰Р°РЅРёСЏ">
+      <button class="pill" id="set-goodbye-save">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
     </div>
-    <div class="mutednote" id="set-note">Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).</div>
+    <div class="mutednote" id="set-note">РџРµСЂРµРјРµРЅРЅС‹Рµ: {mention}, {name}, {username}, {server}. РџСѓСЃС‚РѕРµ РїРѕР»Рµ вЂ” С‚РµРєСЃС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РёР· .env. РљР°РЅР°Р»С‹ Р·Р°РґР°СЋС‚СЃСЏ С‚Р°Рј Р¶Рµ (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).</div>
   </div>
 </section>
 
 <section class="page" id="qsettings">
-  <div class="hero"><h1>Настройки анкет</h1><p>Вопросы, которые бот задаёт при создании тикета</p></div>
+  <div class="hero"><h1>РќР°СЃС‚СЂРѕР№РєРё Р°РЅРєРµС‚</h1><p>Р’РѕРїСЂРѕСЃС‹, РєРѕС‚РѕСЂС‹Рµ Р±РѕС‚ Р·Р°РґР°С‘С‚ РїСЂРё СЃРѕР·РґР°РЅРёРё С‚РёРєРµС‚Р°</p></div>
   <div class="card">
     <div class="setting">
-      <div><b>Категория</b><div class="sub">clan / partner / question / report / other</div></div>
+      <div><b>РљР°С‚РµРіРѕСЂРёСЏ</b><div class="sub">clan / partner / question / report / other</div></div>
       <select id="q-category" class="pill">
-        <option value="clan">Набор в клан</option>
-        <option value="partner">Партнёрство</option>
-        <option value="question">Вопрос по клану</option>
-        <option value="report">Жалоба на игрока</option>
-        <option value="other">Другое обращение</option>
+        <option value="clan">РќР°Р±РѕСЂ РІ РєР»Р°РЅ</option>
+        <option value="partner">РџР°СЂС‚РЅС‘СЂСЃС‚РІРѕ</option>
+        <option value="question">Р’РѕРїСЂРѕСЃ РїРѕ РєР»Р°РЅСѓ</option>
+        <option value="report">Р–Р°Р»РѕР±Р° РЅР° РёРіСЂРѕРєР°</option>
+        <option value="other">Р”СЂСѓРіРѕРµ РѕР±СЂР°С‰РµРЅРёРµ</option>
       </select>
     </div>
     <div id="q-list"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-      <button class="pill" id="q-add">+ Добавить вопрос</button>
-      <button class="btn accept" id="q-save">Сохранить</button>
-      <button class="pill" id="q-reload">Перезагрузить конфиг</button>
+      <button class="pill" id="q-add">+ Р”РѕР±Р°РІРёС‚СЊ РІРѕРїСЂРѕСЃ</button>
+      <button class="btn accept" id="q-save">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+      <button class="pill" id="q-reload">РџРµСЂРµР·Р°РіСЂСѓР·РёС‚СЊ РєРѕРЅС„РёРі</button>
     </div>
-    <div class="mutednote">Изменения применяются к новым тикетам. Открытые тикеты не меняются.</div>
+    <div class="mutednote">РР·РјРµРЅРµРЅРёСЏ РїСЂРёРјРµРЅСЏСЋС‚СЃСЏ Рє РЅРѕРІС‹Рј С‚РёРєРµС‚Р°Рј. РћС‚РєСЂС‹С‚С‹Рµ С‚РёРєРµС‚С‹ РЅРµ РјРµРЅСЏСЋС‚СЃСЏ.</div>
   </div>
 </section>
 
 <section class="page" id="roles">
-  <div class="hero"><h1>Роли и права доступа</h1><p>Разграничение доступа к панели</p></div>
+  <div class="hero"><h1>Р РѕР»Рё Рё РїСЂР°РІР° РґРѕСЃС‚СѓРїР°</h1><p>Р Р°Р·РіСЂР°РЅРёС‡РµРЅРёРµ РґРѕСЃС‚СѓРїР° Рє РїР°РЅРµР»Рё</p></div>
   <div class="card">
-    <div class="setting"><div><b>OWNER</b><div class="sub">полный доступ к панели и боту</div></div><span class="tag st-ok">Работает</span></div>
-    <div class="setting"><div><b>TICKET STAFF</b><div class="sub">доступ к тикетам и заявкам</div></div><span class="tag st-ok">Работает</span></div>
-    <div class="setting"><div><b>DEP LEADER</b><div class="sub">используется ботом для прав в тикетах</div></div><span class="tag st-no">Только в боте</span></div>
-    <div class="setting"><div><b>Обычные участники</b><div class="sub">без доступа к панели</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>OWNER</b><div class="sub">РїРѕР»РЅС‹Р№ РґРѕСЃС‚СѓРї Рє РїР°РЅРµР»Рё Рё Р±РѕС‚Сѓ</div></div><span class="tag st-ok">Р Р°Р±РѕС‚Р°РµС‚</span></div>
+    <div class="setting"><div><b>TICKET STAFF</b><div class="sub">РґРѕСЃС‚СѓРї Рє С‚РёРєРµС‚Р°Рј Рё Р·Р°СЏРІРєР°Рј</div></div><span class="tag st-ok">Р Р°Р±РѕС‚Р°РµС‚</span></div>
+    <div class="setting"><div><b>DEP LEADER</b><div class="sub">РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ Р±РѕС‚РѕРј РґР»СЏ РїСЂР°РІ РІ С‚РёРєРµС‚Р°С…</div></div><span class="tag st-no">РўРѕР»СЊРєРѕ РІ Р±РѕС‚Рµ</span></div>
+    <div class="setting"><div><b>РћР±С‹С‡РЅС‹Рµ СѓС‡Р°СЃС‚РЅРёРєРё</b><div class="sub">Р±РµР· РґРѕСЃС‚СѓРїР° Рє РїР°РЅРµР»Рё</div></div><span class="tag st-ok">Р Р°Р±РѕС‚Р°РµС‚</span></div>
   </div>
 </section>
 
@@ -325,9 +340,9 @@ function toast(msg,isError){
   clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500);
 }
 
-const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',question:'Вопрос по клану',report:'Жалоба на игрока',other:'Другое'};
-const MOD_LABEL={warn:'Предупреждение',timeout:'Таймаут',untimeout:'Снятие таймаута',kick:'Кик',ban:'Бан',unban:'Разбан'};
-const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—';};
+const CAT_LABEL={clan:'РќР°Р±РѕСЂ РІ РєР»Р°РЅ',partner:'РџР°СЂС‚РЅС‘СЂСЃС‚РІРѕ',question:'Р’РѕРїСЂРѕСЃ РїРѕ РєР»Р°РЅСѓ',report:'Р–Р°Р»РѕР±Р° РЅР° РёРіСЂРѕРєР°',other:'Р”СЂСѓРіРѕРµ'};
+const MOD_LABEL={warn:'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ',timeout:'РўР°Р№РјР°СѓС‚',untimeout:'РЎРЅСЏС‚РёРµ С‚Р°Р№РјР°СѓС‚Р°',kick:'РљРёРє',ban:'Р‘Р°РЅ',unban:'Р Р°Р·Р±Р°РЅ'};
+const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'вЂ”';};
 const fmtTs=ts=>{if(!ts)return '';const d=new Date(ts<1e12?ts*1000:ts);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
 
 function showLogin(msg){
@@ -335,7 +350,7 @@ function showLogin(msg){
   if(msg)$('loginMsg').textContent=msg;
 }
 function showApp(user){
-  const name=user.global_name||user.username||'Пользователь';
+  const name=user.global_name||user.username||'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ';
   $('userName').textContent=name;
   $('heroName').textContent=name;
   const av=$('avatar');av.textContent='';
@@ -350,14 +365,14 @@ function showApp(user){
 function renderStats(stats,updatedAt){
   const s=stats||{total:0,online:0,clan:0};
   const live=updatedAt!=null;
-  const set=(id,v)=>{const el=$(id);if(el)el.textContent=live?fmt(v):'—';};
+  const set=(id,v)=>{const el=$(id);if(el)el.textContent=live?fmt(v):'вЂ”';};
   set('s-total',s.total);set('s-online',s.online);set('s-clan',s.clan);
   set('m-total',s.total);set('m-online',s.online);set('m-clan',s.clan);
   set('st-total',s.total);set('st-online',s.online);set('st-clan',s.clan);
-  const st=$('st-updated');if(st)st.textContent=updatedAt?fmtTs(updatedAt):'—';
+  const st=$('st-updated');if(st)st.textContent=updatedAt?fmtTs(updatedAt):'вЂ”';
   if($('statsNote'))$('statsNote').textContent=updatedAt
-    ? 'Данные обновлены: '+fmtTs(updatedAt)
-    : 'Данные ещё не приходили от бота.';
+    ? 'Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІР»РµРЅС‹: '+fmtTs(updatedAt)
+    : 'Р”Р°РЅРЅС‹Рµ РµС‰С‘ РЅРµ РїСЂРёС…РѕРґРёР»Рё РѕС‚ Р±РѕС‚Р°.';
 }
 
 function renderActivity(joins7d,serverTime){
@@ -365,11 +380,11 @@ function renderActivity(joins7d,serverTime){
     if(!el)return;
     el.textContent='';
     if(!Array.isArray(joins7d)||joins7d.length!==7){
-        el.appendChild(emptyNode('Данные о заходах пока не собраны. Появятся когда бот начнёт считать новых участников.'));
-        if($('activityNote'))$('activityNote').textContent='Сколько человек зашло на сервер каждый день.';
+        el.appendChild(emptyNode('Р”Р°РЅРЅС‹Рµ Рѕ Р·Р°С…РѕРґР°С… РїРѕРєР° РЅРµ СЃРѕР±СЂР°РЅС‹. РџРѕСЏРІСЏС‚СЃСЏ РєРѕРіРґР° Р±РѕС‚ РЅР°С‡РЅС‘С‚ СЃС‡РёС‚Р°С‚СЊ РЅРѕРІС‹С… СѓС‡Р°СЃС‚РЅРёРєРѕРІ.'));
+        if($('activityNote'))$('activityNote').textContent='РЎРєРѕР»СЊРєРѕ С‡РµР»РѕРІРµРє Р·Р°С€Р»Рѕ РЅР° СЃРµСЂРІРµСЂ РєР°Р¶РґС‹Р№ РґРµРЅСЊ.';
         return;
     }
-    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const dayNames=['РџРЅ','Р’С‚','РЎСЂ','Р§С‚','РџС‚','РЎР±','Р’СЃ'];
     const tsNum=Number(serverTime);
     const nowTs=Number.isFinite(tsNum)&&tsNum>0?tsNum:Math.floor(Date.now()/1000);
     const todayIdx=((new Date(nowTs*1000).getDay())+6)%7;
@@ -388,16 +403,16 @@ function renderActivity(joins7d,serverTime){
         col.append(num,bar,day);el.appendChild(col);
     });
     const total=joins7d.reduce((a,b)=>a+b,0);
-    if($('activityNote'))$('activityNote').textContent='Всего за 7 дней: '+total+' новых участников.';
+    if($('activityNote'))$('activityNote').textContent='Р’СЃРµРіРѕ Р·Р° 7 РґРЅРµР№: '+total+' РЅРѕРІС‹С… СѓС‡Р°СЃС‚РЅРёРєРѕРІ.';
 }
 
 function ticketRow(t,opts){
   opts=opts||{};
   const row=document.createElement('div');row.className='rowitem';
   const left=document.createElement('div');left.style.minWidth='180px';
-  const b=document.createElement('b');b.textContent='#'+t.number+' · '+(t.owner_name||'?');
+  const b=document.createElement('b');b.textContent='#'+t.number+' В· '+(t.owner_name||'?');
   const sub=document.createElement('div');sub.className='sub';
-  sub.textContent=(CAT_LABEL[t.category]||t.category)+' · '+fmtTs(t.created_at);
+  sub.textContent=(CAT_LABEL[t.category]||t.category)+' В· '+fmtTs(t.created_at);
   left.append(b,sub);row.appendChild(left);
   const right=document.createElement('div');
   if(opts.guild&&/^\d+$/.test(String(opts.guild))&&/^\d+$/.test(String(t.channel_id))){
@@ -410,16 +425,16 @@ function ticketRow(t,opts){
     const actions=document.createElement('div');actions.className='ticket-actions';
     const mk=(label,cls,fn)=>{const btn=document.createElement('button');btn.className='btn '+cls;btn.textContent=label;btn.onclick=()=>fn(btn);return btn;};
     if(t.category==='clan'){
-      actions.appendChild(mk('Принять','accept',b=>ticketAction('accept',t.channel_id,null,b)));
-      actions.appendChild(mk('Обзвон','call',b=>ticketAction('call',t.channel_id,null,b)));
-      actions.appendChild(mk('Отклонить','reject',b=>{
-        const reason=prompt('Причина отказа:');
+      actions.appendChild(mk('РџСЂРёРЅСЏС‚СЊ','accept',b=>ticketAction('accept',t.channel_id,null,b)));
+      actions.appendChild(mk('РћР±Р·РІРѕРЅ','call',b=>ticketAction('call',t.channel_id,null,b)));
+      actions.appendChild(mk('РћС‚РєР»РѕРЅРёС‚СЊ','reject',b=>{
+        const reason=prompt('РџСЂРёС‡РёРЅР° РѕС‚РєР°Р·Р°:');
         if(reason===null)return;
-        if(!reason.trim())return toast('Причина обязательна',true);
+        if(!reason.trim())return toast('РџСЂРёС‡РёРЅР° РѕР±СЏР·Р°С‚РµР»СЊРЅР°',true);
         ticketAction('reject',t.channel_id,reason.trim(),b);
       }));
     }
-    actions.appendChild(mk('Закрыть','close',b=>ticketAction('close',t.channel_id,null,b)));
+    actions.appendChild(mk('Р—Р°РєСЂС‹С‚СЊ','close',b=>ticketAction('close',t.channel_id,null,b)));
     right.appendChild(actions);
   }
   row.appendChild(right);
@@ -427,7 +442,7 @@ function ticketRow(t,opts){
 }
 
 async function ticketAction(kind,channelId,reason,btn){
-  if(btn){btn.disabled=true;var old=btn.textContent;btn.textContent='…';}
+  if(btn){btn.disabled=true;var old=btn.textContent;btn.textContent='вЂ¦';}
   try{
     const body={channel_id:String(channelId)};
     if(reason)body.reason=reason;
@@ -435,10 +450,10 @@ async function ticketAction(kind,channelId,reason,btn){
       headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok){throw new Error(j.error||('HTTP '+r.status));}
-    toast('Готово: '+kind);
+    toast('Р“РѕС‚РѕРІРѕ: '+kind);
     await reloadMe();
   }catch(e){
-    toast('Ошибка: '+e.message,true);
+    toast('РћС€РёР±РєР°: '+e.message,true);
     if(btn){btn.disabled=false;btn.textContent=old;}
   }
 }
@@ -448,20 +463,20 @@ function emptyNode(text){const d=document.createElement('div');d.className='empt
 function renderInvites(){
   const el=$('invitesList');if(!el)return;
   el.textContent='';
-  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+  if(!ME.staff)return el.appendChild(emptyNode('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё.'));
   const rows=Array.isArray(ME.inviteLeaderboard)?ME.inviteLeaderboard:[];
-  if($('s-invites'))$('s-invites').textContent=rows.length?fmt(rows.length):'—';
-  if($('s-invites-sub'))$('s-invites-sub').textContent=rows.length?'топ по активным':'данные бота';
-  if(!rows.length)return el.appendChild(emptyNode('Данных о приглашениях пока нет. Бот собирает их автоматически.'));
+  if($('s-invites'))$('s-invites').textContent=rows.length?fmt(rows.length):'вЂ”';
+  if($('s-invites-sub'))$('s-invites-sub').textContent=rows.length?'С‚РѕРї РїРѕ Р°РєС‚РёРІРЅС‹Рј':'РґР°РЅРЅС‹Рµ Р±РѕС‚Р°';
+  if(!rows.length)return el.appendChild(emptyNode('Р”Р°РЅРЅС‹С… Рѕ РїСЂРёРіР»Р°С€РµРЅРёСЏС… РїРѕРєР° РЅРµС‚. Р‘РѕС‚ СЃРѕР±РёСЂР°РµС‚ РёС… Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё.'));
   rows.forEach(r=>{
     const row=document.createElement('div');row.className='rowitem';
     const left=document.createElement('div');left.style.minWidth='180px';
     const b=document.createElement('b');b.textContent=r.user_name||('ID: '+r.user_id);
     const sub=document.createElement('div');sub.className='sub';
-    sub.textContent='Активных: '+fmt(r.active)+' · Всего: '+fmt(r.invites);
+    sub.textContent='РђРєС‚РёРІРЅС‹С…: '+fmt(r.active)+' В· Р’СЃРµРіРѕ: '+fmt(r.invites);
     left.append(b,sub);row.appendChild(left);
     const right=document.createElement('div');right.className='inv-actions';
-    const btn=document.createElement('button');btn.className='btn accept';btn.textContent='Выдать награду';
+    const btn=document.createElement('button');btn.className='btn accept';btn.textContent='Р’С‹РґР°С‚СЊ РЅР°РіСЂР°РґСѓ';
     btn.onclick=()=>rewardInviter(r.user_id,btn);
     right.appendChild(btn);row.appendChild(right);
     el.appendChild(row);
@@ -469,16 +484,16 @@ function renderInvites(){
 }
 
 async function rewardInviter(userId,btn){
-  if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+  if(!ME.staff)return toast('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё',true);
   if(btn)btn.disabled=true;
   try{
     const r=await fetch('/api/invites/reward',{method:'POST',credentials:'same-origin',
       headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(userId)})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-    toast(Array.isArray(j.awarded)&&j.awarded.length?('Выдано: '+j.awarded.join(', ')):'Новых наград нет');
+    toast(Array.isArray(j.awarded)&&j.awarded.length?('Р’С‹РґР°РЅРѕ: '+j.awarded.join(', ')):'РќРѕРІС‹С… РЅР°РіСЂР°Рґ РЅРµС‚');
   }catch(e){
-    toast('Ошибка: '+e.message,true);
+    toast('РћС€РёР±РєР°: '+e.message,true);
   }finally{
     if(btn)btn.disabled=false;
   }
@@ -487,16 +502,16 @@ async function rewardInviter(userId,btn){
 function fillTicketsList(el,filterFn,opts){
   if(!el)return;
   el.textContent='';
-  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+  if(!ME.staff)return el.appendChild(emptyNode('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё.'));
   const tk=ME.tickets;
-  if(!tk||tk.updated_at==null)return el.appendChild(emptyNode('Ожидание данных от бота…'));
+  if(!tk||tk.updated_at==null)return el.appendChild(emptyNode('РћР¶РёРґР°РЅРёРµ РґР°РЅРЅС‹С… РѕС‚ Р±РѕС‚Р°вЂ¦'));
   let items=Array.isArray(tk.items)?tk.items:[];
   if(filterFn)items=items.filter(filterFn);
-  if(!items.length)return el.appendChild(emptyNode('Открытых тикетов нет.'));
+  if(!items.length)return el.appendChild(emptyNode('РћС‚РєСЂС‹С‚С‹С… С‚РёРєРµС‚РѕРІ РЅРµС‚.'));
   const stale=(Date.now()/1000)-tk.updated_at>25*60;
   if(stale){
     const w=document.createElement('div');w.className='tk-stale';
-    w.textContent='Данные устарели, обновлено: '+fmtTs(tk.updated_at);
+    w.textContent='Р”Р°РЅРЅС‹Рµ СѓСЃС‚Р°СЂРµР»Рё, РѕР±РЅРѕРІР»РµРЅРѕ: '+fmtTs(tk.updated_at);
     el.appendChild(w);
   }
   items.forEach(t=>el.appendChild(ticketRow(t,Object.assign({guild:tk.guild_id},opts||{}))));
@@ -507,10 +522,10 @@ function renderTickets(){
   const items=(tk&&Array.isArray(tk.items))?tk.items:[];
   const clanCount=items.filter(t=>t.category==='clan').length;
   const live=tk&&tk.updated_at!=null;
-  if($('s-tickets'))$('s-tickets').textContent=live?fmt(items.length):'—';
-  if($('s-tickets-sub'))$('s-tickets-sub').textContent=live?'данные бота':'ожидание';
-  if($('s-apps'))$('s-apps').textContent=live?fmt(clanCount):'—';
-  if($('s-apps-sub'))$('s-apps-sub').textContent=live?'данные бота':'ожидание';
+  if($('s-tickets'))$('s-tickets').textContent=live?fmt(items.length):'вЂ”';
+  if($('s-tickets-sub'))$('s-tickets-sub').textContent=live?'РґР°РЅРЅС‹Рµ Р±РѕС‚Р°':'РѕР¶РёРґР°РЅРёРµ';
+  if($('s-apps'))$('s-apps').textContent=live?fmt(clanCount):'вЂ”';
+  if($('s-apps-sub'))$('s-apps-sub').textContent=live?'РґР°РЅРЅС‹Рµ Р±РѕС‚Р°':'РѕР¶РёРґР°РЅРёРµ';
   fillTicketsList($('recent-tickets'),null,{actions:false});
   fillTicketsList($('recent-apps'),t=>t.category==='clan',{actions:false});
   fillTicketsList($('ticketsList'),null,{actions:true});
@@ -519,31 +534,31 @@ function renderTickets(){
 
 async function renderLogs(){
   const el=$('logsList');if(!el)return;
-  el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+  el.textContent='';el.appendChild(emptyNode('Р—Р°РіСЂСѓР·РєР°вЂ¦'));
   try{
     const r=await fetch('/api/logs?limit=100',{credentials:'same-origin'});
-    if(!r.ok){el.textContent='';return el.appendChild(emptyNode('Логи недоступны.'));}
+    if(!r.ok){el.textContent='';return el.appendChild(emptyNode('Р›РѕРіРё РЅРµРґРѕСЃС‚СѓРїРЅС‹.'));}
     const j=await r.json();
     const logs=(j&&j.logs)||[];
     el.textContent='';
-    if(!logs.length)return el.appendChild(emptyNode('Пока пусто.'));
+    if(!logs.length)return el.appendChild(emptyNode('РџРѕРєР° РїСѓСЃС‚Рѕ.'));
     logs.forEach(l=>{
       const row=document.createElement('div');row.className='rowitem';
       const left=document.createElement('div');
-      const b=document.createElement('b');b.textContent=l.action||'—';
+      const b=document.createElement('b');b.textContent=l.action||'вЂ”';
       const sub=document.createElement('div');sub.className='sub';
-      sub.textContent=[fmtTs(l.ts),l.actor_name,l.target_name,l.details].filter(Boolean).join(' · ');
+      sub.textContent=[fmtTs(l.ts),l.actor_name,l.target_name,l.details].filter(Boolean).join(' В· ');
       left.append(b,sub);row.appendChild(left);
       el.appendChild(row);
     });
-  }catch(e){el.textContent='';el.appendChild(emptyNode('Ошибка загрузки логов.'));}
+  }catch(e){el.textContent='';el.appendChild(emptyNode('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё Р»РѕРіРѕРІ.'));}
 }
 
 function qRow(text){
     const row=document.createElement('div');row.className='q-row';
     const input=document.createElement('input');input.className='q-input';input.value=text||'';
-    input.placeholder='Текст вопроса…';input.maxLength=500;
-    const del=document.createElement('button');del.className='btn reject';del.textContent='Удалить';
+    input.placeholder='РўРµРєСЃС‚ РІРѕРїСЂРѕСЃР°вЂ¦';input.maxLength=500;
+    const del=document.createElement('button');del.className='btn reject';del.textContent='РЈРґР°Р»РёС‚СЊ';
     del.onclick=()=>row.remove();
     row.append(input,del);
     return row;
@@ -561,12 +576,12 @@ async function loadQuestions(){
     if(!el)return;
     if(!ME.staff){
         el.textContent='';
-        el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+        el.appendChild(emptyNode('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё.'));
         return;
     }
     const cat=$('q-category').value;
     el.textContent='';
-    el.appendChild(emptyNode('Загрузка…'));
+    el.appendChild(emptyNode('Р—Р°РіСЂСѓР·РєР°вЂ¦'));
     try{
         const r=await fetch('/api/questions',{credentials:'same-origin'});
         const j=await r.json().catch(()=>({}));
@@ -574,17 +589,17 @@ async function loadQuestions(){
         renderQuestionRows((j.questions&&j.questions[cat])||[]);
     }catch(e){
         el.textContent='';
-        el.appendChild(emptyNode('Не удалось загрузить вопросы: '+e.message));
+        el.appendChild(emptyNode('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РІРѕРїСЂРѕСЃС‹: '+e.message));
     }
 }
 
 async function saveQuestions(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    if(!ME.staff)return toast('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё',true);
     const cat=$('q-category').value;
     const inputs=[...document.querySelectorAll('#q-list .q-input')];
     const values=inputs.map(i=>i.value.trim());
-    if(!values.length||values.some(v=>!v))return toast('Заполни все вопросы или удали пустые',true);
-    if(values.length>30)return toast('Максимум 30 вопросов',true);
+    if(!values.length||values.some(v=>!v))return toast('Р—Р°РїРѕР»РЅРё РІСЃРµ РІРѕРїСЂРѕСЃС‹ РёР»Рё СѓРґР°Р»Рё РїСѓСЃС‚С‹Рµ',true);
+    if(values.length>30)return toast('РњР°РєСЃРёРјСѓРј 30 РІРѕРїСЂРѕСЃРѕРІ',true);
     const btn=$('q-save');btn.disabled=true;
     try{
         const r=await fetch('/api/questions',{method:'POST',credentials:'same-origin',
@@ -592,25 +607,25 @@ async function saveQuestions(){
             body:JSON.stringify({category:cat,questions:values})});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Сохранено: '+values.length+' вопросов');
+        toast('РЎРѕС…СЂР°РЅРµРЅРѕ: '+values.length+' РІРѕРїСЂРѕСЃРѕРІ');
     }catch(e){
-        toast('Ошибка: '+e.message,true);
+        toast('РћС€РёР±РєР°: '+e.message,true);
     }finally{
         btn.disabled=false;
     }
 }
 
 async function reloadConfig(){
-    if(ME.panelRole!=='owner')return toast('Перезагрузка конфига доступна только OWNER',true);
+    if(ME.panelRole!=='owner')return toast('РџРµСЂРµР·Р°РіСЂСѓР·РєР° РєРѕРЅС„РёРіР° РґРѕСЃС‚СѓРїРЅР° С‚РѕР»СЊРєРѕ OWNER',true);
     const btn=$('q-reload');btn.disabled=true;
     try{
         const r=await fetch('/api/reload-config',{method:'POST',credentials:'same-origin',
             headers:{'Content-Type':'application/json'},body:'{}'});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Конфиг перезагружен');
+        toast('РљРѕРЅС„РёРі РїРµСЂРµР·Р°РіСЂСѓР¶РµРЅ');
     }catch(e){
-        toast('Ошибка: '+e.message,true);
+        toast('РћС€РёР±РєР°: '+e.message,true);
     }finally{
         btn.disabled=false;
     }
@@ -652,16 +667,16 @@ function initModeration(){
 }
 
 async function punishAction(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    if(!ME.staff)return toast('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё',true);
     const action=$('pun-action').value;
     const userId=$('pun-user').value.trim();
     const reason=$('pun-reason').value.trim();
-    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
-    if(!reason)return toast('Причина обязательна',true);
+    if(!/^\d{5,25}$/.test(userId))return toast('РЈРєР°Р¶Рё РєРѕСЂСЂРµРєС‚РЅС‹Р№ Discord ID РёРіСЂРѕРєР°',true);
+    if(!reason)return toast('РџСЂРёС‡РёРЅР° РѕР±СЏР·Р°С‚РµР»СЊРЅР°',true);
     const body={action:action,user_id:userId,reason:reason};
     if(action==='timeout'){
         const m=parseInt($('pun-minutes').value,10);
-        if(!(m>=1&&m<=40320))return toast('Минуты: от 1 до 40320',true);
+        if(!(m>=1&&m<=40320))return toast('РњРёРЅСѓС‚С‹: РѕС‚ 1 РґРѕ 40320',true);
         body.duration_minutes=m;
     }
     const btn=$('pun-go');btn.disabled=true;
@@ -670,10 +685,10 @@ async function punishAction(){
             headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Наказание применено');
+        toast('РќР°РєР°Р·Р°РЅРёРµ РїСЂРёРјРµРЅРµРЅРѕ');
         $('pun-reason').value='';
     }catch(e){
-        toast('Ошибка: '+e.message,true);
+        toast('РћС€РёР±РєР°: '+e.message,true);
     }finally{
         btn.disabled=false;
     }
@@ -682,29 +697,29 @@ async function punishAction(){
 async function loadPunishments(){
     const el=$('hist-list');if(!el)return;
     const userId=$('hist-user').value.trim();
-    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
-    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+    if(!/^\d{5,25}$/.test(userId))return toast('РЈРєР°Р¶Рё РєРѕСЂСЂРµРєС‚РЅС‹Р№ Discord ID РёРіСЂРѕРєР°',true);
+    el.textContent='';el.appendChild(emptyNode('Р—Р°РіСЂСѓР·РєР°вЂ¦'));
     try{
         const r=await fetch('/api/punishments?user_id='+encodeURIComponent(userId)+'&limit=10',{credentials:'same-origin'});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         el.textContent='';
         const head=document.createElement('div');head.className='sub';
-        head.textContent='Предупреждений: '+fmt(j.warns||0)+(j.user_name?(' · '+j.user_name):'');
+        head.textContent='РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№: '+fmt(j.warns||0)+(j.user_name?(' В· '+j.user_name):'');
         el.appendChild(head);
         const rows=Array.isArray(j.punishments)?j.punishments:[];
-        if(!rows.length)return el.appendChild(emptyNode('Наказаний нет.'));
+        if(!rows.length)return el.appendChild(emptyNode('РќР°РєР°Р·Р°РЅРёР№ РЅРµС‚.'));
         rows.forEach(p=>{
             const row=document.createElement('div');row.className='rowitem';
             const left=document.createElement('div');
             const b=document.createElement('b');b.textContent=MOD_LABEL[p.action]||p.action;
             const sub=document.createElement('div');sub.className='sub';
-            sub.textContent=[fmtTs(p.ts),p.reason||'без причины','мод: '+(p.mod_name||'?')].join(' · ');
+            sub.textContent=[fmtTs(p.ts),p.reason||'Р±РµР· РїСЂРёС‡РёРЅС‹','РјРѕРґ: '+(p.mod_name||'?')].join(' В· ');
             left.append(b,sub);row.appendChild(left);
             el.appendChild(row);
         });
     }catch(e){
-        el.textContent='';el.appendChild(emptyNode('Ошибка: '+e.message));
+        el.textContent='';el.appendChild(emptyNode('РћС€РёР±РєР°: '+e.message));
     }
 }
 
@@ -715,30 +730,30 @@ async function loadBotStatus(){
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         if(j.online){
-            el.textContent='Работает';el.className='tag st-ok';
+            el.textContent='Р Р°Р±РѕС‚Р°РµС‚';el.className='tag st-ok';
             const b=j.bot||{};
-            const lat=$('st-bot-latency');if(lat)lat.textContent=b.latency_ms!=null?(b.latency_ms+' мс'):'—';
-            const g=$('st-bot-guilds');if(g)g.textContent=Array.isArray(b.guilds)?b.guilds.length:'—';
+            const lat=$('st-bot-latency');if(lat)lat.textContent=b.latency_ms!=null?(b.latency_ms+' РјСЃ'):'вЂ”';
+            const g=$('st-bot-guilds');if(g)g.textContent=Array.isArray(b.guilds)?b.guilds.length:'вЂ”';
         }else{
-            el.textContent='Оффлайн';el.className='tag st-no';
-            const lat=$('st-bot-latency');if(lat)lat.textContent='—';
-            const g=$('st-bot-guilds');if(g)g.textContent='—';
+            el.textContent='РћС„С„Р»Р°Р№РЅ';el.className='tag st-no';
+            const lat=$('st-bot-latency');if(lat)lat.textContent='вЂ”';
+            const g=$('st-bot-guilds');if(g)g.textContent='вЂ”';
         }
     }catch(e){
-        el.textContent='Оффлайн';el.className='tag st-no';
+        el.textContent='РћС„С„Р»Р°Р№РЅ';el.className='tag st-no';
     }
 }
 
 async function loadAnalytics(){
     const el=$('analyticsChart');if(!el)return;
-    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+    el.textContent='';el.appendChild(emptyNode('Р—Р°РіСЂСѓР·РєР°вЂ¦'));
     try{
         const r=await fetch('/api/analytics',{credentials:'same-origin'});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         renderAnalytics(j.points||[]);
     }catch(e){
-        el.textContent='';el.appendChild(emptyNode('Аналитика недоступна: '+e.message));
+        el.textContent='';el.appendChild(emptyNode('РђРЅР°Р»РёС‚РёРєР° РЅРµРґРѕСЃС‚СѓРїРЅР°: '+e.message));
     }
 }
 
@@ -746,11 +761,11 @@ function renderAnalytics(points){
     const el=$('analyticsChart');if(!el)return;
     el.textContent='';
     if(!Array.isArray(points)||!points.length){
-        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
-        if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням.';
+        el.appendChild(emptyNode('Р”Р°РЅРЅС‹С… РїРѕРєР° РјР°Р»Рѕ. Р‘РѕС‚ Р·Р°РїРёСЃС‹РІР°РµС‚ СЃС‚Р°С‚РёСЃС‚РёРєСѓ СЂР°Р· РІ 10 РјРёРЅСѓС‚.'));
+        if($('analyticsNote'))$('analyticsNote').textContent='РЎСЂРµРґРЅРёР№ РѕРЅР»Р°Р№РЅ РїРѕ РґРЅСЏРј.';
         return;
     }
-    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const dayNames=['РџРЅ','Р’С‚','РЎСЂ','Р§С‚','РџС‚','РЎР±','Р’СЃ'];
     const byDay={};
     points.forEach(p=>{
         const d=new Date(Number(p.ts)*1000);
@@ -760,7 +775,7 @@ function renderAnalytics(points){
     });
     const days=Object.keys(byDay).sort().slice(-7);
     if(!days.length){
-        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
+        el.appendChild(emptyNode('Р”Р°РЅРЅС‹С… РїРѕРєР° РјР°Р»Рѕ. Р‘РѕС‚ Р·Р°РїРёСЃС‹РІР°РµС‚ СЃС‚Р°С‚РёСЃС‚РёРєСѓ СЂР°Р· РІ 10 РјРёРЅСѓС‚.'));
         return;
     }
     const week=days.map(k=>({k:k,avg:Math.round(byDay[k].reduce((a,b)=>a+b,0)/byDay[k].length)}));
@@ -777,7 +792,7 @@ function renderAnalytics(points){
         col.append(num,bar,day);el.appendChild(col);
     });
     const avgAll=Math.round(week.reduce((a,d)=>a+d.avg,0)/week.length);
-    if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням (запись раз в 10 минут). Среднее за период: '+avgAll+'.';
+    if($('analyticsNote'))$('analyticsNote').textContent='РЎСЂРµРґРЅРёР№ РѕРЅР»Р°Р№РЅ РїРѕ РґРЅСЏРј (Р·Р°РїРёСЃСЊ СЂР°Р· РІ 10 РјРёРЅСѓС‚). РЎСЂРµРґРЅРµРµ Р·Р° РїРµСЂРёРѕРґ: '+avgAll+'.';
 }
 
 function initSettings(){
@@ -802,10 +817,10 @@ async function loadSettings(){
     const gs=$('set-goodbye-save');
     if(ME.panelRole!=='owner'){
         w.disabled=true;g.disabled=true;wt.disabled=true;gt.disabled=true;ws.disabled=true;gs.disabled=true;
-        if($('set-note'))$('set-note').textContent='Менять эти настройки может только OWNER.';
+        if($('set-note'))$('set-note').textContent='РњРµРЅСЏС‚СЊ СЌС‚Рё РЅР°СЃС‚СЂРѕР№РєРё РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ OWNER.';
         return;
     }
-    if($('set-note'))$('set-note').textContent='Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).';
+    if($('set-note'))$('set-note').textContent='РџРµСЂРµРјРµРЅРЅС‹Рµ: {mention}, {name}, {username}, {server}. РџСѓСЃС‚РѕРµ РїРѕР»Рµ вЂ” С‚РµРєСЃС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РёР· .env. РљР°РЅР°Р»С‹ Р·Р°РґР°СЋС‚СЃСЏ С‚Р°Рј Р¶Рµ (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).';
     try{
         const r=await fetch('/api/bot-settings',{credentials:'same-origin'});
         const j=await r.json().catch(()=>({}));
@@ -817,12 +832,12 @@ async function loadSettings(){
         gt.value=s.goodbye_text||'';
         w.disabled=false;g.disabled=false;wt.disabled=false;gt.disabled=false;ws.disabled=false;gs.disabled=false;
     }catch(e){
-        toast('Настройки недоступны: '+e.message,true);
+        toast('РќР°СЃС‚СЂРѕР№РєРё РЅРµРґРѕСЃС‚СѓРїРЅС‹: '+e.message,true);
     }
 }
 
 async function saveTextSetting(key,inputId,btn){
-    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
+    if(ME.panelRole!=='owner')return toast('РњРµРЅСЏС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р° РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ OWNER',true);
     const input=$(inputId);
     const body={};body[key]=input?input.value.trim():'';
     if(btn)btn.disabled=true;
@@ -833,16 +848,16 @@ async function saveTextSetting(key,inputId,btn){
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         const s=j.settings||{};
         if(input)input.value=s[key]||'';
-        toast('Сохранено');
+        toast('РЎРѕС…СЂР°РЅРµРЅРѕ');
     }catch(e){
-        toast('Ошибка: '+e.message,true);
+        toast('РћС€РёР±РєР°: '+e.message,true);
     }finally{
         if(btn)btn.disabled=false;
     }
 }
 
 async function saveSetting(key,value,el){
-    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
+    if(ME.panelRole!=='owner')return toast('РњРµРЅСЏС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р° РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ OWNER',true);
     if(el)el.disabled=true;
     try{
         const body={};body[key]=!!value;
@@ -850,9 +865,9 @@ async function saveSetting(key,value,el){
             headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Сохранено');
+        toast('РЎРѕС…СЂР°РЅРµРЅРѕ');
     }catch(e){
-        toast('Ошибка: '+e.message,true);
+        toast('РћС€РёР±РєР°: '+e.message,true);
         if(el)el.checked=!value;
     }finally{
         if(el)el.disabled=false;
@@ -862,19 +877,19 @@ async function saveSetting(key,value,el){
 async function loadVoiceChannels(){
     const sel=$('meeting-channel');if(!sel)return;
     sel.innerHTML='';
-    const load=document.createElement('option');load.value='';load.textContent='Загрузка…';sel.appendChild(load);
+    const load=document.createElement('option');load.value='';load.textContent='Р—Р°РіСЂСѓР·РєР°вЂ¦';sel.appendChild(load);
     try{
         const r=await fetch('/api/voice-channels',{credentials:'same-origin'});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         const chs=Array.isArray(j.channels)?j.channels:[];
         sel.innerHTML='';
-        if(!chs.length){const e=document.createElement('option');e.value='';e.textContent='Нет голосовых каналов';sel.appendChild(e);return;}
-        chs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='🔊 '+c.name;sel.appendChild(o);});
+        if(!chs.length){const e=document.createElement('option');e.value='';e.textContent='РќРµС‚ РіРѕР»РѕСЃРѕРІС‹С… РєР°РЅР°Р»РѕРІ';sel.appendChild(e);return;}
+        chs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='рџ”Љ '+c.name;sel.appendChild(o);});
     }catch(e){
         sel.innerHTML='';
-        const er=document.createElement('option');er.value='';er.textContent='Ошибка загрузки';sel.appendChild(er);
-        toast('Ошибка: '+e.message,true);
+        const er=document.createElement('option');er.value='';er.textContent='РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё';sel.appendChild(er);
+        toast('РћС€РёР±РєР°: '+e.message,true);
     }
 }
 
@@ -897,9 +912,9 @@ async function loadTextChannels(){
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
         const channels=Array.isArray(j.channels)?j.channels:[];
-        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
+        if(!channels.length){sel.innerHTML='<option value="">РќРµС‚ С‚РµРєСЃС‚РѕРІС‹С… РєР°РЅР°Р»РѕРІ</option>';return;}
         channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
-    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
+    }catch(e){sel.innerHTML='<option value="">РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РєР°РЅР°Р»С‹</option>';toast('РћС€РёР±РєР°: '+e.message,true);}
 }
 
 function initWipe(){
@@ -910,39 +925,39 @@ function initWipe(){
 }
 
 async function publishWipeFromPanel(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    if(!ME.staff)return toast('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё',true);
     const data={title:$('wipe-title').value.trim(),description:$('wipe-description').value.trim(),
         server:$('wipe-server').value.trim(),channel_id:$('wipe-channel').value,
         date:$('wipe-date').value,time:$('wipe-time').value,ask_for_reason:$('wipe-reason').checked};
-    if(!data.channel_id||!data.title||!data.description||!data.date||!data.time)return toast('Заполни заголовок, описание, канал, дату и время',true);
-    if(!confirm('Опубликовать объявление о вайпе в выбранный канал?'))return;
+    if(!data.channel_id||!data.title||!data.description||!data.date||!data.time)return toast('Р—Р°РїРѕР»РЅРё Р·Р°РіРѕР»РѕРІРѕРє, РѕРїРёСЃР°РЅРёРµ, РєР°РЅР°Р», РґР°С‚Сѓ Рё РІСЂРµРјСЏ',true);
+    if(!confirm('РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ РѕР±СЉСЏРІР»РµРЅРёРµ Рѕ РІР°Р№РїРµ РІ РІС‹Р±СЂР°РЅРЅС‹Р№ РєР°РЅР°Р»?'))return;
     const btn=$('wipe-go');btn.disabled=true;
     try{
         const r=await fetch('/api/wipe',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Объявление о вайпе опубликовано');
+        toast('РћР±СЉСЏРІР»РµРЅРёРµ Рѕ РІР°Р№РїРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРѕ');
         $('wipe-title').value='';$('wipe-description').value='';$('wipe-server').value='';$('wipe-reason').checked=false;
-    }catch(e){toast('Ошибка: '+e.message,true);}
+    }catch(e){toast('РћС€РёР±РєР°: '+e.message,true);}
     finally{btn.disabled=!ME.staff;}
 }
 
 async function announceMeeting(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    if(!ME.staff)return toast('Р”РѕСЃС‚СѓРї С‚РѕР»СЊРєРѕ РґР»СЏ СЃС‚Р°С„С„Р° РїР°РЅРµР»Рё',true);
     const sel=$('meeting-channel');
     const ch=sel?sel.value:'';
-    if(!ch)return toast('Выбери голосовой канал',true);
+    if(!ch)return toast('Р’С‹Р±РµСЂРё РіРѕР»РѕСЃРѕРІРѕР№ РєР°РЅР°Р»',true);
     const label=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:ch;
-    if(!confirm('Объявить собрание клана?\n'+label))return;
+    if(!confirm('РћР±СЉСЏРІРёС‚СЊ СЃРѕР±СЂР°РЅРёРµ РєР»Р°РЅР°?\n'+label))return;
     const btn=$('meeting-go');btn.disabled=true;
     try{
         const r=await fetch('/api/meeting',{method:'POST',credentials:'same-origin',
             headers:{'Content-Type':'application/json'},body:JSON.stringify({voice_channel_id:ch})});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Собрание объявлено. Рассылка идёт в фоне.');
+        toast('РЎРѕР±СЂР°РЅРёРµ РѕР±СЉСЏРІР»РµРЅРѕ. Р Р°СЃСЃС‹Р»РєР° РёРґС‘С‚ РІ С„РѕРЅРµ.');
     }catch(e){
-        toast('Ошибка: '+e.message,true);
+        toast('РћС€РёР±РєР°: '+e.message,true);
     }finally{
         btn.disabled=false;
     }
@@ -970,9 +985,9 @@ function applyMe(d){
   renderActivity(d.joins_7d,d.server_time);
   renderTickets();
   renderInvites();
-  if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
-  if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
-  if($('userRole'))$('userRole').textContent=(ME.panelRole==='owner'?'OWNER':'STAFF')+' · Discord';
+  if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'вЂ”';
+  if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'вЂ”';
+  if($('userRole'))$('userRole').textContent=(ME.panelRole==='owner'?'OWNER':'STAFF')+' В· Discord';
 }
 
 async function reloadMe(){
@@ -989,7 +1004,7 @@ async function loadGuilds(){
     if(!sel||!r.ok||!j.ok)return;
     const gs=Array.isArray(j.guilds)?j.guilds:[];
     sel.innerHTML='';
-    gs.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name+' · '+g.members;sel.appendChild(o);});
+    gs.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name+' В· '+g.members;sel.appendChild(o);});
     if(j.guild_id)sel.value=j.guild_id;
     sel.style.display=gs.length>1?'inline-block':'none';
   }catch(e){}
@@ -1002,7 +1017,7 @@ async function changeGuild(id){
       headers:{'Content-Type':'application/json'},body:JSON.stringify({guild_id:id})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-    toast('Сервер: '+(j.name||id));
+    toast('РЎРµСЂРІРµСЂ: '+(j.name||id));
     const d=await reloadMe();
     if(d.authenticated)applyMe(d);
     const active=document.querySelector('.nav button.active');
@@ -1010,7 +1025,7 @@ async function changeGuild(id){
     if(active&&active.dataset.page==='meeting'){loadVoiceChannels();}
     if(active&&active.dataset.page==='wipe'){loadTextChannels();}
   }catch(e){
-    toast('Ошибка: '+e.message,true);
+    toast('РћС€РёР±РєР°: '+e.message,true);
     loadGuilds();
   }
 }
@@ -1024,12 +1039,12 @@ async function init(){
       try{
         const d=await reloadMe();
         if(d.authenticated)applyMe(d);
-        else showLogin(d.notice||'Сессия завершена.');
+        else showLogin(d.notice||'РЎРµСЃСЃРёСЏ Р·Р°РІРµСЂС€РµРЅР°.');
       }catch(e){}
     },60000);
   }catch(e){
     console.error(e);
-    showLogin('Не удалось связаться с сервером. Обнови страницу.');
+    showLogin('РќРµ СѓРґР°Р»РѕСЃСЊ СЃРІСЏР·Р°С‚СЊСЃСЏ СЃ СЃРµСЂРІРµСЂРѕРј. РћР±РЅРѕРІРё СЃС‚СЂР°РЅРёС†Сѓ.');
   }
 }
 
@@ -1040,3 +1055,4 @@ async function logout(){
 
 document.addEventListener('DOMContentLoaded',init);
 </script></body></html>
+
