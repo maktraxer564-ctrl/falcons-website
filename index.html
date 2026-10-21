@@ -92,6 +92,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
     <button data-page="invites"><span class="ico">↗</span>Инвайты</button>
     <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
     <button data-page="meeting"><span class="ico">🚨</span>Собрание</button>
+    <button data-page="wipe"><span class="ico">📝</span>Вайп</button>
     <button data-page="stats"><span class="ico">▥</span>Статистика</button>
     <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
     <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
@@ -207,6 +208,23 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-of
       <button class="btn reject" id="meeting-go">ОБЪЯВИТЬ СОБРАНИЕ</button>
     </div>
     <div class="mutednote">Бот пингует @everyone 3 раза в течение 2 минут и пишет в ЛС участникам клана, которые онлайн и ещё не в войсе.</div>
+  </div>
+</section>
+
+<section class="page" id="wipe">
+  <div class="hero"><h1>📝 Объявление о вайпе</h1><p>Опубликуй объявление с датой, временем и сбором ответов в Discord.</p></div>
+  <div class="card">
+    <div class="punish-form">
+      <div><div class="sub">Заголовок</div><input id="wipe-title" class="q-input" maxlength="256" placeholder="Например: Вайп Rust Way Chill 2"></div>
+      <div><div class="sub">Rust-сервер</div><input id="wipe-server" class="q-input" maxlength="100" placeholder="Название сервера"></div>
+      <div><div class="sub">Канал объявления</div><select id="wipe-channel" class="q-input"><option value="">Загрузка…</option></select></div>
+      <div><div class="sub">Дата</div><input id="wipe-date" class="q-input" type="date"></div>
+      <div><div class="sub">Время (Москва)</div><input id="wipe-time" class="q-input" type="time"></div>
+    </div>
+    <div style="margin-top:12px"><div class="sub">Описание</div><textarea id="wipe-description" class="q-input" maxlength="3500" rows="4" style="width:100%;resize:vertical" placeholder="Подробности вайпа"></textarea></div>
+    <div class="setting"><div><b>Просить участников указать причину</b><div class="sub">Добавить кнопку для комментария рядом с ответами</div></div><input type="checkbox" id="wipe-reason"></div>
+    <div class="q-row"><button class="btn reject" id="wipe-go">Опубликовать вайп</button></div>
+    <div class="mutednote">В Discord будут кнопки «Принял», «Не смогу» и «Опоздаю». Повторный ответ обновит предыдущий.</div>
   </div>
 </section>
 
@@ -871,6 +889,44 @@ function initMeeting(){
     loadVoiceChannels();
 }
 
+async function loadTextChannels(){
+    const sel=$('wipe-channel');if(!sel)return;
+    sel.innerHTML='';
+    try{
+        const r=await fetch('/api/text-channels',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const channels=Array.isArray(j.channels)?j.channels:[];
+        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
+        channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
+    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
+}
+
+function initWipe(){
+    const go=$('wipe-go');if(!go)return;
+    if(!go._init){go._init=true;go.onclick=publishWipeFromPanel;}
+    go.disabled=!ME.staff;
+    loadTextChannels();
+}
+
+async function publishWipeFromPanel(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const data={title:$('wipe-title').value.trim(),description:$('wipe-description').value.trim(),
+        server:$('wipe-server').value.trim(),channel_id:$('wipe-channel').value,
+        date:$('wipe-date').value,time:$('wipe-time').value,ask_for_reason:$('wipe-reason').checked};
+    if(!data.channel_id||!data.title||!data.description||!data.date||!data.time)return toast('Заполни заголовок, описание, канал, дату и время',true);
+    if(!confirm('Опубликовать объявление о вайпе в выбранный канал?'))return;
+    const btn=$('wipe-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/wipe',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Объявление о вайпе опубликовано');
+        $('wipe-title').value='';$('wipe-description').value='';$('wipe-server').value='';$('wipe-reason').checked=false;
+    }catch(e){toast('Ошибка: '+e.message,true);}
+    finally{btn.disabled=!ME.staff;}
+}
+
 async function announceMeeting(){
     if(!ME.staff)return toast('Доступ только для стаффа панели',true);
     const sel=$('meeting-channel');
@@ -900,6 +956,7 @@ function showPage(id){
     if(id==='invites')renderInvites();
     if(id==='moderation')initModeration();
     if(id==='meeting')initMeeting();
+    if(id==='wipe')initWipe();
     if(id==='stats'){loadBotStatus();loadAnalytics();}
     if(id==='settings')initSettings();
 }
@@ -951,6 +1008,7 @@ async function changeGuild(id){
     const active=document.querySelector('.nav button.active');
     if(active&&active.dataset.page==='stats'){loadBotStatus();loadAnalytics();}
     if(active&&active.dataset.page==='meeting'){loadVoiceChannels();}
+    if(active&&active.dataset.page==='wipe'){loadTextChannels();}
   }catch(e){
     toast('Ошибка: '+e.message,true);
     loadGuilds();
