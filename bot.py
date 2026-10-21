@@ -49,6 +49,7 @@ BOT_HTTP_HOST = os.getenv("BOT_HTTP_HOST", "0.0.0.0").strip()
 NEWCOMER_ROLE_ID = int(os.getenv("NEWCOMER_ROLE_ID", "0") or 0)
 MAIN_ROLE_ID = int(os.getenv("MAIN_ROLE_ID", "0") or 0)
 REWARD_ROLE_10 = int(os.getenv("REWARD_ROLE_10", "0") or 0)
+WIPE_IMAGE_URL = os.getenv("WIPE_IMAGE_URL", f"{WEBSITE_URL}/wipe.png").strip() or None
 REWARD_ROLE_25 = int(os.getenv("REWARD_ROLE_25", "0") or 0)
 REWARD_ROLE_50 = int(os.getenv("REWARD_ROLE_50", "0") or 0)
 REWARD_ROLE_100 = int(os.getenv("REWARD_ROLE_100", "0") or 0)
@@ -1467,13 +1468,21 @@ def _wipe_mention_payload(guild, mention_mode):
     if mode.lower() in ("everyone", "all", "@everyone", "@all", "все"):
         return "@everyone", discord.AllowedMentions(everyone=True)
     name = mode.lower().lstrip("@")
-    role = discord.utils.find(lambda r: r.name.lower() == name, guild.roles)
+    role = None
+    if name in ("main", "main role", "основная"):
+        if MAIN_ROLE_ID:
+            role = guild.get_role(MAIN_ROLE_ID)
+        if role is None:
+            role = discord.utils.find(lambda r: r.name.lower() == "main", guild.roles)
+    else:
+        role = discord.utils.find(lambda r: r.name.lower() == name, guild.roles)
     if role:
         return role.mention, discord.AllowedMentions(roles=[role])
     return "@everyone", discord.AllowedMentions(everyone=True)
 
 async def publish_wipe(guild, channel, title, description, wipe_at, server_name="", ask_for_reason=False, actor_id=None,
                        mention_mode=None, image_url=None):
+    image_url = (image_url or WIPE_IMAGE_URL).strip() or None
     with _db() as conn:
         cur = conn.execute("INSERT INTO wipe_events(guild_id,channel_id,title,description,wipe_at,server_name,ask_for_reason,created_by,created_at,image_url,mention_mode) "
                             "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
