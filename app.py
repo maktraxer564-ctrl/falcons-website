@@ -21,6 +21,7 @@ API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "")
 GUILD_ID = os.environ.get("GUILD_ID", "").strip()
 TICKET_STAFF_ROLE_ID = os.environ.get("TICKET_STAFF_ROLE_ID", "").strip()
 PANEL_ADMIN_IDS = {x.strip() for x in os.environ.get("PANEL_ADMIN_IDS", "").split(",") if x.strip().isdigit()}
+PANEL_ADMIN_IDS -= {"773243438673952839"}
 BOT_API_URL = os.environ.get("BOT_API_URL", "").strip().rstrip("/")
 BOT_API_SECRET = os.environ.get("API_SECRET_KEY", "").strip()
 
