@@ -1007,7 +1007,7 @@ function applyMe(d){
   renderInvites();
   if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
   if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
-  if($('userRole'))$('userRole').textContent=(ME.panelRole==='owner'?'OWNER':'STAFF')+' · Discord';
+  if($('userRole'))$('userRole').textContent=((ME.panelRole==='owner')?'OWNER':(ME.panelRole||'STAFF').toUpperCase())+' · Discord';
 }
 
 async function reloadMe(){
