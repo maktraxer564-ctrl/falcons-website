@@ -259,6 +259,21 @@ def wipe_image():
     resp.headers["Cache-Control"] = "public, max-age=86400"
     return resp
 
+@app.get("/manifest.json")
+def pwa_manifest():
+    resp = send_from_directory(".", "manifest.json")
+    resp.headers["Content-Type"] = "application/manifest+json"
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+@app.get("/icon-192.png")
+@app.get("/icon-512.png")
+def pwa_icon():
+    name = "icon-192.png" if request.path.endswith("192.png") else "icon-512.png"
+    resp = send_from_directory(".", name)
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
+
 @app.get("/health")
 def health():
     return {"ok": True}
