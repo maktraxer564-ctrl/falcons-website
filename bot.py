@@ -1542,9 +1542,10 @@ class WipeResponseView(discord.ui.View):
         async def callback(interaction):
             with _db() as conn:
                 row = conn.execute("SELECT ask_for_reason FROM wipe_events WHERE id=?", (self.event_id,)).fetchone()
-            if row and row[0]:
-                return await interaction.response.send_modal(WipeReasonModal(self.event_id, status))
-            await set_wipe_response(interaction, self.event_id, status)
+            if status == "accepted" or not row or not row["ask_for_reason"]:
+                await set_wipe_response(interaction, self.event_id, status)
+                return
+            await interaction.response.send_modal(WipeReasonModal(self.event_id, status))
         return callback
 
 def _wipe_mention_payload(guild, mention_mode):
