@@ -774,6 +774,22 @@ async def backup_db_loop():
             file=discord.File(io.BytesIO(data), filename=name),
         )
         log.info("backup_db: дамп %s отправлен в канал %s", name, channel_id)
+        keep = 8
+        try:
+            old = []
+            async for m in channel.history(limit=200):
+                if m.author != bot.user:
+                    continue
+                if any(a.filename.startswith("falcons-backup-") and a.filename.endswith(".db") for a in m.attachments):
+                    old.append(m)
+            for m in old[keep:]:
+                try:
+                    await m.delete()
+                    log.info("backup_db: удалён старый сейв от %s", m.created_at.strftime("%d.%m %H:%M"))
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+        except Exception:
+            log.exception("backup_db: не удалось почистить старые сейвы")
     except (discord.Forbidden, discord.HTTPException):
         log.exception("backup_db: не удалось отправить дамп")
     finally:
