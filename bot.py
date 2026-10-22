@@ -422,12 +422,19 @@ class FalconsBot(commands.Bot):
             log.exception("не удалось очистить глобальные команды")
         for cmd in saved_globals:
             self.tree.add_command(cmd)
+        try:
+            remote_global = await self.tree.fetch_commands()
+            log.info("VERIFY global: %s", [c.name for c in remote_global])
+        except Exception:
+            log.exception("VERIFY global failed")
         if GUILD_ID:
             guild_obj = discord.Object(id=GUILD_ID)
             try:
                 self.tree.copy_global_to(guild=guild_obj)
                 await self.tree.sync(guild=guild_obj)
                 log.info("commands synced for guild %s", GUILD_ID)
+                remote = await self.tree.fetch_commands(guild=guild_obj)
+                log.info("VERIFY guild %s: %s", GUILD_ID, [c.name for c in remote])
             except Exception:
                 log.exception("sync failed for guild %s", GUILD_ID)
         self.add_view(TicketActionsView())
