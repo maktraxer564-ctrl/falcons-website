@@ -75,6 +75,26 @@ MACHINE_ENDPOINTS = (
     "/api/log",
 )
 
+_ACTION_COOLDOWNS = {"/api/wipe": 30, "/api/punish": 10, "/api/meeting": 10}
+_last_action: dict = {}
+
+@app.before_request
+def _cooldown_guard():
+    if request.method != "POST":
+        return None
+    cooldown = _ACTION_COOLDOWNS.get(request.path)
+    if not cooldown:
+        return None
+    user = session.get("user") or {}
+    uid = str(user.get("id") or request.remote_addr or "?")
+    key = (uid, request.path)
+    now = time.monotonic()
+    last = _last_action.get(key)
+    if last is not None and now - last < cooldown:
+        return jsonify({"error": "Слишком часто. Подожди несколько секунд и попробуй снова."}), 429
+    _last_action[key] = now
+    return None
+
 @app.before_request
 def _csrf_guard():
     if request.method != "POST":
