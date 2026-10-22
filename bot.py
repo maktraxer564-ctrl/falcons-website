@@ -551,11 +551,18 @@ async def push_staff(guild):
         role = guild.get_role(TICKET_STAFF_ROLE_ID)
         if role is None:
             return
-        ids = [str(m.id) for m in role.members if not m.bot]
+        entries = []
+        for m in role.members:
+            if m.bot:
+                continue
+            top = m.top_role
+            label = top.name.strip() if (top is not None and top.name and top != guild.default_role) else None
+            entries.append({"id": str(m.id), "role": label})
+        ids = [e["id"] for e in entries]
         timeout = aiohttp.ClientTimeout(total=20)
         async with aiohttp.ClientSession(timeout=timeout) as s:
             async with s.post(f"{WEBSITE_URL}/api/update-staff",
-                              json={"guild_id": str(guild.id), "staff_ids": ids, "complete": True},
+                              json={"guild_id": str(guild.id), "staff_ids": ids, "entries": entries, "complete": True},
                               headers={"X-Falcons-Secret": API_SECRET_KEY}) as r:
                 if r.status != 200:
                     log.error("update-staff HTTP %s", r.status)
