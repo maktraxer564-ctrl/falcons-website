@@ -413,7 +413,15 @@ class FalconsBot(commands.Bot):
             return _orig_proc(guild_id, nonce, members, complete)
 
         state.process_chunk_requests = _log_chunk_requests
-        await self.tree.sync()
+        saved_globals = list(self.tree.get_commands())
+        self.tree.clear_commands(guild=None)
+        try:
+            await self.tree.sync()
+            log.info("глобальные слэш-команды очищены (остаются только серверные копии)")
+        except Exception:
+            log.exception("не удалось очистить глобальные команды")
+        for cmd in saved_globals:
+            self.tree.add_command(cmd)
         if GUILD_ID:
             guild_obj = discord.Object(id=GUILD_ID)
             try:
@@ -761,6 +769,7 @@ async def on_ready():
 async def on_guild_join(guild):
     log.info("Бот добавлен на сервер %s (%s)", guild.name, guild.id)
     try:
+        bot.tree.copy_global_to(guild=discord.Object(id=guild.id))
         await bot.tree.sync(guild=discord.Object(id=guild.id))
     except Exception:
         log.exception("sync команд не удался для сервера %s", guild.id)
