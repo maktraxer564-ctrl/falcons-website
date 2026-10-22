@@ -130,14 +130,14 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS staff (
             user_id TEXT PRIMARY KEY,
-            updated_at INTEGER NOT NULL
+            updated_at INTEGER NOT NULL,
+            role_name TEXT
         );
         CREATE TABLE IF NOT EXISTS staff_meta (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             updated_at INTEGER,
             complete INTEGER NOT NULL DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS tickets (
+        );        CREATE TABLE IF NOT EXISTS tickets (
             channel_id TEXT PRIMARY KEY,
             guild_id TEXT NOT NULL,
             number INTEGER NOT NULL,
@@ -200,6 +200,9 @@ def init_db():
         if "guild_id" not in hcols:
             conn.execute("ALTER TABLE stats_history ADD COLUMN guild_id TEXT")
         conn.execute("UPDATE stats_history SET guild_id=? WHERE guild_id IS NULL", (GUILD_ID,))
+        scols = {row[1] for row in conn.execute("PRAGMA table_info(staff)").fetchall()}
+        if "role_name" not in scols:
+            conn.execute("ALTER TABLE staff ADD COLUMN role_name TEXT")
         empty = conn.execute("SELECT COUNT(*) AS c FROM guild_stats").fetchone()["c"] == 0
         old = conn.execute("SELECT total, online, clan, updated_at, joins_7d FROM stats WHERE id=1").fetchone()
         if empty and old is not None and GUILD_ID:
@@ -445,10 +448,22 @@ def update_staff():
             return jsonify({"ok": False, "error": "invalid staff id"}), 400
         ids.add(s)
     now = int(time.time())
+    roles = {}
+    raw_entries = data.get("entries")
+    if isinstance(raw_entries, list):
+        for v in raw_entries:
+            if not isinstance(v, dict):
+                return jsonify({"ok": False, "error": "invalid entries"}), 400
+            sid = _id_str(v.get("id"))
+            if sid is None:
+                return jsonify({"ok": False, "error": "invalid staff id"}), 400
+            ids.add(sid)
+            role = v.get("role")
+            roles[sid] = role.strip()[:80] if isinstance(role, str) and role.strip() else None
     with _db() as conn:
         conn.execute("DELETE FROM staff")
         for uid in ids:
-            conn.execute("INSERT INTO staff(user_id, updated_at) VALUES(?,?)", (uid, now))
+            conn.execute("INSERT INTO staff(user_id, role_name, updated_at) VALUES(?,?,?)", (uid, roles.get(uid), now))
         conn.execute("UPDATE staff_meta SET updated_at=?, complete=1 WHERE id=1", (now,))
     return jsonify({"ok": True, "count": len(ids)})
 
@@ -935,7 +950,14 @@ def me():
         "server_time": int(time.time()),
     }
     if user:
-        payload["panel_role"] = "owner" if str(user.get("id") or "") in PANEL_ADMIN_IDS else "staff"
+        if str(user.get("id") or "") in PANEL_ADMIN_IDS:
+            payload["panel_role"] = "owner"
+        else:
+            with _db() as conn:
+                row = conn.execute(
+                    "SELECT role_name FROM staff WHERE user_id=? AND role_name IS NOT NULL AND role_name!=''",
+                    (str(user.get("id") or ""),)).fetchone()
+            payload["panel_role"] = (row["role_name"] if row else None) or "staff"
     else:
         notice = session.pop("auth_notice", None)
         if notice:
