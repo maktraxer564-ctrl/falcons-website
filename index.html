@@ -1037,13 +1037,7 @@ async function changeGuild(id){
       headers:{'Content-Type':'application/json'},body:JSON.stringify({guild_id:id})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-    toast('Сервер: '+(j.name||id));
-    const d=await reloadMe();
-    if(d.authenticated)applyMe(d);
-    const active=document.querySelector('.nav button.active');
-    if(active&&active.dataset.page==='stats'){loadBotStatus();loadAnalytics();}
-    if(active&&active.dataset.page==='meeting'){loadVoiceChannels();}
-    if(active&&active.dataset.page==='wipe'){loadTextChannels();}
+    location.reload();
   }catch(e){
     toast('Ошибка: '+e.message,true);
     loadGuilds();
