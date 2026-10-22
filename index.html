@@ -1049,11 +1049,29 @@ async function changeGuild(id){
   }
 }
 
+let CSRF='';
+const __nativeFetch=window.fetch;
+window.fetch=function(input,init){
+  init=init?Object.assign({},init):{};
+  const m=String(init.method||'GET').toUpperCase();
+  if(m==='POST'){
+    init.headers=Object.assign({},init.headers||{});
+    init.headers['X-CSRF-Token']=CSRF;
+  }
+  return __nativeFetch.call(this,input,init);
+};
+async function loadCsrf(){
+  try{
+    const r=await __nativeFetch('/api/csrf',{credentials:'same-origin'});
+    if(r.ok){const j=await r.json().catch(()=>({}));CSRF=j.token||'';}
+  }catch(e){}
+}
+
 async function init(){
   try{
     const data=await reloadMe();
     if(!data.authenticated||!data.user){showLogin(data.notice||undefined);return;}
-    showApp(data.user);applyMe(data);loadGuilds();
+    showApp(data.user);applyMe(data);loadGuilds();loadCsrf();
     setInterval(async()=>{
       try{
         const d=await reloadMe();
