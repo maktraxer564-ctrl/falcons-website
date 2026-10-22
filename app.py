@@ -25,6 +25,11 @@ BOT_API_URL = os.environ.get("BOT_API_URL", "").strip().rstrip("/")
 BOT_API_SECRET = os.environ.get("API_SECRET_KEY", "").strip()
 
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 TICKET_CATEGORIES = {"clan", "partner", "question", "report", "other"}
 MAX_TICKETS = 500
 MAX_STAFF = 500
@@ -43,6 +48,13 @@ MSG_UNAVAILABLE = "Проверка роли временно недоступн
 MSG_NOT_CONFIGURED = "Проверка ролей не настроена. Обратись к администрации."
 MSG_REVOKED = "Доступ закрыт: у тебя больше нет роли TICKET STAFF."
 MSG_RECHECK = "Для безопасности нужно войти заново."
+
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return resp
 
 def _db():
     conn = sqlite3.connect(DB_PATH)
