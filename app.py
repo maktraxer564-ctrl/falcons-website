@@ -56,6 +56,43 @@ def _security_headers(resp):
     resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return resp
 
+def _csrf_token():
+    tok = session.get("csrf_token")
+    if not tok:
+        tok = secrets.token_hex(32)
+        session["csrf_token"] = tok
+    return tok
+
+def _csrf_ok():
+    given = request.headers.get("X-CSRF-Token", "")
+    return bool(given) and hmac.compare_digest(given, session.get("csrf_token", ""))
+
+MACHINE_ENDPOINTS = (
+    "/api/update-stats",
+    "/api/update-staff",
+    "/api/update-tickets",
+    "/api/update-invites",
+    "/api/log",
+)
+
+@app.before_request
+def _csrf_guard():
+    if request.method != "POST":
+        return None
+    path = request.path
+    if path.startswith(MACHINE_ENDPOINTS):
+        return None
+    if path.startswith("/api/") or path.startswith("/auth/"):
+        if not _csrf_ok():
+            return jsonify({"error": "Проверка безопасности не пройдена. Обнови страницу (Ctrl+R) и попробуй снова."}), 403
+    return None
+
+@app.get("/api/csrf")
+def csrf_token():
+    if not _current_user():
+        return jsonify({"error": "unauthorized"}), 401
+    return jsonify({"ok": True, "token": _csrf_token()})
+
 def _db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
