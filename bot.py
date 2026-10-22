@@ -49,7 +49,7 @@ BOT_HTTP_HOST = os.getenv("BOT_HTTP_HOST", "0.0.0.0").strip()
 NEWCOMER_ROLE_ID = int(os.getenv("NEWCOMER_ROLE_ID", "0") or 0)
 MAIN_ROLE_ID = int(os.getenv("MAIN_ROLE_ID", "0") or 0)
 REWARD_ROLE_10 = int(os.getenv("REWARD_ROLE_10", "0") or 0)
-WIPE_IMAGE_URL = os.getenv("WIPE_IMAGE_URL", f"{WEBSITE_URL}/wipe.png").strip() or None
+WIPE_IMAGE_URL = os.getenv("WIPE_IMAGE_URL", f"{WEBSITE_URL}/wipe.png?v=2").strip() or None
 REWARD_ROLE_25 = int(os.getenv("REWARD_ROLE_25", "0") or 0)
 REWARD_ROLE_50 = int(os.getenv("REWARD_ROLE_50", "0") or 0)
 REWARD_ROLE_100 = int(os.getenv("REWARD_ROLE_100", "0") or 0)
