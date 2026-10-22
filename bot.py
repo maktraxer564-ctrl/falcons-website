@@ -735,6 +735,51 @@ async def auto_announce_loop():
 async def before_auto_announce():
     await bot.wait_until_ready()
 
+@tasks.loop(hours=12)
+async def backup_db_loop():
+    raw = os.getenv("BACKUP_CHANNEL_ID", "").strip()
+    channel_id = int(raw) if raw.isdigit() else STAFF_LOG_CHANNEL_ID
+    if not channel_id:
+        return
+    channel = bot.get_channel(channel_id)
+    if channel is None and GUILD_ID:
+        guild = bot.get_guild(GUILD_ID)
+        if guild is not None:
+            channel = guild.get_channel(channel_id)
+    if channel is None:
+        log.warning("backup_db: канал %s не найден", channel_id)
+        return
+    tmp = DB_PATH + ".bak"
+    try:
+        src = sqlite3.connect(DB_PATH)
+        dst = sqlite3.connect(tmp)
+        with dst:
+            src.backup(dst)
+        src.close()
+        dst.close()
+        data = Path(tmp).read_bytes()
+        if not data or len(data) > 20 * 1024 * 1024:
+            log.warning("backup_db: подозрительный размер дампа (%s б), пропускаю", len(data))
+            return
+        name = "falcons-backup-" + time.strftime("%Y%m%d-%H%M") + ".db"
+        await channel.send(
+            content=f"Автосейв базы ({len(data) // 1024} КБ)",
+            file=discord.File(io.BytesIO(data), filename=name),
+        )
+        log.info("backup_db: дамп %s отправлен в канал %s", name, channel_id)
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("backup_db: не удалось отправить дамп")
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+@backup_db_loop.before_loop
+async def before_backup_db():
+    await bot.wait_until_ready()
+    await asyncio.sleep(20)
+
 @bot.event
 async def on_ready():
     log.info("Connected as %s (%s)", bot.user, bot.user.id)
@@ -745,6 +790,8 @@ async def on_ready():
         ticket_reminder.start()
     if not auto_announce_loop.is_running():
         auto_announce_loop.start()
+    if not backup_db_loop.is_running():
+        backup_db_loop.start()
     for guild in bot.guilds:
         if GUILD_ID and guild.id == GUILD_ID:
             continue
