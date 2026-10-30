@@ -1482,7 +1482,6 @@ async def on_interaction(interaction):
 
 WIPE_TZ = datetime.timezone(datetime.timedelta(hours=3))
 
-WIPE_NAME_LIMIT = 24
 WIPE_EMBED_LIST_LIMIT = 20
 WIPE_STATUS_LABELS = (("accepted", "✅ Принял"), ("declined", "❌ Не смогу"), ("late", "🕒 Опоздаю"))
 
@@ -1495,20 +1494,11 @@ def _wipe_grouped_responses(event_id):
         groups.setdefault(row["status"], []).append(row)
     return groups
 
-def _wipe_short_name(guild, user_id):
-    member = guild.get_member(int(user_id)) if guild else None
-    name = (member.display_name if member else f"user {user_id}").strip()
-    name = discord.utils.escape_markdown(name) or f"user {user_id}"
-    if len(name) > WIPE_NAME_LIMIT:
-        name = name[:WIPE_NAME_LIMIT - 1].rstrip() + "…"
-    return name
-
 def wipe_embed(event_id):
     with _db() as conn:
         event = conn.execute("SELECT * FROM wipe_events WHERE id=?", (event_id,)).fetchone()
     if not event:
         return discord.Embed(title="Wipe announcement", description="Event unavailable.")
-    guild = bot.get_guild(int(event["guild_id"]))
     embed = discord.Embed(title="📝 " + event["title"], description=event["description"], color=discord.Color.orange())
     ts = int(event["wipe_at"])
     embed.add_field(name="📅 Дата и время", value=f"<t:{ts}:F> (<t:{ts}:R>)", inline=False)
@@ -1516,7 +1506,7 @@ def wipe_embed(event_id):
     groups = _wipe_grouped_responses(event_id)
     for key, label in WIPE_STATUS_LABELS:
         rows = groups[key]
-        names = [_wipe_short_name(guild, row["user_id"]) for row in rows[:WIPE_EMBED_LIST_LIMIT]]
+        names = [f"<@{row['user_id']}>" for row in rows[:WIPE_EMBED_LIST_LIMIT]]
         value = "\n".join(names) or "—"
         if len(rows) > WIPE_EMBED_LIST_LIMIT:
             value += f"\n…и ещё {len(rows) - WIPE_EMBED_LIST_LIMIT}"
@@ -1596,40 +1586,6 @@ def wipe_reasons_embed(event_id):
         embed.add_field(name=f"{label} ({len(lines)})", value=_wipe_field_value(lines), inline=False)
     return embed
 
-def wipe_list_embed(event_id):
-    with _db() as conn:
-        event = conn.execute("SELECT * FROM wipe_events WHERE id=?", (event_id,)).fetchone()
-    embed = discord.Embed(title="📋 Список ответов", color=discord.Color.blurple())
-    if not event:
-        embed.description = "Это объявление больше недоступно."
-        return embed
-    embed.description = discord.utils.escape_mentions(discord.utils.escape_markdown(event["title"]))
-    guild = bot.get_guild(int(event["guild_id"]))
-    groups = _wipe_grouped_responses(event_id)
-    responded = set()
-    for key, label in WIPE_STATUS_LABELS:
-        lines = []
-        for row in groups[key]:
-            responded.add(row["user_id"])
-            mention = f"<@{row['user_id']}>"
-            if key == "accepted":
-                lines.append(mention)
-                continue
-            reason = (row["reason"] or "").strip()
-            reason = discord.utils.escape_mentions(discord.utils.escape_markdown(reason))[:300]
-            lines.append(f"{mention} — {reason}" if reason else f"{mention} — без причины")
-        embed.add_field(name=f"{label} ({len(lines)})", value=_wipe_field_value(lines, 1000), inline=False)
-    if guild is not None:
-        role = _wipe_main_role(guild)
-        if role is not None:
-            missing = sorted((m for m in role.members if not m.bot and str(m.id) not in responded),
-                             key=lambda m: m.display_name.casefold())
-            if missing:
-                lines = [f"<@{m.id}>" for m in missing]
-                embed.add_field(name=f"⏳ Не ответили ({len(lines)})",
-                                value=_wipe_field_value(lines, 1000), inline=False)
-    return embed
-
 class WipeResponseView(discord.ui.View):
     def __init__(self, event_id):
         super().__init__(timeout=None)
@@ -1644,10 +1600,6 @@ class WipeResponseView(discord.ui.View):
                                     custom_id=f"flcn:wipe:{event_id}:reasons")
         reasons.callback = self._reasons_callback
         self.add_item(reasons)
-        listing = discord.ui.Button(label="Список", emoji="📋", style=discord.ButtonStyle.secondary,
-                                    custom_id=f"flcn:wipe:{event_id}:list")
-        listing.callback = self._list_callback
-        self.add_item(listing)
 
     def _callback(self, status):
         async def callback(interaction):
@@ -1659,9 +1611,6 @@ class WipeResponseView(discord.ui.View):
 
     async def _reasons_callback(self, interaction):
         await interaction.response.send_message(embed=wipe_reasons_embed(self.event_id), ephemeral=True)
-
-    async def _list_callback(self, interaction):
-        await interaction.response.send_message(embed=wipe_list_embed(self.event_id), ephemeral=True)
 
 def _wipe_mention_payload(guild, mention_mode):
     mode = str(mention_mode or "main").strip()
