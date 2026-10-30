@@ -56,6 +56,8 @@ REWARD_ROLE_50 = int(os.getenv("REWARD_ROLE_50", "0") or 0)
 REWARD_ROLE_100 = int(os.getenv("REWARD_ROLE_100", "0") or 0)
 INVITE_REWARDS = ((10, REWARD_ROLE_10), (25, REWARD_ROLE_25), (50, REWARD_ROLE_50), (100, REWARD_ROLE_100))
 INVITE_FAKE_SECONDS = 600
+TEAM_GUILD_ID = 1560405533360525392
+TEAM_MAIN_ROLE_ID = 1560405533372977242
 
 TRANSCRIPT_CHANNEL_ID = int(os.getenv("TRANSCRIPT_CHANNEL_ID", "0") or 0)
 MEETING_CHANNEL_ID = int(os.getenv("MEETING_CHANNEL_ID", "1560429785119723590") or 1560429785119723590)
@@ -87,7 +89,7 @@ CATEGORY_QUESTIONS = {
     "clan": [
         "Возраст — сколько тебе лет?",
         "Часы в Rust — сколько часов наиграно?",
-        "Steam — ссылка на профиль.",
+        "Steam — ссылка и имя (через запятую)",
         "BattleMetrics — ссылка на профиль.",
         "О себе — на какую роль хочешь в клане? Сколько времени в день играешь? Играешь ли каждый день?",
     ],
@@ -182,6 +184,12 @@ def init_db():
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS member_profiles (
+            user_id TEXT PRIMARY KEY,
+            steam_nick TEXT NOT NULL DEFAULT '',
+            real_name TEXT NOT NULL DEFAULT '',
+            updated_at INTEGER NOT NULL
         );
         CREATE TABLE IF NOT EXISTS guild_config (
             guild_id TEXT NOT NULL,
@@ -311,6 +319,19 @@ def setting_bool(key, default):
     if raw is None:
         return default
     return raw == "1"
+
+def save_member_profile(user_id, steam_nick, real_name):
+    with _db() as conn:
+        conn.execute(
+            "INSERT INTO member_profiles(user_id, steam_nick, real_name, updated_at) VALUES(?,?,?,?)"
+            " ON CONFLICT(user_id) DO UPDATE SET steam_nick=excluded.steam_nick,"
+            " real_name=excluded.real_name, updated_at=excluded.updated_at",
+            (str(user_id), str(steam_nick or ""), str(real_name or ""), int(time.time())))
+
+def get_member_profile(user_id):
+    with _db() as conn:
+        row = conn.execute("SELECT * FROM member_profiles WHERE user_id=?", (str(user_id),)).fetchone()
+    return dict(row) if row else None
 
 def get_guild_config(guild_id, key):
     with _db() as conn:
@@ -934,20 +955,24 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_member_update(before, after):
-    if after.guild is None or after.guild.id != 1560405533360525392:
+    if after.guild is None or after.guild.id != TEAM_GUILD_ID:
         return
     if before.roles == after.roles:
         return
-    main_role = after.guild.get_role(1560405533372977242)
+    main_role = after.guild.get_role(TEAM_MAIN_ROLE_ID)
     if main_role is None:
         return
     if main_role in after.roles and main_role not in before.roles:
-        nick = "FLCN. | ник стим | имя"
+        profile = get_member_profile(after.id) or {}
+        nick = build_team_nick(profile.get("steam_nick"), profile.get("real_name"))
+        if not nick:
+            log.info("Нет Steam/имени для ника FLCN у %s (%s)", after, after.id)
+            return
         try:
             await after.edit(nick=nick, reason="FLCN MAIN role")
+            log_action(after.guild.id, "nick_set", target=after, details=nick)
         except Exception:
             log.exception("Не удалось установить ник FLCN")
-        log_action(after.guild.id, "nick_set", target=after, details=nick)
             
 
 
@@ -1090,7 +1115,23 @@ STEAM_PROFILE_RE = re.compile(
     r"https?://(?:www\.)?steamcommunity\.com/(?:profiles/\d+|id/[^/\s?#\"'<>]+)",
     re.IGNORECASE)
 
-async def find_steam_profile_url(channel):
+STEAM_NAME_LABELS = re.compile(
+    r"(?i)\b(?:имя|name|меня\s+зовут|my\s+name\s+is|steam|ссылка|профиль)\b\s*[:\-–—]?")
+
+def clean_player_name(text):
+    text = unescape(text or "")
+    text = re.sub(r"https?://\S+", " ", text)
+    text = STEAM_NAME_LABELS.sub(" ", text)
+    text = text.strip(" \t\r\n,;:.-–—|/\\()[]{}\"'«»")
+    text = re.sub(r"\s+", " ", text)
+    return text[:24].strip()
+
+def _ticket_name_candidate(raw):
+    segment = re.split(r"[,;]", raw or "", maxsplit=1)[0]
+    return clean_player_name(segment)
+
+async def find_ticket_steam(channel):
+    fallback_url = None
     async for msg in channel.history(limit=100):
         texts = [msg.content or ""]
         for embed in msg.embeds:
@@ -1098,23 +1139,39 @@ async def find_steam_profile_url(channel):
             texts.extend(f.value or "" for f in embed.fields)
         for text in texts:
             m = STEAM_PROFILE_RE.search(text)
-            if m:
-                return m.group(0).rstrip(".,);:!?")
-    return None
+            if not m:
+                continue
+            url = m.group(0).rstrip(".,);:!?")
+            name = _ticket_name_candidate(text[m.end():])
+            if not name:
+                name = clean_player_name(text[:m.start()])
+            if name:
+                return url, name
+            if fallback_url is None:
+                fallback_url = url
+    return fallback_url, ""
 
-async def fetch_steam_nick(url):
+async def fetch_steam_profile(url):
+    url = url.rstrip("/")
     timeout = aiohttp.ClientTimeout(total=15)
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    nick = None
+    real_name = ""
     async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
         async with session.get(url + "/?xml=1") as resp:
             if resp.status == 200:
                 xml = await resp.text(errors="ignore")
                 m = re.search(r"<steamID><!\[CDATA\[(.*?)\]\]></steamID>", xml)
                 if m and m.group(1).strip():
-                    return m.group(1).strip()
+                    nick = m.group(1).strip()
+                r = re.search(r"<realname><!\[CDATA\[(.*?)\]\]></realname>", xml)
+                if r:
+                    real_name = unescape(r.group(1)).strip()
+        if nick:
+            return nick, real_name
         async with session.get(url) as resp:
             if resp.status != 200:
-                return None
+                return None, real_name
             page = await resp.text(errors="ignore")
     m = re.search(r'class="actual_persona_name">([^<]+)<', page)
     if m is None:
@@ -1122,13 +1179,56 @@ async def fetch_steam_nick(url):
         if m:
             try:
                 name = json.loads(f'"{m.group(1)}"')
-                return name.strip() or None
+                return (name.strip() or None), real_name
             except Exception:
-                return None
+                return None, real_name
         m = re.search(r"<title>\s*Steam Community\s*::\s*(.*?)\s*</title>", page, re.DOTALL)
     if m is None:
-        return None
-    return unescape(m.group(1)).strip() or None
+        return None, real_name
+    return (unescape(m.group(1)).strip() or None), real_name
+
+def build_team_nick(steam_nick, real_name):
+    steam = " ".join(str(steam_nick or "").split())
+    if not steam:
+        return ""
+    real = " ".join(str(real_name or "").split())
+    nick = f"FLCN. | {steam}"
+    if real:
+        nick += f" | {real}"
+    return nick[:32]
+
+async def apply_accept_nick(guild, channel, member, actor, ticket):
+    try:
+        steam_url, typed_name = await find_ticket_steam(channel)
+        if not steam_url:
+            return " Ник не изменён: в тикете нет ссылки Steam."
+        steam_nick, steam_real = await fetch_steam_profile(steam_url)
+        if not steam_nick:
+            return " Ник не изменён: не удалось прочитать профиль Steam."
+        real_name = typed_name or steam_real
+        nick = f"FLCN. | {' '.join(steam_nick.split())}"[:32]
+        await member.edit(nick=nick, reason=f"FLCN ticket #{ticket['number']}")
+        save_member_profile(member.id, steam_nick, real_name)
+        log_action(guild.id, "ticket_nick", actor=actor, target=member, details=nick)
+        line = f" Ник: `{nick}`."
+        team_nick = build_team_nick(steam_nick, real_name)
+        team_guild = bot.get_guild(TEAM_GUILD_ID)
+        team_member = team_guild.get_member(member.id) if team_guild else None
+        team_role = team_guild.get_role(TEAM_MAIN_ROLE_ID) if team_guild else None
+        if team_nick and team_member is not None and team_role is not None and team_role in team_member.roles:
+            try:
+                await team_member.edit(nick=team_nick, reason=f"FLCN ticket #{ticket['number']}")
+                log_action(team_guild.id, "nick_set", actor=actor, target=team_member, details=team_nick)
+                line += f" В приватке: `{team_nick}`."
+            except Exception:
+                log.exception("Не удалось поставить ник в приватке")
+        return line
+    except discord.Forbidden:
+        log.warning("Нет прав на смену ника игроку %s", member.id)
+        return " Ник не изменён: боту не хватает прав на смену ника."
+    except Exception:
+        log.exception("Ошибка смены ника по Steam")
+        return " Ник не изменён: ошибка при обработке Steam."
 
 async def start_application(interaction, category_key):
     questions = load_questions(category_key)
@@ -1143,7 +1243,10 @@ async def start_application(interaction, category_key):
                 super().__init__(timeout=600)
                 self.inputs = []
                 for q in batch:
-                    field = discord.ui.TextInput(label=q[:45], placeholder="Напиши ответ…"[:100],
+                    placeholder = "Напиши ответ…"
+                    if q.strip().lower().startswith("steam"):
+                        placeholder = "Ссылка, затем имя: https://steamcommunity.com/id/xxx, Саша"
+                    field = discord.ui.TextInput(label=q[:45], placeholder=placeholder[:100],
                         style=discord.TextStyle.paragraph, required=True, min_length=1, max_length=1000)
                     self.inputs.append((q, field))
                     self.add_item(field)
@@ -1211,26 +1314,8 @@ class TicketActionsView(discord.ui.View):
             await member.add_roles(clan_role, reason=f"FLCN ticket #{t['number']}")
         except discord.Forbidden:
             return await interaction.response.send_message("Не удалось выдать роль клана (нет прав у бота).", ephemeral=True)
-        nick_line = ""
-        try:
-            steam_url = await find_steam_profile_url(interaction.channel)
-            if not steam_url:
-                nick_line = " Ник не изменён: в тикете нет ссылки Steam."
-            else:
-                steam_nick = await fetch_steam_nick(steam_url)
-                if steam_nick:
-                    nick = f"FLCN. | {' '.join(steam_nick.split())}"[:32]
-                    await member.edit(nick=nick, reason=f"FLCN ticket #{t['number']}")
-                    nick_line = f" Ник: `{nick}`."
-                    log_action(interaction.guild.id, "ticket_nick", actor=interaction.user,
-                               target=member, details=nick)
-                else:
-                    nick_line = " Ник не изменён: не удалось прочитать профиль Steam."
-        except discord.Forbidden:
-            nick_line = " Ник не изменён: боту не хватает прав на смену ника."
-            log.warning("Нет прав на смену ника игроку %s", member.id)
-        except Exception:
-            log.exception("Ошибка смены ника по Steam")
+        nick_line = await apply_accept_nick(interaction.guild, interaction.channel,
+                                            member, interaction.user, t)
         record_ticket_decision(interaction.channel.id, "accepted", interaction.user)
         log_action(interaction.guild.id, "ticket_accept", actor=interaction.user, target=member, details=f"#{t['number']}")
         await interaction.channel.send(f"✅ {member.mention} принят в клан. Решение принял {interaction.user.mention}.{nick_line}")
@@ -2198,10 +2283,11 @@ async def http_accept_ticket(request):
         await member.add_roles(clan_role, reason=f"Accepted from site by {actor}")
     except discord.Forbidden:
         return aiohttp_web.json_response({"ok": False, "error": "forbidden"}, status=403)
+    nick_line = await apply_accept_nick(guild, channel, member, actor, t)
     record_ticket_decision(channel.id, "accepted", actor)
     log_action(guild.id, "ticket_accept_site", actor=actor, target=member, details=f"#{t['number']}")
     try:
-        await channel.send(f"✅ {member.mention} принят в клан. Решение принял {actor.mention}.")
+        await channel.send(f"✅ {member.mention} принят в клан. Решение принял {actor.mention}.{nick_line}")
         await save_transcript(channel, t)
         await asyncio.sleep(2)
         await channel.delete(reason="Accepted from site")
