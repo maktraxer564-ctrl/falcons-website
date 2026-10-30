@@ -1116,7 +1116,7 @@ STEAM_PROFILE_RE = re.compile(
     re.IGNORECASE)
 
 STEAM_NAME_LABELS = re.compile(
-    r"(?i)\b(?:имя|name|меня\s+зовут|my\s+name\s+is|steam|ссылка|профиль)\b\s*[:\-–—]?")
+    r"(?i)\b(?:имя|name|ник|меня\s+зовут|зовут|my\s+name\s+is|steam|стим|ссылка|профиль)\b\s*[:\-–—]?")
 
 def clean_player_name(text):
     text = unescape(text or "")
@@ -1127,8 +1127,11 @@ def clean_player_name(text):
     return text[:24].strip()
 
 def _ticket_name_candidate(raw):
-    segment = re.split(r"[,;]", raw or "", maxsplit=1)[0]
-    return clean_player_name(segment)
+    for segment in re.split(r"[,;]", raw or ""):
+        name = clean_player_name(segment)
+        if name:
+            return name
+    return ""
 
 async def find_ticket_steam(channel):
     fallback_url = None
