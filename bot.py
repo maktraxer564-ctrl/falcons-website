@@ -208,6 +208,13 @@ def init_db():
             reason TEXT NOT NULL DEFAULT '',
             PRIMARY KEY (event_id, user_id)
         );
+        CREATE TABLE IF NOT EXISTS wipe_dm_failures (
+            event_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            reason TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            PRIMARY KEY (event_id, user_id)
+        );
         CREATE INDEX IF NOT EXISTS idx_invites_invited ON invites(guild_id, invited_id);
         """)
         ticket_cols = {row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
@@ -1473,25 +1480,45 @@ async def on_interaction(interaction):
 
 WIPE_TZ = datetime.timezone(datetime.timedelta(hours=3))
 
+WIPE_NAME_LIMIT = 28
+WIPE_EMBED_LIST_LIMIT = 15
+WIPE_STATUS_LABELS = (("accepted", "✅ Принял"), ("declined", "❌ Не смогу"), ("late", "🕒 Опоздаю"))
+
+def _wipe_grouped_responses(event_id):
+    with _db() as conn:
+        rows = conn.execute("SELECT user_id,status,reason FROM wipe_responses WHERE event_id=? ORDER BY user_id",
+                            (event_id,)).fetchall()
+    groups = {"accepted": [], "declined": [], "late": []}
+    for row in rows:
+        groups.setdefault(row["status"], []).append(row)
+    return groups
+
+def _wipe_short_name(guild, user_id):
+    member = guild.get_member(int(user_id)) if guild else None
+    name = (member.display_name if member else f"user {user_id}").strip()
+    name = discord.utils.escape_markdown(name) or f"user {user_id}"
+    if len(name) > WIPE_NAME_LIMIT:
+        name = name[:WIPE_NAME_LIMIT - 1].rstrip() + "…"
+    return name
+
 def wipe_embed(event_id):
     with _db() as conn:
         event = conn.execute("SELECT * FROM wipe_events WHERE id=?", (event_id,)).fetchone()
-        responses = conn.execute("SELECT user_id,status,reason FROM wipe_responses WHERE event_id=? ORDER BY user_id", (event_id,)).fetchall()
     if not event:
         return discord.Embed(title="Wipe announcement", description="Event unavailable.")
+    guild = bot.get_guild(int(event["guild_id"]))
     embed = discord.Embed(title="📝 " + event["title"], description=event["description"], color=discord.Color.orange())
     ts = int(event["wipe_at"])
     embed.add_field(name="📅 Дата и время", value=f"<t:{ts}:F> (<t:{ts}:R>)", inline=False)
     embed.add_field(name="🗺️ Сервер", value=event["server_name"] or "—", inline=False)
-    groups = {"accepted": [], "declined": [], "late": []}
-    for row in responses:
-        groups.setdefault(row["status"], []).append(f"<@{row['user_id']}>")
-    for key, label in (("accepted", "✅ Принял"), ("declined", "❌ Не смогу"), ("late", "🕒 Опоздаю")):
-        names = groups[key]
-        value = "\n".join(names[:30]) or "—"
-        if len(names) > 30:
-            value += f"\n…и ещё {len(names) - 30}"
-        embed.add_field(name=f"{label} ({len(names)})", value=value, inline=False)
+    groups = _wipe_grouped_responses(event_id)
+    for key, label in WIPE_STATUS_LABELS:
+        rows = groups[key]
+        names = [_wipe_short_name(guild, row["user_id"]) for row in rows[:WIPE_EMBED_LIST_LIMIT]]
+        value = "\n".join(names) or "—"
+        if len(rows) > WIPE_EMBED_LIST_LIMIT:
+            value += f"\n…и ещё {len(rows) - WIPE_EMBED_LIST_LIMIT}"
+        embed.add_field(name=f"{label} ({len(rows)})", value=value, inline=False)
     image_url = event["image_url"] if "image_url" in event.keys() else None
     if image_url:
         embed.set_image(url=image_url)
@@ -1567,6 +1594,40 @@ def wipe_reasons_embed(event_id):
         embed.add_field(name=f"{label} ({len(lines)})", value=_wipe_field_value(lines), inline=False)
     return embed
 
+def wipe_list_embed(event_id):
+    with _db() as conn:
+        event = conn.execute("SELECT * FROM wipe_events WHERE id=?", (event_id,)).fetchone()
+    embed = discord.Embed(title="📋 Список ответов", color=discord.Color.blurple())
+    if not event:
+        embed.description = "Это объявление больше недоступно."
+        return embed
+    embed.description = discord.utils.escape_mentions(discord.utils.escape_markdown(event["title"]))
+    guild = bot.get_guild(int(event["guild_id"]))
+    groups = _wipe_grouped_responses(event_id)
+    responded = set()
+    for key, label in WIPE_STATUS_LABELS:
+        lines = []
+        for row in groups[key]:
+            responded.add(row["user_id"])
+            mention = f"<@{row['user_id']}>"
+            if key == "accepted":
+                lines.append(mention)
+                continue
+            reason = (row["reason"] or "").strip()
+            reason = discord.utils.escape_mentions(discord.utils.escape_markdown(reason))[:300]
+            lines.append(f"{mention} — {reason}" if reason else f"{mention} — без причины")
+        embed.add_field(name=f"{label} ({len(lines)})", value=_wipe_field_value(lines, 1000), inline=False)
+    if guild is not None:
+        role = _wipe_main_role(guild)
+        if role is not None:
+            missing = sorted((m for m in role.members if not m.bot and str(m.id) not in responded),
+                             key=lambda m: m.display_name.casefold())
+            if missing:
+                lines = [f"<@{m.id}>" for m in missing]
+                embed.add_field(name=f"⏳ Не ответили ({len(lines)})",
+                                value=_wipe_field_value(lines, 1000), inline=False)
+    return embed
+
 class WipeResponseView(discord.ui.View):
     def __init__(self, event_id):
         super().__init__(timeout=None)
@@ -1581,6 +1642,10 @@ class WipeResponseView(discord.ui.View):
                                     custom_id=f"flcn:wipe:{event_id}:reasons")
         reasons.callback = self._reasons_callback
         self.add_item(reasons)
+        listing = discord.ui.Button(label="Список", emoji="📋", style=discord.ButtonStyle.secondary,
+                                    custom_id=f"flcn:wipe:{event_id}:list")
+        listing.callback = self._list_callback
+        self.add_item(listing)
 
     def _callback(self, status):
         async def callback(interaction):
@@ -1592,6 +1657,9 @@ class WipeResponseView(discord.ui.View):
 
     async def _reasons_callback(self, interaction):
         await interaction.response.send_message(embed=wipe_reasons_embed(self.event_id), ephemeral=True)
+
+    async def _list_callback(self, interaction):
+        await interaction.response.send_message(embed=wipe_list_embed(self.event_id), ephemeral=True)
 
 def _wipe_mention_payload(guild, mention_mode):
     mode = str(mention_mode or "main").strip()
@@ -1646,8 +1714,37 @@ def _wipe_dm_text(event, message, reminder=False):
     ]
     if event["server_name"]:
         lines.append(f"🗺️ {event['server_name']}")
-    lines.append(f"Отметься тут: {message.jump_url}")
+    lines.append("Ответь, пожалуйста, кнопкой в объявлении (✅ Принял / ❌ Не смогу / 🕒 Опоздаю).")
+    lines.append(f"Объявление: {message.jump_url}")
     return "\n".join(lines)
+
+def _wipe_dm_failed_ids(event_id):
+    with _db() as conn:
+        rows = conn.execute("SELECT user_id FROM wipe_dm_failures WHERE event_id=?", (event_id,)).fetchall()
+    return {row["user_id"] for row in rows}
+
+def _mark_wipe_dm_failed(event_id, user_id, reason=""):
+    with _db() as conn:
+        conn.execute("INSERT INTO wipe_dm_failures(event_id,user_id,reason,created_at) VALUES(?,?,?,?) "
+                     "ON CONFLICT(event_id,user_id) DO UPDATE SET reason=excluded.reason,created_at=excluded.created_at",
+                     (event_id, str(user_id), (reason or "")[:200], int(time.time())))
+
+async def _log_wipe_blocked(guild, event_id, members):
+    ids = ", ".join(str(m.id) for m in members)
+    log.warning("wipe DM: event=%s ЛС не доставлены (заблокировали бота или закрыли ЛС): %s", event_id, ids)
+    try:
+        lines = [f"<@{m.id}>" for m in members[:40]]
+        if len(members) > 40:
+            lines.append(f"…и ещё {len(members) - 40}")
+        embed = make_log_embed(
+            "🛑 Не смог отправить ЛС по вайпу",
+            discord.Color.red(),
+            [("Вайп", f"event {event_id}"),
+             ("Заблокировали бота / закрыли ЛС", "\n".join(lines))],
+        )
+        await send_staff_log(guild, embed)
+    except Exception:
+        log.exception("wipe DM: не удалось записать лог блокировок (event=%s)", event_id)
 
 async def dm_wipe_event(guild, event_id, message, reminder=False):
     try:
@@ -1656,52 +1753,70 @@ async def dm_wipe_event(guild, event_id, message, reminder=False):
         if not event:
             return
         targets = await _wipe_dm_targets(guild, event_id)
+        failed_ids = _wipe_dm_failed_ids(event_id)
+        targets = [m for m in targets if str(m.id) not in failed_ids]
         if not targets:
             log.info("wipe DM: некого оповещать (event=%s)", event_id)
             return
         text = _wipe_dm_text(event, message, reminder)
         sent = failed = 0
+        blocked = []
         for member in targets:
             try:
                 await member.send(text)
                 sent += 1
-            except (discord.Forbidden, discord.HTTPException):
+            except discord.Forbidden:
+                failed += 1
+                _mark_wipe_dm_failed(event_id, member.id, "forbidden")
+                blocked.append(member)
+            except discord.HTTPException:
                 failed += 1
             await asyncio.sleep(2.0)
         log.info("wipe DM: event=%s reminder=%s отправлено=%s не дошло=%s",
                  event_id, reminder, sent, failed)
+        if blocked:
+            await _log_wipe_blocked(guild, event_id, blocked)
     except Exception:
         log.exception("wipe DM: задача упала (event=%s)", event_id)
 
-def _mark_wipe_reminder_sent(event_id):
+def _stop_wipe_reminders(event_id):
     with _db() as conn:
-        conn.execute("UPDATE wipe_events SET reminder_sent=1 WHERE id=?", (event_id,))
+        conn.execute("UPDATE wipe_events SET reminder_at=NULL, reminder_sent=1 WHERE id=?", (event_id,))
 
 @tasks.loop(minutes=5)
 async def wipe_dm_reminder_loop():
     now = int(time.time())
     with _db() as conn:
         events = conn.execute(
-            "SELECT * FROM wipe_events WHERE reminder_sent=0 AND reminder_at IS NOT NULL "
+            "SELECT * FROM wipe_events WHERE reminder_at IS NOT NULL "
             "AND reminder_at<=? AND message_id IS NOT NULL", (now,)).fetchall()
     for event in events:
+        event_id = event["id"]
         try:
+            if int(event["wipe_at"]) <= now:
+                _stop_wipe_reminders(event_id)
+                continue
             guild = bot.get_guild(int(event["guild_id"]))
             if guild is None:
-                _mark_wipe_reminder_sent(event["id"])
+                _stop_wipe_reminders(event_id)
                 continue
             channel = guild.get_channel(int(event["channel_id"]))
             if channel is None:
-                _mark_wipe_reminder_sent(event["id"])
+                _stop_wipe_reminders(event_id)
                 continue
             message = await channel.fetch_message(int(event["message_id"]))
-            await dm_wipe_event(guild, event["id"], message, reminder=True)
+            await dm_wipe_event(guild, event_id, message, reminder=True)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-            log.warning("wipe DM reminder: не удалось обработать event=%s", event["id"])
+            log.warning("wipe DM reminder: не удалось обработать event=%s", event_id)
         except Exception:
-            log.exception("wipe DM reminder failed (event=%s)", event["id"])
+            log.exception("wipe DM reminder failed (event=%s)", event_id)
         finally:
-            _mark_wipe_reminder_sent(event["id"])
+            if int(event["wipe_at"]) <= now:
+                _stop_wipe_reminders(event_id)
+            else:
+                with _db() as conn:
+                    conn.execute("UPDATE wipe_events SET reminder_at=? WHERE id=?",
+                                 (now + 24 * 3600, event_id))
 
 @wipe_dm_reminder_loop.before_loop
 async def before_wipe_dm_reminder():
