@@ -1480,8 +1480,8 @@ async def on_interaction(interaction):
 
 WIPE_TZ = datetime.timezone(datetime.timedelta(hours=3))
 
-WIPE_NAME_LIMIT = 28
-WIPE_EMBED_LIST_LIMIT = 15
+WIPE_NAME_LIMIT = 24
+WIPE_EMBED_LIST_LIMIT = 20
 WIPE_STATUS_LABELS = (("accepted", "✅ Принял"), ("declined", "❌ Не смогу"), ("late", "🕒 Опоздаю"))
 
 def _wipe_grouped_responses(event_id):
