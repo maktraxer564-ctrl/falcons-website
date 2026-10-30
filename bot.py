@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(mes
 log = logging.getLogger("falcons")
 
 TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
-BOT_ACTIVITY = os.getenv("BOT_ACTIVITY", "FALCONS. clan leader").strip() or "FALCONS. clan leader"
+BOT_ACTIVITY = os.getenv("BOT_ACTIVITY", "FALCONS. monitoring").strip() or "FALCONS. monitoring"
 GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
 CLAN_ROLE_ID = int(os.getenv("CLAN_ROLE_ID", "0") or 0)
 OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
