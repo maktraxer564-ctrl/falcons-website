@@ -912,6 +912,13 @@ async def on_member_remove(member):
     except Exception:
         pass
     try:
+        with _db() as conn:
+            conn.execute("DELETE FROM wipe_responses WHERE user_id=?", (str(member.id),))
+            conn.execute("DELETE FROM wipe_dm_failures WHERE user_id=?", (str(member.id),))
+        await refresh_wipe_messages(member.guild.id)
+    except Exception:
+        log.exception("Не удалось убрать ответы участника из вайпов")
+    try:
         mark_invite_left(member.guild.id, member.id)
     except Exception:
         log.exception("Не удалось отметить выход по инвайту")
@@ -1494,18 +1501,28 @@ def _wipe_grouped_responses(event_id):
         groups.setdefault(row["status"], []).append(row)
     return groups
 
+def _wipe_member_ids(guild):
+    return {str(m.id) for m in guild.members} if guild is not None else None
+
+def _wipe_current_rows(rows, present):
+    if present is None:
+        return rows
+    return [row for row in rows if str(row["user_id"]) in present]
+
 def wipe_embed(event_id):
     with _db() as conn:
         event = conn.execute("SELECT * FROM wipe_events WHERE id=?", (event_id,)).fetchone()
     if not event:
         return discord.Embed(title="Wipe announcement", description="Event unavailable.")
+    guild = bot.get_guild(int(event["guild_id"]))
+    present = _wipe_member_ids(guild)
     embed = discord.Embed(title="📝 " + event["title"], description=event["description"], color=discord.Color.orange())
     ts = int(event["wipe_at"])
     embed.add_field(name="📅 Дата и время", value=f"<t:{ts}:F> (<t:{ts}:R>)", inline=False)
     embed.add_field(name="🗺️ Сервер", value=event["server_name"] or "—", inline=False)
     groups = _wipe_grouped_responses(event_id)
     for key, label in WIPE_STATUS_LABELS:
-        rows = groups[key]
+        rows = _wipe_current_rows(groups[key], present)
         names = [f"<@{row['user_id']}>" for row in rows[:WIPE_EMBED_LIST_LIMIT]]
         value = "\n".join(names) or "—"
         if len(rows) > WIPE_EMBED_LIST_LIMIT:
@@ -1575,9 +1592,10 @@ def wipe_reasons_embed(event_id):
         embed.description = "Это объявление больше недоступно."
         return embed
     embed.description = discord.utils.escape_mentions(discord.utils.escape_markdown(event["title"]))
+    present = _wipe_member_ids(bot.get_guild(int(event["guild_id"])))
     for key, label in (("declined", "❌ Не смогу"), ("late", "🕒 Опоздаю")):
         lines = []
-        for row in rows:
+        for row in _wipe_current_rows(rows, present):
             if row["status"] != key:
                 continue
             reason = (row["reason"] or "").strip()
@@ -1734,12 +1752,16 @@ def _stop_wipe_reminders(event_id):
     with _db() as conn:
         conn.execute("UPDATE wipe_events SET reminder_at=NULL, reminder_sent=1 WHERE id=?", (event_id,))
 
-async def refresh_wipe_messages():
+async def refresh_wipe_messages(guild_id=None):
     await bot.wait_until_ready()
     now = int(time.time())
+    query = "SELECT id,channel_id,message_id,wipe_at FROM wipe_events WHERE message_id IS NOT NULL"
+    params = ()
+    if guild_id is not None:
+        query += " AND guild_id=?"
+        params = (str(guild_id),)
     with _db() as conn:
-        rows = conn.execute("SELECT id,channel_id,message_id,wipe_at FROM wipe_events "
-                            "WHERE message_id IS NOT NULL").fetchall()
+        rows = conn.execute(query, params).fetchall()
     for row in rows:
         if int(row["wipe_at"]) < now - 7 * 24 * 3600:
             continue
