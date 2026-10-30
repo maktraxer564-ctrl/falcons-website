@@ -24,6 +24,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(mes
 log = logging.getLogger("falcons")
 
 TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
+BOT_ACTIVITY = os.getenv("BOT_ACTIVITY", "404 Clan leader").strip() or "404 Clan leader"
 GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
 CLAN_ROLE_ID = int(os.getenv("CLAN_ROLE_ID", "0") or 0)
 OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
@@ -827,6 +828,10 @@ async def before_backup_db():
 async def on_ready():
     log.info("Connected as %s (%s)", bot.user, bot.user.id)
     log.info("on_ready: найдено %s гилдов: %s", len(bot.guilds), [g.id for g in bot.guilds])
+    try:
+        await bot.change_presence(activity=discord.Game(name=BOT_ACTIVITY))
+    except Exception:
+        log.exception("Не удалось установить статус бота")
     if not updater.is_running():
         updater.start()
     if not ticket_reminder.is_running():
