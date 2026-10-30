@@ -455,6 +455,8 @@ class FalconsBot(commands.Bot):
             wipe_ids = [row[0] for row in conn.execute("SELECT id FROM wipe_events WHERE message_id IS NOT NULL")]
         for wipe_id in wipe_ids:
             self.add_view(WipeResponseView(wipe_id))
+        if wipe_ids:
+            self.loop.create_task(refresh_wipe_messages())
         self.loop.create_task(start_bot_http())
 
 bot = FalconsBot()
@@ -1782,6 +1784,27 @@ async def dm_wipe_event(guild, event_id, message, reminder=False):
 def _stop_wipe_reminders(event_id):
     with _db() as conn:
         conn.execute("UPDATE wipe_events SET reminder_at=NULL, reminder_sent=1 WHERE id=?", (event_id,))
+
+async def refresh_wipe_messages():
+    await bot.wait_until_ready()
+    now = int(time.time())
+    with _db() as conn:
+        rows = conn.execute("SELECT id,channel_id,message_id,wipe_at FROM wipe_events "
+                            "WHERE message_id IS NOT NULL").fetchall()
+    for row in rows:
+        if int(row["wipe_at"]) < now - 7 * 24 * 3600:
+            continue
+        channel = bot.get_channel(int(row["channel_id"]))
+        if channel is None:
+            continue
+        try:
+            message = await channel.fetch_message(int(row["message_id"]))
+            await message.edit(embed=wipe_embed(row["id"]), view=WipeResponseView(row["id"]))
+        except (discord.NotFound, discord.Forbidden):
+            continue
+        except discord.HTTPException:
+            log.warning("refresh_wipe: не удалось обновить сообщение event=%s", row["id"])
+        await asyncio.sleep(1.0)
 
 @tasks.loop(minutes=5)
 async def wipe_dm_reminder_loop():
