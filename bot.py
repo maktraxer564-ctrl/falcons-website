@@ -845,6 +845,39 @@ async def before_backup_db():
     await bot.wait_until_ready()
     await asyncio.sleep(20)
 
+@tasks.loop(minutes=10)
+async def clan_role_sync():
+    guild = bot.get_guild(GUILD_ID) if GUILD_ID else None
+    team = bot.get_guild(TEAM_GUILD_ID)
+    if guild is None or team is None or not CLAN_ROLE_ID:
+        return
+    role = guild.get_role(CLAN_ROLE_ID)
+    if role is None:
+        return
+    removed = 0
+    for member in list(guild.members):
+        if member.bot or member.id == guild.owner_id or role not in member.roles:
+            continue
+        if team.get_member(member.id) is not None:
+            continue
+        try:
+            await team.fetch_member(member.id)
+            continue
+        except discord.NotFound:
+            pass
+        except discord.HTTPException:
+            continue
+        if await remove_public_clan_role(member.id, "Нет в приватке"):
+            removed += 1
+            await asyncio.sleep(1)
+    if removed:
+        log.info("clan_role_sync: снята клан-роль в паблике у %s участников", removed)
+
+@clan_role_sync.before_loop
+async def before_clan_role_sync():
+    await bot.wait_until_ready()
+    await asyncio.sleep(30)
+
 @bot.event
 async def on_ready():
     log.info("Connected as %s (%s)", bot.user, bot.user.id)
@@ -863,6 +896,8 @@ async def on_ready():
         backup_db_loop.start()
     if not wipe_dm_reminder_loop.is_running():
         wipe_dm_reminder_loop.start()
+    if not clan_role_sync.is_running():
+        clan_role_sync.start()
     for guild in bot.guilds:
         if GUILD_ID and guild.id == GUILD_ID:
             continue
@@ -952,28 +987,27 @@ async def on_member_remove(member):
         await send_goodbye(member)
     except Exception:
         log.exception("Прощание не отправлено")
+    if member.guild.id == TEAM_GUILD_ID:
+        try:
+            await remove_public_clan_role(member.id, "Нет в приватке")
+        except Exception:
+            log.exception("Не удалось снять клан-роль в паблике")
 
 @bot.event
 async def on_member_update(before, after):
-    if after.guild is None or after.guild.id != TEAM_GUILD_ID:
+    if after.guild is None or before.roles == after.roles or after.bot:
         return
-    if before.roles == after.roles:
-        return
-    main_role = after.guild.get_role(TEAM_MAIN_ROLE_ID)
-    if main_role is None:
-        return
-    if main_role in after.roles and main_role not in before.roles:
-        profile = get_member_profile(after.id) or {}
-        nick = build_team_nick(profile.get("steam_nick"), profile.get("real_name"))
-        if not nick:
-            log.info("Нет Steam/имени для ника FLCN у %s (%s)", after, after.id)
-            return
-        try:
-            await after.edit(nick=nick, reason="FLCN MAIN role")
-            log_action(after.guild.id, "nick_set", target=after, details=nick)
-        except Exception:
-            log.exception("Не удалось установить ник FLCN")
-            
+    guild = after.guild
+    if guild.id == TEAM_GUILD_ID:
+        role = guild.get_role(TEAM_MAIN_ROLE_ID)
+        if role is not None and role in after.roles and role not in before.roles:
+            await apply_clan_nick(after, True, "FLCN MAIN role")
+            await sync_linked_nick(after.id, TEAM_GUILD_ID)
+    elif guild.id == GUILD_ID:
+        role = guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
+        if role is not None and role in after.roles and role not in before.roles:
+            await apply_clan_nick(after, False, "FLCN clan role")
+            await sync_linked_nick(after.id, GUILD_ID)
 
 
 def safe_channel_name(name):
@@ -1200,6 +1234,119 @@ def build_team_nick(steam_nick, real_name):
         nick += f" | {real}"
     return nick[:32]
 
+def fallback_clan_nick(member):
+    name = " ".join((member.display_name or "").split())
+    name = re.sub(r"(?i)^flcn\.?\s*(?:\|\s*)?", "", name).strip()
+    if not name:
+        return "FLCN. | ник стим"
+    return f"FLCN. | {name}"[:32]
+
+async def resolve_member_profile(user_id):
+    profile = get_member_profile(user_id) or {}
+    if profile.get("steam_nick") or not GUILD_ID:
+        return profile
+    try:
+        with _db() as conn:
+            row = conn.execute(
+                "SELECT channel_id FROM tickets WHERE owner_id=? AND guild_id=? ORDER BY created_at DESC LIMIT 1",
+                (str(user_id), str(GUILD_ID))).fetchone()
+    except Exception:
+        log.exception("Не удалось прочитать тикет для профиля %s", user_id)
+        return profile
+    if row is None:
+        return profile
+    try:
+        channel_id = int(row["channel_id"])
+    except (TypeError, ValueError):
+        return profile
+    guild = bot.get_guild(GUILD_ID)
+    channel = guild.get_channel(channel_id) if guild else None
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(channel_id)
+        except Exception:
+            channel = None
+    if channel is None:
+        return profile
+    try:
+        steam_url, typed_name = await find_ticket_steam(channel)
+        if not steam_url:
+            return profile
+        steam_nick, steam_real = await fetch_steam_profile(steam_url)
+        if not steam_nick:
+            return profile
+        real_name = typed_name or steam_real
+        save_member_profile(user_id, steam_nick, real_name)
+        return {"steam_nick": steam_nick, "real_name": real_name}
+    except Exception:
+        log.exception("Не удалось подтянуть Steam-профиль для %s", user_id)
+        return profile
+
+async def apply_clan_nick(member, with_real, reason):
+    if member.bot or member.id == member.guild.owner_id:
+        return
+    profile = await resolve_member_profile(member.id)
+    if with_real:
+        nick = build_team_nick(profile.get("steam_nick"), profile.get("real_name"))
+    else:
+        steam = " ".join(str(profile.get("steam_nick") or "").split())
+        nick = f"FLCN. | {steam}"[:32] if steam else ""
+    if not nick:
+        nick = fallback_clan_nick(member)
+        log.info("Steam не найден для %s (%s), ник по имени: %s", member, member.id, nick)
+    if (member.nick or "") == nick:
+        return
+    try:
+        await member.edit(nick=nick, reason=reason)
+        log_action(member.guild.id, "nick_set", target=member, details=nick)
+    except discord.Forbidden:
+        log.warning("Нет прав на смену ника %s (%s)", member, member.id)
+    except discord.HTTPException:
+        log.exception("Не удалось установить ник %s", member.id)
+
+async def sync_linked_nick(user_id, source_guild_id):
+    if source_guild_id == GUILD_ID:
+        guild = bot.get_guild(TEAM_GUILD_ID)
+        role = guild.get_role(TEAM_MAIN_ROLE_ID) if guild else None
+        member = guild.get_member(user_id) if guild else None
+        if member is not None and role is not None and role in member.roles:
+            await apply_clan_nick(member, True, "FLCN MAIN role")
+    elif source_guild_id == TEAM_GUILD_ID:
+        guild = bot.get_guild(GUILD_ID)
+        role = guild.get_role(CLAN_ROLE_ID) if guild and CLAN_ROLE_ID else None
+        member = guild.get_member(user_id) if guild else None
+        if member is not None and role is not None and role in member.roles:
+            await apply_clan_nick(member, False, "FLCN clan role")
+
+async def remove_public_clan_role(user_id, reason):
+    if not GUILD_ID or not CLAN_ROLE_ID:
+        return False
+    guild = bot.get_guild(GUILD_ID)
+    role = guild.get_role(CLAN_ROLE_ID) if guild else None
+    if role is None:
+        return False
+    member = guild.get_member(user_id)
+    if member is None:
+        try:
+            member = await guild.fetch_member(user_id)
+        except discord.NotFound:
+            return False
+        except discord.HTTPException:
+            log.exception("Не удалось получить участника %s в паблике", user_id)
+            return False
+    if member.bot or member.id == guild.owner_id or role not in member.roles:
+        return False
+    try:
+        await member.remove_roles(role, reason=reason)
+        log_action(guild.id, "clan_role_removed", target=member, details=reason)
+        log.info("Снята клан-роль в паблике у %s (%s): %s", member, member.id, reason)
+        return True
+    except discord.Forbidden:
+        log.warning("Нет прав снять клан-роль у %s в паблике", member.id)
+    except discord.HTTPException:
+        log.exception("Не удалось снять клан-роль у %s", member.id)
+    return False
+
 async def apply_accept_nick(guild, channel, member, actor, ticket):
     try:
         steam_url, typed_name = await find_ticket_steam(channel)
@@ -1209,9 +1356,9 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
         if not steam_nick:
             return " Ник не изменён: не удалось прочитать профиль Steam."
         real_name = typed_name or steam_real
+        save_member_profile(member.id, steam_nick, real_name)
         nick = f"FLCN. | {' '.join(steam_nick.split())}"[:32]
         await member.edit(nick=nick, reason=f"FLCN ticket #{ticket['number']}")
-        save_member_profile(member.id, steam_nick, real_name)
         log_action(guild.id, "ticket_nick", actor=actor, target=member, details=nick)
         line = f" Ник: `{nick}`."
         team_nick = build_team_nick(steam_nick, real_name)
