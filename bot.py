@@ -1224,22 +1224,21 @@ async def fetch_steam_profile(url):
         return None, real_name
     return (unescape(m.group(1)).strip() or None), real_name
 
+def clean_nick_part(value):
+    return " ".join(str(value or "").split()).strip("|").strip()
+
 def build_team_nick(steam_nick, real_name):
-    steam = " ".join(str(steam_nick or "").split())
+    steam = clean_nick_part(steam_nick)
     if not steam:
         return ""
-    real = " ".join(str(real_name or "").split())
+    real = clean_nick_part(real_name)
     nick = f"FLCN. | {steam}"
     if real:
         nick += f" | {real}"
     return nick[:32]
 
-def fallback_clan_nick(member):
-    name = " ".join((member.display_name or "").split())
-    name = re.sub(r"(?i)^flcn\.?\s*(?:\|\s*)?", "", name).strip()
-    if not name:
-        return "FLCN. | ник стим"
-    return f"FLCN. | {name}"[:32]
+def fallback_clan_nick(with_real):
+    return "FLCN. | ник стим | имя" if with_real else "FLCN. | ник стим"
 
 async def resolve_member_profile(user_id):
     profile = get_member_profile(user_id) or {}
@@ -1289,11 +1288,11 @@ async def apply_clan_nick(member, with_real, reason):
     if with_real:
         nick = build_team_nick(profile.get("steam_nick"), profile.get("real_name"))
     else:
-        steam = " ".join(str(profile.get("steam_nick") or "").split())
+        steam = clean_nick_part(profile.get("steam_nick"))
         nick = f"FLCN. | {steam}"[:32] if steam else ""
     if not nick:
-        nick = fallback_clan_nick(member)
-        log.info("Steam не найден для %s (%s), ник по имени: %s", member, member.id, nick)
+        nick = fallback_clan_nick(with_real)
+        log.info("Steam не найден для %s (%s), ник-заглушка: %s", member, member.id, nick)
     if (member.nick or "") == nick:
         return
     try:
@@ -1357,7 +1356,10 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
             return " Ник не изменён: не удалось прочитать профиль Steam."
         real_name = typed_name or steam_real
         save_member_profile(member.id, steam_nick, real_name)
-        nick = f"FLCN. | {' '.join(steam_nick.split())}"[:32]
+        steam = clean_nick_part(steam_nick)
+        if not steam:
+            return " Ник не изменён: пустой Steam-ник."
+        nick = f"FLCN. | {steam}"[:32]
         await member.edit(nick=nick, reason=f"FLCN ticket #{ticket['number']}")
         log_action(guild.id, "ticket_nick", actor=actor, target=member, details=nick)
         line = f" Ник: `{nick}`."
