@@ -1091,6 +1091,18 @@ async def save_transcript(channel, ticket):
     except Exception:
         log.exception("Не удалось отправить транскрипт")
 
+async def delete_ticket_channel(channel, reason):
+    if channel is None:
+        return True
+    try:
+        await channel.delete(reason=reason)
+        return True
+    except discord.NotFound:
+        return True
+    except Exception:
+        log.exception("Не удалось удалить канал тикета %s", getattr(channel, "id", "?"))
+        return False
+
 async def create_ticket(interaction, category_key, answers):
     guild = interaction.guild
     if guild is None:
@@ -1421,15 +1433,27 @@ class CloseTicketView(discord.ui.View):
     async def close_ticket(self, interaction, button):
         if not is_staff_interaction(interaction):
             return await interaction.response.send_message("Закрывать тикеты может только Ticket Staff или администратор.", ephemeral=True)
-        t = get_ticket_by_channel(interaction.channel.id)
-        if t and t["status"] == "open":
-            record_ticket_decision(interaction.channel.id, "closed_by_staff", interaction.user)
-            log_action(interaction.guild.id, "ticket_close", actor=interaction.user, details=f"#{t['number']}")
-            await send_staff_log(interaction.guild, make_log_embed("🔒 Тикет закрыт", discord.Color.dark_gray(),
-                [("Номер", f"#{t['number']}"), ("Кем", f"{interaction.user} (`{interaction.user.id}`)")]))
+        channel = interaction.channel
+        if channel is None:
+            return await interaction.response.send_message("Канал тикета уже удалён.", ephemeral=True)
+        t = get_ticket_by_channel(channel.id)
         await interaction.response.send_message("Закрываю тикет…", ephemeral=True)
-        await save_transcript(interaction.channel, t)
-        await interaction.channel.delete(reason=f"Closed by {interaction.user}")
+        try:
+            await save_transcript(channel, t)
+        except Exception:
+            log.exception("Не удалось сохранить транскрипт закрытия")
+        if not await delete_ticket_channel(channel, f"Closed by {interaction.user}"):
+            return await interaction.followup.send(
+                "Не удалось удалить канал: у бота нет права «Управлять каналами» "
+                "или канал стоит выше роли бота.", ephemeral=True)
+        if t and t["status"] == "open":
+            record_ticket_decision(channel.id, "closed_by_staff", interaction.user)
+            log_action(interaction.guild.id, "ticket_close", actor=interaction.user, details=f"#{t['number']}")
+            try:
+                await send_staff_log(interaction.guild, make_log_embed("🔒 Тикет закрыт", discord.Color.dark_gray(),
+                    [("Номер", f"#{t['number']}"), ("Кем", f"{interaction.user} (`{interaction.user.id}`)")]))
+            except Exception:
+                log.exception("Не удалось отправить лог закрытия тикета")
         asyncio.create_task(push_tickets(interaction.guild))
 
 class TicketActionsView(discord.ui.View):
@@ -1462,25 +1486,38 @@ class TicketActionsView(discord.ui.View):
         member = interaction.guild.get_member(int(t["owner_id"]))
         if member is None:
             return await interaction.response.send_message("Игрок уже не на сервере.", ephemeral=True)
+        channel = interaction.channel
+        if channel is None:
+            return await interaction.response.send_message("Канал тикета уже удалён.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
         try:
             await member.add_roles(clan_role, reason=f"FLCN ticket #{t['number']}")
         except discord.Forbidden:
-            return await interaction.response.send_message("Не удалось выдать роль клана (нет прав у бота).", ephemeral=True)
-        nick_line = await apply_accept_nick(interaction.guild, interaction.channel,
-                                            member, interaction.user, t)
-        record_ticket_decision(interaction.channel.id, "accepted", interaction.user)
+            return await interaction.followup.send("Не удалось выдать роль клана (нет прав у бота).", ephemeral=True)
+        nick_line = await apply_accept_nick(interaction.guild, channel, member, interaction.user, t)
+        record_ticket_decision(channel.id, "accepted", interaction.user)
         log_action(interaction.guild.id, "ticket_accept", actor=interaction.user, target=member, details=f"#{t['number']}")
-        await interaction.channel.send(f"✅ {member.mention} принят в клан. Решение принял {interaction.user.mention}.{nick_line}")
-        await send_staff_log(interaction.guild, make_log_embed("✅ Заявка принята", discord.Color.green(),
-            [("Номер", f"#{t['number']}"), ("Игрок", f"{member} (`{member.id}`)"),
-             ("Принял", f"{interaction.user} (`{interaction.user.id}`)")]))
-        await interaction.response.send_message("Принято, роль выдана, тикет закрывается…", ephemeral=True)
-        await asyncio.sleep(2)
-        await save_transcript(interaction.channel, t)
         try:
-            await interaction.channel.delete(reason="Accepted")
+            await channel.send(f"✅ {member.mention} принят в клан. Решение принял {interaction.user.mention}.{nick_line}")
         except Exception:
-            pass
+            log.exception("Не удалось отправить сообщение о принятии")
+        try:
+            await send_staff_log(interaction.guild, make_log_embed("✅ Заявка принята", discord.Color.green(),
+                [("Номер", f"#{t['number']}"), ("Игрок", f"{member} (`{member.id}`)"),
+                 ("Принял", f"{interaction.user} (`{interaction.user.id}`)")]))
+        except Exception:
+            log.exception("Не удалось отправить лог принятия")
+        await asyncio.sleep(2)
+        try:
+            await save_transcript(channel, t)
+        except Exception:
+            log.exception("Не удалось сохранить транскрипт принятия")
+        if await delete_ticket_channel(channel, "Accepted"):
+            await interaction.followup.send("Принято, роль выдана, тикет закрыт.", ephemeral=True)
+        else:
+            await interaction.followup.send(
+                "Принято, роль выдана, но канал не удалось закрыть: проверь право "
+                "«Управлять каналами» у бота.", ephemeral=True)
         asyncio.create_task(push_tickets(interaction.guild))
 
     @discord.ui.button(label="Вызвать на обзвон", style=discord.ButtonStyle.primary, custom_id="flcn:call")
@@ -1576,30 +1613,49 @@ class RejectModal(discord.ui.Modal, title="Причина отказа"):
         self.ticket_number = ticket_number
 
     async def on_submit(self, interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
         reason = str(self.reason.value).strip()
         member = interaction.guild.get_member(self.owner_id)
-        record_ticket_decision(interaction.channel.id, "rejected", interaction.user, reason)
-        log_action(interaction.guild.id, "ticket_reject", actor=interaction.user, target=member,
-                   details=f"#{self.ticket_number}: {reason[:200]}")
-        await interaction.channel.send(f"❌ Заявка отклонена. Решение принял {interaction.user.mention}.\n**Причина:** {reason}")
+        channel = interaction.channel
+        if channel is None:
+            return await interaction.followup.send("Канал тикета уже удалён.", ephemeral=True)
+        try:
+            await channel.send(f"❌ Заявка отклонена. Решение принял {interaction.user.mention}.\n**Причина:** {reason}")
+        except Exception:
+            log.exception("Не удалось отправить сообщение об отказе в канал тикета")
         if member:
             try:
                 await member.send(f"Твоя заявка в FALCONS (тикет №{self.ticket_number}) отклонена.\n**Причина:** {reason}")
             except discord.Forbidden:
                 pass
-        await send_staff_log(interaction.guild, make_log_embed("❌ Заявка отклонена", discord.Color.red(),
-            [("Номер", f"#{self.ticket_number}"),
-             ("Игрок", f"{member} (`{member.id}`)" if member else "?"),
-             ("Отклонил", f"{interaction.user} (`{interaction.user.id}`)"),
-             ("Причина", reason)]))
-        await interaction.response.send_message("Заявка отклонена. Тикет закрывается…", ephemeral=True)
-        await asyncio.sleep(2)
-        t = get_ticket_by_channel(interaction.channel.id)
-        await save_transcript(interaction.channel, t or {"number": self.ticket_number})
+            except Exception:
+                log.exception("Не удалось отправить ЛС об отказе")
         try:
-            await interaction.channel.delete(reason="Rejected")
+            await send_staff_log(interaction.guild, make_log_embed("❌ Заявка отклонена", discord.Color.red(),
+                [("Номер", f"#{self.ticket_number}"),
+                 ("Игрок", f"{member} (`{member.id}`)" if member else "?"),
+                 ("Отклонил", f"{interaction.user} (`{interaction.user.id}`)"),
+                 ("Причина", reason)]))
         except Exception:
-            pass
+            log.exception("Не удалось отправить лог отказа")
+        await asyncio.sleep(2)
+        t = get_ticket_by_channel(channel.id)
+        try:
+            await save_transcript(channel, t or {"number": self.ticket_number})
+        except Exception:
+            log.exception("Не удалось сохранить транскрипт отказа")
+        if await delete_ticket_channel(channel, "Rejected"):
+            record_ticket_decision(channel.id, "rejected", interaction.user, reason)
+            log_action(interaction.guild.id, "ticket_reject", actor=interaction.user, target=member,
+                       details=f"#{self.ticket_number}: {reason[:200]}")
+            await interaction.followup.send("Заявка отклонена. Тикет закрыт.", ephemeral=True)
+        else:
+            record_ticket_decision(channel.id, "rejected", interaction.user, reason)
+            log_action(interaction.guild.id, "ticket_reject_failed", actor=interaction.user, target=member,
+                       details=f"#{self.ticket_number}: канал не удалён")
+            await interaction.followup.send(
+                "Заявка отклонена, но канал не удалось закрыть: у бота нет права "
+                "«Управлять каналами» или канал стоит выше роли бота.", ephemeral=True)
         asyncio.create_task(push_tickets(interaction.guild))
 
 class TicketCategorySelect(discord.ui.Select):
@@ -2399,19 +2455,24 @@ async def http_close_ticket(request):
         return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
     data = await request.json()
     guild, actor, channel = _get_guild_and_actor(data)
-    if guild is None or channel is None:
+    if guild is None:
         return aiohttp_web.json_response({"ok": False, "error": "not found"}, status=404)
     if actor is None or not has_staff_perms(actor):
         return aiohttp_web.json_response({"ok": False, "error": "no perms"}, status=403)
+    if channel is None:
+        asyncio.create_task(push_tickets(guild))
+        return aiohttp_web.json_response({"ok": True, "already_closed": True})
     t = get_ticket_by_channel(channel.id)
+    try:
+        await save_transcript(channel, t)
+    except Exception:
+        log.exception("Не удалось сохранить транскрипт с сайта")
+    if not await delete_ticket_channel(channel, f"Closed from site by {actor}"):
+        return aiohttp_web.json_response(
+            {"ok": False, "error": "channel delete failed: check Manage Channels permission"}, status=500)
     if t and t["status"] == "open":
         record_ticket_decision(channel.id, "closed_by_site", actor)
         log_action(guild.id, "ticket_close_site", actor=actor, details=f"#{t['number']}")
-    await save_transcript(channel, t)
-    try:
-        await channel.delete(reason=f"Closed from site by {actor}")
-    except Exception as e:
-        return aiohttp_web.json_response({"ok": False, "error": str(e)}, status=500)
     asyncio.create_task(push_tickets(guild))
     return aiohttp_web.json_response({"ok": True})
 
@@ -2420,10 +2481,12 @@ async def http_accept_ticket(request):
         return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
     data = await request.json()
     guild, actor, channel = _get_guild_and_actor(data)
-    if guild is None or channel is None:
+    if guild is None:
         return aiohttp_web.json_response({"ok": False, "error": "not found"}, status=404)
     if actor is None or not has_staff_perms(actor):
         return aiohttp_web.json_response({"ok": False, "error": "no perms"}, status=403)
+    if channel is None:
+        return aiohttp_web.json_response({"ok": False, "error": "not found"}, status=404)
     t = get_ticket_by_channel(channel.id)
     if not t or t["status"] != "open":
         return aiohttp_web.json_response({"ok": False, "error": "already decided"}, status=409)
@@ -2440,11 +2503,16 @@ async def http_accept_ticket(request):
     log_action(guild.id, "ticket_accept_site", actor=actor, target=member, details=f"#{t['number']}")
     try:
         await channel.send(f"✅ {member.mention} принят в клан. Решение принял {actor.mention}.{nick_line}")
-        await save_transcript(channel, t)
-        await asyncio.sleep(2)
-        await channel.delete(reason="Accepted from site")
     except Exception:
-        pass
+        log.exception("Не удалось отправить сообщение о принятии с сайта")
+    try:
+        await save_transcript(channel, t)
+    except Exception:
+        log.exception("Не удалось сохранить транскрипт принятия с сайта")
+    await asyncio.sleep(2)
+    if not await delete_ticket_channel(channel, "Accepted from site"):
+        return aiohttp_web.json_response(
+            {"ok": False, "error": "channel delete failed: check Manage Channels permission"}, status=500)
     asyncio.create_task(push_tickets(guild))
     return aiohttp_web.json_response({"ok": True})
 
@@ -2456,28 +2524,45 @@ async def http_reject_ticket(request):
     if not reason:
         return aiohttp_web.json_response({"ok": False, "error": "reason required"}, status=400)
     guild, actor, channel = _get_guild_and_actor(data)
-    if guild is None or channel is None:
+    if guild is None:
         return aiohttp_web.json_response({"ok": False, "error": "not found"}, status=404)
     if actor is None or not has_staff_perms(actor):
         return aiohttp_web.json_response({"ok": False, "error": "no perms"}, status=403)
+    if channel is None:
+        channel_id = str(data.get("channel_id", "")).strip()
+        if channel_id.isdigit():
+            record_ticket_decision(channel_id, "rejected", actor, reason)
+            log_action(guild.id, "ticket_reject_site", actor=actor,
+                       details=f"канал уже удалён: {reason[:200]}")
+        asyncio.create_task(push_tickets(guild))
+        return aiohttp_web.json_response({"ok": True, "already_closed": True})
     t = get_ticket_by_channel(channel.id)
     if not t or t["status"] != "open":
         return aiohttp_web.json_response({"ok": False, "error": "already decided"}, status=409)
     member = guild.get_member(int(t["owner_id"]))
-    record_ticket_decision(channel.id, "rejected", actor, reason)
-    log_action(guild.id, "ticket_reject_site", actor=actor, target=member, details=f"#{t['number']}: {reason[:200]}")
     try:
         await channel.send(f"❌ Заявка отклонена {actor.mention}.\n**Причина:** {reason}")
-        if member:
-            try:
-                await member.send(f"Твоя заявка в FALCONS (тикет №{t['number']}) отклонена.\n**Причина:** {reason}")
-            except discord.Forbidden:
-                pass
-        await save_transcript(channel, t)
-        await asyncio.sleep(2)
-        await channel.delete(reason="Rejected from site")
     except Exception:
-        pass
+        log.exception("Не удалось отправить сообщение об отказе с сайта")
+    if member:
+        try:
+            await member.send(f"Твоя заявка в FALCONS (тикет №{t['number']}) отклонена.\n**Причина:** {reason}")
+        except discord.Forbidden:
+            pass
+        except Exception:
+            log.exception("Не удалось отправить ЛС об отказе с сайта")
+    try:
+        await save_transcript(channel, t)
+    except Exception:
+        log.exception("Не удалось сохранить транскрипт отказа с сайта")
+    await asyncio.sleep(2)
+    deleted = await delete_ticket_channel(channel, "Rejected from site")
+    record_ticket_decision(channel.id, "rejected", actor, reason)
+    log_action(guild.id, "ticket_reject_site", actor=actor, target=member, details=f"#{t['number']}: {reason[:200]}")
+    if not deleted:
+        asyncio.create_task(push_tickets(guild))
+        return aiohttp_web.json_response(
+            {"ok": False, "error": "channel delete failed: check Manage Channels permission"}, status=500)
     asyncio.create_task(push_tickets(guild))
     return aiohttp_web.json_response({"ok": True})
 
