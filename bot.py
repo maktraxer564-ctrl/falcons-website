@@ -1275,6 +1275,24 @@ async def fetch_steam_profile(url):
 def clean_nick_part(value):
     return " ".join(str(value or "").split()).strip("|").strip()
 
+PLACEHOLDER_STEAM = "ник стим"
+PLACEHOLDER_REAL = "имя"
+
+def is_placeholder_steam(value):
+    return clean_nick_part(value).casefold() == PLACEHOLDER_STEAM
+
+def is_placeholder_real(value):
+    return clean_nick_part(value).casefold() == PLACEHOLDER_REAL
+
+def parse_display_name(value):
+    parts = [clean_nick_part(p) for p in str(value or "").split("|")]
+    parts = [p for p in parts if p]
+    if not parts:
+        return "", ""
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], " ".join(parts[1:])
+
 def build_team_nick(steam_nick, real_name):
     steam = clean_nick_part(steam_nick)
     if not steam:
@@ -1285,12 +1303,58 @@ def build_team_nick(steam_nick, real_name):
         nick += f" | {real}"
     return nick[:32]
 
-def fallback_clan_nick(with_real):
-    return "FLCN. | ник стим | имя" if with_real else "FLCN. | ник стим"
+
+def display_real_name(member, steam):
+    global_name = clean_nick_part(getattr(member, "global_name", None))
+    username = clean_nick_part(getattr(member, "name", None))
+    if not global_name:
+        return ""
+    if username and global_name.casefold() == username.casefold():
+        return ""
+    if steam and global_name.casefold() == clean_nick_part(steam).casefold():
+        return ""
+    if is_placeholder_steam(global_name) or is_placeholder_real(global_name):
+        return ""
+    if "|" in global_name:
+        return clean_nick_part(global_name.split("|", 1)[0])
+    return global_name
+
+
+def resolve_nick_parts(member, profile=None, pub_member=None):
+    profile = profile or {}
+    steam = clean_nick_part(profile.get("steam_nick"))
+    real = clean_nick_part(profile.get("real_name"))
+    if is_placeholder_steam(steam):
+        steam = ""
+    if is_placeholder_real(real):
+        real = ""
+    steam_source = "profile" if steam else ""
+    nick_steam, nick_real = parse_team_nick(getattr(member, "nick", None))
+    if not steam and nick_steam:
+        steam = clean_nick_part(nick_steam)
+        steam_source = "team_nick"
+    if not real and nick_real:
+        real = clean_nick_part(nick_real)
+    if not steam and pub_member is not None:
+        pub_steam, _ = parse_team_nick(getattr(pub_member, "nick", None))
+        if pub_steam:
+            steam = clean_nick_part(pub_steam)
+            steam_source = "public_nick"
+    if not steam:
+        display_steam, _ = parse_display_name(getattr(member, "global_name", None) or getattr(member, "name", None))
+        if display_steam:
+            steam = display_steam
+            steam_source = "display"
+    if not real:
+        real = display_real_name(member, steam)
+    return steam, real, steam_source
+
 
 async def resolve_member_profile(user_id):
     profile = get_member_profile(user_id) or {}
-    if profile.get("steam_nick") or not GUILD_ID:
+    steam_ok = profile.get("steam_nick") and not is_placeholder_steam(profile.get("steam_nick"))
+    real_ok = profile.get("real_name") and not is_placeholder_real(profile.get("real_name"))
+    if (steam_ok and real_ok) or not GUILD_ID:
         return profile
     try:
         with _db() as conn:
@@ -1322,7 +1386,13 @@ async def resolve_member_profile(user_id):
         steam_nick, steam_real = await fetch_steam_profile(steam_url)
         if not steam_nick:
             return profile
-        real_name = typed_name or steam_real
+        real_name = clean_nick_part(typed_name or steam_real)
+        if not real_name:
+            old_real = clean_nick_part(profile.get("real_name"))
+            if old_real and not is_placeholder_real(old_real):
+                real_name = old_real
+        if is_placeholder_real(real_name) or is_placeholder_steam(real_name):
+            real_name = ""
         save_member_profile(user_id, steam_nick, real_name)
         return {"steam_nick": steam_nick, "real_name": real_name}
     except Exception:
@@ -1333,14 +1403,14 @@ async def apply_clan_nick(member, with_real, reason):
     if member.bot or member.id == member.guild.owner_id:
         return
     profile = await resolve_member_profile(member.id)
+    steam, real, _ = resolve_nick_parts(member, profile)
     if with_real:
-        nick = build_team_nick(profile.get("steam_nick"), profile.get("real_name"))
+        nick = build_team_nick(steam, real)
     else:
-        steam = clean_nick_part(profile.get("steam_nick"))
         nick = f"FLCN. | {steam}"[:32] if steam else ""
     if not nick:
-        nick = fallback_clan_nick(with_real)
-        log.info("Steam не найден для %s (%s), ник-заглушка: %s", member, member.id, nick)
+        log.info("Не удалось собрать ник для %s (%s), пропуск", member, member.id)
+        return
     if (member.nick or "") == nick:
         return
     try:
@@ -1373,6 +1443,10 @@ def parse_team_nick(nick):
         return None, None
     steam = clean_nick_part(parts[1])
     real = clean_nick_part(" | ".join(parts[2:]))
+    if is_placeholder_steam(steam):
+        steam = ""
+    if is_placeholder_real(real):
+        real = ""
     return (steam or None), (real or None)
 
 async def sync_team_member_to_public(member, reason):
@@ -1389,22 +1463,18 @@ async def sync_team_member_to_public(member, reason):
                 log.exception("Не удалось получить %s в паблике", member.id)
                 pub_member = None
     profile = get_member_profile(member.id) or {}
-    steam = clean_nick_part(profile.get("steam_nick"))
-    real = clean_nick_part(profile.get("real_name"))
-    if not steam or not real:
-        nick_steam, nick_real = parse_team_nick(member.nick)
-        if not steam:
-            steam = clean_nick_part(nick_steam)
-        if not real:
-            real = clean_nick_part(nick_real)
-    if not steam and pub_member is not None:
-        nick_steam, _ = parse_team_nick(pub_member.nick)
-        steam = clean_nick_part(nick_steam)
-    if not steam:
-        steam = clean_nick_part(member.global_name or member.name)
-    if steam and (clean_nick_part(profile.get("steam_nick")) != steam
-                  or clean_nick_part(profile.get("real_name")) != real):
-        save_member_profile(member.id, steam, real)
+    steam, real, steam_source = resolve_nick_parts(member, profile, pub_member)
+    old_steam = clean_nick_part(profile.get("steam_nick"))
+    old_real = clean_nick_part(profile.get("real_name"))
+    if is_placeholder_steam(old_steam):
+        old_steam = ""
+    if is_placeholder_real(old_real):
+        old_real = ""
+    if steam and steam_source != "display":
+        if old_steam != steam or old_real != real:
+            save_member_profile(member.id, steam, real)
+    elif real and old_real != real:
+        save_member_profile(member.id, old_steam, real)
     changed = False
     team_nick = build_team_nick(steam, real)
     if team_nick and (member.nick or "") != team_nick:
@@ -1502,18 +1572,38 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
         steam_nick, steam_real = await fetch_steam_profile(steam_url)
         if not steam_nick:
             return " Ник не изменён: не удалось прочитать профиль Steam."
-        real_name = typed_name or steam_real
-        save_member_profile(member.id, steam_nick, real_name)
         steam = clean_nick_part(steam_nick)
         if not steam:
             return " Ник не изменён: пустой Steam-ник."
+        profile = get_member_profile(member.id) or {}
+        team_guild = bot.get_guild(TEAM_GUILD_ID)
+        team_member = team_guild.get_member(member.id) if team_guild else None
+        real_name = clean_nick_part(typed_name or steam_real)
+        if not real_name:
+            old_real = clean_nick_part(profile.get("real_name"))
+            if old_real and not is_placeholder_real(old_real):
+                real_name = old_real
+        if not real_name:
+            old_steam = clean_nick_part(profile.get("steam_nick"))
+            display = clean_nick_part(member.global_name or member.name)
+            if (old_steam and display and not is_placeholder_steam(old_steam)
+                    and old_steam.casefold() == display.casefold()
+                    and old_steam.casefold() != steam.casefold()):
+                real_name = old_steam
+        if not real_name and team_member is not None:
+            _, nick_real = parse_team_nick(team_member.nick)
+            if nick_real and not is_placeholder_real(nick_real):
+                real_name = clean_nick_part(nick_real)
+        if not real_name:
+            real_name = display_real_name(member, steam)
+        if is_placeholder_real(real_name) or is_placeholder_steam(real_name):
+            real_name = ""
+        save_member_profile(member.id, steam, real_name)
         nick = f"FLCN. | {steam}"[:32]
         await member.edit(nick=nick, reason=f"FLCN ticket #{ticket['number']}")
         log_action(guild.id, "ticket_nick", actor=actor, target=member, details=nick)
         line = f" Ник: `{nick}`."
-        team_nick = build_team_nick(steam_nick, real_name)
-        team_guild = bot.get_guild(TEAM_GUILD_ID)
-        team_member = team_guild.get_member(member.id) if team_guild else None
+        team_nick = build_team_nick(steam, real_name)
         team_role = team_guild.get_role(TEAM_MAIN_ROLE_ID) if team_guild else None
         if team_nick and team_member is not None and team_role is not None and team_role in team_member.roles:
             try:
