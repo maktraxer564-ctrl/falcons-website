@@ -22,7 +22,11 @@ GUILD_ID = os.environ.get("GUILD_ID", "").strip()
 TICKET_STAFF_ROLE_ID = os.environ.get("TICKET_STAFF_ROLE_ID", "").strip()
 PANEL_ADMIN_IDS = {x.strip() for x in os.environ.get("PANEL_ADMIN_IDS", "").split(",") if x.strip().isdigit()}
 BOT_API_URL = os.environ.get("BOT_API_URL", "").strip().rstrip("/")
+BOT_API_FALLBACK_URL = os.environ.get(
+    "BOT_API_FALLBACK_URL", "https://wfh17bglpu.apps.bot-hosting.cloud"
+).strip().rstrip("/")
 BOT_API_SECRET = os.environ.get("API_SECRET_KEY", "").strip()
+_bot_url_cache = {"base": ""}
 
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024
 app.config.update(
@@ -279,7 +283,7 @@ def pwa_icon():
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "bot_api": BOT_API_FALLBACK_URL}
 
 @app.get("/auth/discord")
 def discord_login():
@@ -582,35 +586,47 @@ def api_log():
              str(data.get("details") or "")[:2000]))
     return jsonify({"ok": True})
 
-def _bot_post(path, payload):
-    if not BOT_API_URL:
+def _bot_bases():
+    bases = []
+    if _bot_url_cache["base"]:
+        bases.append(_bot_url_cache["base"])
+    if BOT_API_URL.startswith("https://") and BOT_API_URL not in bases:
+        bases.append(BOT_API_URL)
+    if BOT_API_FALLBACK_URL and BOT_API_FALLBACK_URL not in bases:
+        bases.append(BOT_API_FALLBACK_URL)
+    if BOT_API_URL and BOT_API_URL not in bases:
+        bases.append(BOT_API_URL)
+    return bases
+
+def _bot_request(method, path, payload=None):
+    bases = _bot_bases()
+    if not bases:
         return False, 503, {"ok": False, "error": "BOT_API_URL not configured"}
-    url = BOT_API_URL + path
-    try:
-        r = requests.post(url, json=payload,
-                          headers={"X-Falcons-Secret": BOT_API_SECRET},
-                          timeout=15)
-    except requests.RequestException as e:
-        return False, 502, {"ok": False, "error": f"bot unreachable: {e}"}
-    try:
-        body = r.json()
-    except ValueError:
-        body = {"ok": False, "error": "invalid bot response", "raw": r.text[:300]}
-    return (200 <= r.status_code < 300), r.status_code, body
+    headers = {"X-Falcons-Secret": BOT_API_SECRET}
+    last = None
+    for base in bases:
+        url = base + path
+        try:
+            if method == "POST":
+                r = requests.post(url, json=payload or {}, headers=headers, timeout=10)
+            else:
+                r = requests.get(url, headers=headers, timeout=10)
+        except requests.RequestException as e:
+            last = (False, 502, {"ok": False, "error": f"bot unreachable: {e}"})
+            continue
+        _bot_url_cache["base"] = base
+        try:
+            body = r.json()
+        except ValueError:
+            body = {"ok": False, "error": "invalid bot response", "raw": r.text[:300]}
+        return (200 <= r.status_code < 300), r.status_code, body
+    return last or (False, 502, {"ok": False, "error": "bot unreachable"})
+
+def _bot_post(path, payload):
+    return _bot_request("POST", path, payload)
 
 def _bot_get(path):
-    if not BOT_API_URL:
-        return False, 503, {"ok": False, "error": "BOT_API_URL not configured"}
-    url = BOT_API_URL + path
-    try:
-        r = requests.get(url, headers={"X-Falcons-Secret": BOT_API_SECRET}, timeout=15)
-    except requests.RequestException as e:
-        return False, 502, {"ok": False, "error": f"bot unreachable: {e}"}
-    try:
-        body = r.json()
-    except ValueError:
-        body = {"ok": False, "error": "invalid bot response", "raw": r.text[:300]}
-    return (200 <= r.status_code < 300), r.status_code, body
+    return _bot_request("GET", path)
 
 @app.post("/api/ticket/accept")
 def api_ticket_accept():
