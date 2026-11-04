@@ -845,7 +845,13 @@ async def before_backup_db():
     await bot.wait_until_ready()
     await asyncio.sleep(20)
 
+clan_sync_lock = asyncio.Lock()
+
 async def run_clan_role_sync():
+    async with clan_sync_lock:
+        return await _run_clan_role_sync()
+
+async def _run_clan_role_sync():
     guild = bot.get_guild(GUILD_ID) if GUILD_ID else None
     team = bot.get_guild(TEAM_GUILD_ID)
     if guild is None or team is None or not CLAN_ROLE_ID:
@@ -854,13 +860,26 @@ async def run_clan_role_sync():
     if role is None:
         return None
     try:
-        team_ids = {m.id async for m in team.fetch_members(limit=None)}
+        team_members = [m async for m in team.fetch_members(limit=None)]
     except discord.HTTPException:
         log.exception("clan_role_sync: не удалось получить участников приватки")
         return None
+    team_ids = {m.id for m in team_members}
     if not team_ids:
         log.warning("clan_role_sync: приватка пуста, пропускаю проверку")
         return None
+    synced = 0
+    main_role = team.get_role(TEAM_MAIN_ROLE_ID)
+    if main_role is not None:
+        for tm in team_members:
+            if tm.bot or tm.id == team.owner_id or main_role not in tm.roles:
+                continue
+            try:
+                if await sync_team_member_to_public(tm, "Синхронизация приватка -> паблик"):
+                    synced += 1
+            except Exception:
+                log.exception("clan_role_sync: не удалось синхронизировать %s", tm.id)
+            await asyncio.sleep(0.5)
     checked = removed = restored = 0
     for member in list(guild.members):
         if member.bot or member.id == guild.owner_id:
@@ -876,9 +895,10 @@ async def run_clan_role_sync():
             if await restore_public_nick(member, "Нет в приватке"):
                 restored += 1
                 await asyncio.sleep(1)
-    if removed or restored:
-        log.info("clan_role_sync: снято ролей %s, возвращено ников %s", removed, restored)
-    return checked, removed, restored
+    if removed or restored or synced:
+        log.info("clan_role_sync: ролей снято %s, ников возвращено %s, приватка->паблик %s",
+                 removed, restored, synced)
+    return {"checked": checked, "removed": removed, "restored": restored, "synced": synced}
 
 @tasks.loop(minutes=5)
 async def clan_role_sync():
@@ -1015,8 +1035,10 @@ async def on_member_update(before, after):
     if guild.id == TEAM_GUILD_ID:
         role = guild.get_role(TEAM_MAIN_ROLE_ID)
         if role is not None and role in after.roles and role not in before.roles:
-            await apply_clan_nick(after, True, "FLCN MAIN role")
-            await sync_linked_nick(after.id, TEAM_GUILD_ID)
+            try:
+                await sync_team_member_to_public(after, "FLCN MAIN role")
+            except Exception:
+                log.exception("Не удалось синхронизировать приватка -> паблик")
     elif guild.id == GUILD_ID:
         role = guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
         if role is not None and role in after.roles and role not in before.roles:
@@ -1342,6 +1364,84 @@ async def sync_linked_nick(user_id, source_guild_id):
         member = guild.get_member(user_id) if guild else None
         if member is not None and role is not None and role in member.roles:
             await apply_clan_nick(member, False, "FLCN clan role")
+
+def parse_team_nick(nick):
+    if not nick:
+        return None, None
+    parts = [p.strip() for p in str(nick).split("|")]
+    if len(parts) < 2 or not parts[0].casefold().startswith("flcn"):
+        return None, None
+    steam = clean_nick_part(parts[1])
+    real = clean_nick_part(" | ".join(parts[2:]))
+    return (steam or None), (real or None)
+
+async def sync_team_member_to_public(member, reason):
+    public_guild = bot.get_guild(GUILD_ID) if GUILD_ID else None
+    pub_member = None
+    if public_guild is not None:
+        pub_member = public_guild.get_member(member.id)
+        if pub_member is None:
+            try:
+                pub_member = await public_guild.fetch_member(member.id)
+            except discord.NotFound:
+                pub_member = None
+            except discord.HTTPException:
+                log.exception("Не удалось получить %s в паблике", member.id)
+                pub_member = None
+    profile = get_member_profile(member.id) or {}
+    steam = clean_nick_part(profile.get("steam_nick"))
+    real = clean_nick_part(profile.get("real_name"))
+    if not steam or not real:
+        nick_steam, nick_real = parse_team_nick(member.nick)
+        if not steam:
+            steam = clean_nick_part(nick_steam)
+        if not real:
+            real = clean_nick_part(nick_real)
+    if not steam and pub_member is not None:
+        nick_steam, _ = parse_team_nick(pub_member.nick)
+        steam = clean_nick_part(nick_steam)
+    if not steam:
+        steam = clean_nick_part(member.global_name or member.name)
+    if steam and (clean_nick_part(profile.get("steam_nick")) != steam
+                  or clean_nick_part(profile.get("real_name")) != real):
+        save_member_profile(member.id, steam, real)
+    changed = False
+    team_nick = build_team_nick(steam, real)
+    if team_nick and (member.nick or "") != team_nick:
+        try:
+            await member.edit(nick=team_nick, reason=reason)
+            log_action(member.guild.id, "nick_set", target=member, details=team_nick)
+            log.info("Ник в приватке обновлён у %s (%s): %s", member, member.id, team_nick)
+            changed = True
+        except discord.Forbidden:
+            log.warning("Нет прав сменить ник %s в приватке", member.id)
+        except discord.HTTPException:
+            log.exception("Не удалось сменить ник %s в приватке", member.id)
+    if pub_member is None or public_guild is None or pub_member.bot or pub_member.id == public_guild.owner_id:
+        return changed
+    pub_role = public_guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
+    if pub_role is not None and pub_role not in pub_member.roles:
+        try:
+            await pub_member.add_roles(pub_role, reason=reason)
+            log_action(public_guild.id, "clan_role_added", target=pub_member, details=reason)
+            log.info("Выдана клан-роль в паблике %s (%s): %s", pub_member, pub_member.id, reason)
+            changed = True
+        except discord.Forbidden:
+            log.warning("Нет прав выдать клан-роль %s в паблике", pub_member.id)
+        except discord.HTTPException:
+            log.exception("Не удалось выдать клан-роль %s", pub_member.id)
+    public_nick = f"FLCN. | {clean_nick_part(steam)}"[:32] if steam else ""
+    if public_nick and (pub_member.nick or "") != public_nick:
+        try:
+            await pub_member.edit(nick=public_nick, reason=reason)
+            log_action(public_guild.id, "nick_set", target=pub_member, details=public_nick)
+            log.info("Ник в паблике обновлён у %s (%s): %s", pub_member, pub_member.id, public_nick)
+            changed = True
+        except discord.Forbidden:
+            log.warning("Нет прав сменить ник %s в паблике", pub_member.id)
+        except discord.HTTPException:
+            log.exception("Не удалось сменить ник %s в паблике", pub_member.id)
+    return changed
 
 def _is_flcn_nick(nick):
     return bool(nick) and nick.strip().casefold().startswith("flcn")
@@ -2234,9 +2334,9 @@ async def clan_sync_cmd(interaction):
     result = await run_clan_role_sync()
     if result is None:
         return await interaction.followup.send("Не удалось проверить: нет приватки или роли. Смотри логи.", ephemeral=True)
-    checked, removed, restored = result
     await interaction.followup.send(
-        f"С ролью без приватки: {checked}. Снято ролей: {removed}. Возвращено ников: {restored}.",
+        f"С ролью без приватки: {result['checked']}. Снято ролей: {result['removed']}. "
+        f"Возвращено ников: {result['restored']}. Синхронизировано приватка->паблик: {result['synced']}.",
         ephemeral=True)
 
 @bot.tree.command(name="setup_server", description="Настроить роли и каналы бота для этого сервера")
@@ -2830,9 +2930,7 @@ async def http_clan_sync(request):
     result = await run_clan_role_sync()
     if result is None:
         return aiohttp_web.json_response({"ok": False, "error": "sync unavailable"}, status=503)
-    checked, removed, restored = result
-    return aiohttp_web.json_response(
-        {"ok": True, "checked": checked, "removed": removed, "restored": restored})
+    return aiohttp_web.json_response({"ok": True, **result})
 
 _meetings_running = set()
 
