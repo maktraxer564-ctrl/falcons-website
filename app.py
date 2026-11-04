@@ -283,7 +283,12 @@ def pwa_icon():
 
 @app.get("/health")
 def health():
-    return {"ok": True, "bot_api": BOT_API_FALLBACK_URL}
+    out = {"ok": True, "bot_api": BOT_API_FALLBACK_URL}
+    if request.args.get("probe") == "1":
+        ok, status, body = _bot_get("/bot/status")
+        out["bot_ok"] = bool(ok and isinstance(body, dict) and body.get("ok"))
+        out["bot_status"] = status
+    return out
 
 @app.get("/auth/discord")
 def discord_login():
