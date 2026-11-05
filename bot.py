@@ -937,12 +937,14 @@ PLAYERS_ROLE_LABELS = {
 PLAYERS_EXCLUDED_ROLE_IDS = {
     1560405533372977239,
     TEAM_MAIN_ROLE_ID,
+    1560405533372977241,
     1560405533360525397,
     1560405533360525396,
     1560405533360525395,
     1560447006864969782,
 }
-PLAYERS_EXCLUDED_ROLE_NAMES = {"MAIN", "WARN 1", "WARN 2", "WARN 3", "BOT", "FLCN"}
+PLAYERS_EXCLUDED_ROLE_NAMES = {"MAIN", "OPTIMIZATION", "WARN 1", "WARN 2", "WARN 3", "BOT", "FLCN"}
+PLAYERS_ROSTER_HIDDEN_USER_IDS = {730839064026021889}
 
 def _normalized_role_name(name):
     return unicodedata.normalize("NFKC", name or "").strip()
@@ -966,16 +968,17 @@ def build_players_roster_sections(members):
     groups = {}
     players = set()
     for member in members:
-        if member.bot:
+        if member.bot or member.id in PLAYERS_ROSTER_HIDDEN_USER_IDS:
             continue
-        for role in member.roles:
-            if _is_players_role_excluded(role):
-                continue
-            heading = _players_role_label(role)
-            group = groups.setdefault(heading, {"position": role.position, "members": {}})
-            group["position"] = max(group["position"], role.position)
-            group["members"][member.id] = _players_member_name(member)
-            players.add(member.id)
+        roles = [role for role in member.roles if not _is_players_role_excluded(role)]
+        if not roles:
+            continue
+        role = max(roles, key=lambda r: r.position)
+        heading = _players_role_label(role)
+        group = groups.setdefault(heading, {"position": role.position, "members": {}})
+        group["position"] = max(group["position"], role.position)
+        group["members"][member.id] = _players_member_name(member)
+        players.add(member.id)
     ordered = sorted(groups.items(), key=lambda item: (-item[1]["position"], item[0].casefold()))
     lines = []
     for heading, group in ordered:
