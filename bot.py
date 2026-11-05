@@ -964,8 +964,7 @@ def _is_players_role_excluded(role):
     return _normalized_role_name(role.name).upper() in PLAYERS_EXCLUDED_ROLE_NAMES
 
 def _players_member_name(member):
-    name = member.global_name or member.name or member.display_name or str(member.id)
-    return discord.utils.escape_mentions(" ".join(str(name).split()))
+    return member.mention
 
 def build_players_roster_sections(members):
     groups = {}
