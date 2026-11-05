@@ -7,6 +7,7 @@ import logging
 import sqlite3
 import time
 import datetime
+import unicodedata
 from pathlib import Path
 from html import unescape
 
@@ -58,6 +59,8 @@ INVITE_REWARDS = ((10, REWARD_ROLE_10), (25, REWARD_ROLE_25), (50, REWARD_ROLE_5
 INVITE_FAKE_SECONDS = 600
 TEAM_GUILD_ID = 1560405533360525392
 TEAM_MAIN_ROLE_ID = 1560405533372977242
+PLAYERS_CHANNEL_ID = int(os.getenv("PLAYERS_CHANNEL_ID", "1567733336925937795") or 1567733336925937795)
+PLAYERS_ROSTER_MESSAGE_KEY = "players_roster_message_id"
 
 TRANSCRIPT_CHANNEL_ID = int(os.getenv("TRANSCRIPT_CHANNEL_ID", "0") or 0)
 MEETING_CHANNEL_ID = int(os.getenv("MEETING_CHANNEL_ID", "1560429785119723590") or 1560429785119723590)
@@ -912,6 +915,155 @@ async def before_clan_role_sync():
     await bot.wait_until_ready()
     await asyncio.sleep(30)
 
+PLAYERS_ROLE_LABELS = {
+    "LEADER": "Лидер",
+    "DEPUTY LEADER": "Зам. лидера",
+    "COLLER": "Коллер",
+    "MODERATOR": "Модератор",
+    "TICKET-STAFF": "Тикет-стафф",
+    "OPTIMIZATION": "Оптимизация",
+    "SATURATION": "Сатурация",
+    "COMBATER": "PVP игрок",
+    "FERMER": "Фермер",
+    "FARMER": "Фермер",
+    "ELECTRIC": "Электрик",
+    "UNIVERSAL": "Универсал",
+    "PILOT": "Пилот",
+    "CRAFTER": "Плотник",
+    "BUILDER": "Строитель",
+    "NEWBIE": "Новичок",
+}
+
+PLAYERS_EXCLUDED_ROLE_IDS = {
+    1560405533372977239,
+    TEAM_MAIN_ROLE_ID,
+    1560405533360525397,
+    1560405533360525396,
+    1560405533360525395,
+    1560447006864969782,
+}
+PLAYERS_EXCLUDED_ROLE_NAMES = {"MAIN", "WARN 1", "WARN 2", "WARN 3", "BOT", "FLCN"}
+
+def _normalized_role_name(name):
+    return unicodedata.normalize("NFKC", name or "").strip()
+
+def _players_role_label(role):
+    name = _normalized_role_name(role.name)
+    return PLAYERS_ROLE_LABELS.get(name.upper(), name)
+
+def _is_players_role_excluded(role):
+    if role.is_default() or role.managed:
+        return True
+    if role.id in PLAYERS_EXCLUDED_ROLE_IDS:
+        return True
+    return _normalized_role_name(role.name).upper() in PLAYERS_EXCLUDED_ROLE_NAMES
+
+def _players_member_name(member):
+    name = member.global_name or member.name or member.display_name or str(member.id)
+    return discord.utils.escape_mentions(" ".join(str(name).split()))
+
+def build_players_roster_lines(members):
+    rows = []
+    for member in members:
+        if member.bot:
+            continue
+        roles = []
+        for role in member.roles:
+            if _is_players_role_excluded(role):
+                continue
+            roles.append((role.position, _players_role_label(role)))
+        if not roles:
+            continue
+        roles.sort(key=lambda item: -item[0])
+        labels = []
+        seen = set()
+        for _, label in roles:
+            if label in seen:
+                continue
+            seen.add(label)
+            labels.append(label)
+        rows.append((roles[0][0], _players_member_name(member), labels))
+    rows.sort(key=lambda item: (-item[0], item[1].casefold()))
+    return [f"{name} — {', '.join(labels)}" for _, name, labels in rows]
+
+def build_players_roster_embed(lines, guild=None):
+    now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+    description = "\n".join(lines) if lines else "Пока нет игроков с ролями."
+    if len(description) > 4000:
+        description = description[:3990].rsplit("\n", 1)[0] + "\n…"
+    embed = discord.Embed(title="👥 Players FLCN", description=description,
+                          color=discord.Color.from_rgb(88, 101, 242))
+    embed.set_footer(text=f"Игроков: {len(lines)} • Обновлено: {now}")
+    if guild is not None and guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+    return embed
+
+players_roster_lock = asyncio.Lock()
+
+async def update_players_roster():
+    async with players_roster_lock:
+        return await _update_players_roster()
+
+async def _update_players_roster():
+    team = bot.get_guild(TEAM_GUILD_ID)
+    if team is None:
+        log.warning("players_roster: приватка не найдена")
+        return None
+    try:
+        members = [m async for m in team.fetch_members(limit=None)]
+    except discord.HTTPException:
+        log.exception("players_roster: не удалось получить участников приватки")
+        members = list(team.members)
+    if not members:
+        log.warning("players_roster: список участников пуст, пропускаю")
+        return None
+    lines = build_players_roster_lines(members)
+    channel = bot.get_channel(PLAYERS_CHANNEL_ID)
+    if channel is None and GUILD_ID:
+        public_guild = bot.get_guild(GUILD_ID)
+        if public_guild is not None:
+            channel = public_guild.get_channel(PLAYERS_CHANNEL_ID)
+    if channel is None:
+        log.warning("players_roster: канал %s не найден", PLAYERS_CHANNEL_ID)
+        return None
+    embed = build_players_roster_embed(lines, channel.guild)
+    message_id = get_setting(PLAYERS_ROSTER_MESSAGE_KEY)
+    message = None
+    created = False
+    if message_id:
+        try:
+            message = channel.get_partial_message(int(message_id))
+            await message.edit(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        except discord.NotFound:
+            message = None
+        except (ValueError, discord.Forbidden, discord.HTTPException):
+            log.exception("players_roster: не удалось обновить сообщение")
+            return None
+    if message is None:
+        try:
+            message = await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            set_setting(PLAYERS_ROSTER_MESSAGE_KEY, message.id)
+            created = True
+        except discord.Forbidden:
+            log.exception("players_roster: нет прав на отправку в канал %s", PLAYERS_CHANNEL_ID)
+            return None
+        except discord.HTTPException:
+            log.exception("players_roster: не удалось отправить сообщение")
+            return None
+    return {"players": len(lines), "message_id": str(message.id), "created": created}
+
+@tasks.loop(minutes=5)
+async def players_roster_loop():
+    try:
+        await update_players_roster()
+    except Exception:
+        log.exception("players_roster loop failed")
+
+@players_roster_loop.before_loop
+async def before_players_roster():
+    await bot.wait_until_ready()
+    await asyncio.sleep(20)
+
 @bot.event
 async def on_ready():
     log.info("Connected as %s (%s)", bot.user, bot.user.id)
@@ -932,6 +1084,8 @@ async def on_ready():
         wipe_dm_reminder_loop.start()
     if not clan_role_sync.is_running():
         clan_role_sync.start()
+    if not players_roster_loop.is_running():
+        players_roster_loop.start()
     for guild in bot.guilds:
         if GUILD_ID and guild.id == GUILD_ID:
             continue
@@ -999,6 +1153,11 @@ async def on_member_join(member):
         await refresh(member.guild)
     except Exception:
         pass
+    if member.guild.id == TEAM_GUILD_ID:
+        try:
+            await update_players_roster()
+        except Exception:
+            log.exception("players_roster: обновление при входе не удалось")
 
 @bot.event
 async def on_member_remove(member):
@@ -1007,6 +1166,10 @@ async def on_member_remove(member):
             await remove_public_clan_role(member.id, "Нет в приватке")
         except Exception:
             log.exception("Не удалось снять клан-роль в паблике")
+        try:
+            await update_players_roster()
+        except Exception:
+            log.exception("players_roster: обновление при выходе не удалось")
     try:
         await refresh(member.guild)
     except Exception:
@@ -1039,6 +1202,10 @@ async def on_member_update(before, after):
                 await sync_team_member_to_public(after, "FLCN MAIN role")
             except Exception:
                 log.exception("Не удалось синхронизировать приватка -> паблик")
+        try:
+            await update_players_roster()
+        except Exception:
+            log.exception("players_roster: обновление при смене ролей не удалось")
     elif guild.id == GUILD_ID:
         role = guild.get_role(CLAN_ROLE_ID) if CLAN_ROLE_ID else None
         if role is not None and role in after.roles and role not in before.roles:
@@ -2429,6 +2596,20 @@ async def clan_sync_cmd(interaction):
         f"Возвращено ников: {result['restored']}. Синхронизировано приватка->паблик: {result['synced']}.",
         ephemeral=True)
 
+@bot.tree.command(name="players_update", description="Обновить список игроков и ролей в канале Players FLCN")
+async def players_update_cmd(interaction):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    if not has_staff_perms(interaction.user):
+        return await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    result = await update_players_roster()
+    if result is None:
+        return await interaction.followup.send("Не удалось обновить: нет приватки или канала. Смотри логи.", ephemeral=True)
+    await interaction.followup.send(
+        f"Список игроков обновлён: {result['players']}. Сообщение: {result['message_id']}.",
+        ephemeral=True)
+
 @bot.tree.command(name="setup_server", description="Настроить роли и каналы бота для этого сервера")
 @app_commands.describe(staff_role="Роль Ticket Staff этого сервера",
                        clan_role="Роль клана (для счётчика «Клан»)",
@@ -3022,6 +3203,14 @@ async def http_clan_sync(request):
         return aiohttp_web.json_response({"ok": False, "error": "sync unavailable"}, status=503)
     return aiohttp_web.json_response({"ok": True, **result})
 
+async def http_players_update(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    result = await update_players_roster()
+    if result is None:
+        return aiohttp_web.json_response({"ok": False, "error": "roster unavailable"}, status=503)
+    return aiohttp_web.json_response({"ok": True, **result})
+
 _meetings_running = set()
 
 async def run_meeting(guild, voice, actor):
@@ -3190,6 +3379,7 @@ async def start_bot_http():
     app.router.add_post("/bot/punish", http_punish)
     app.router.add_post("/bot/invites/reward", http_invite_reward)
     app.router.add_post("/bot/clan-sync", http_clan_sync)
+    app.router.add_post("/bot/players-update", http_players_update)
     app.router.add_get("/bot/status", http_bot_status)
     app.router.add_get("/bot/settings", http_get_settings)
     app.router.add_post("/bot/settings", http_set_settings)
