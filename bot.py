@@ -962,38 +962,40 @@ def _players_member_name(member):
     name = member.global_name or member.name or member.display_name or str(member.id)
     return discord.utils.escape_mentions(" ".join(str(name).split()))
 
-def build_players_roster_lines(members):
-    rows = []
+def build_players_roster_sections(members):
+    groups = {}
+    players = set()
     for member in members:
         if member.bot:
             continue
-        roles = []
         for role in member.roles:
             if _is_players_role_excluded(role):
                 continue
-            roles.append((role.position, _players_role_label(role)))
-        if not roles:
-            continue
-        roles.sort(key=lambda item: -item[0])
-        labels = []
-        seen = set()
-        for _, label in roles:
-            if label in seen:
-                continue
-            seen.add(label)
-            labels.append(label)
-        rows.append((roles[0][0], _players_member_name(member), labels))
-    rows.sort(key=lambda item: (-item[0], item[1].casefold()))
-    return [f"{name} — {', '.join(labels)}" for _, name, labels in rows]
+            heading = _players_role_label(role)
+            group = groups.setdefault(heading, {"position": role.position, "members": {}})
+            group["position"] = max(group["position"], role.position)
+            group["members"][member.id] = _players_member_name(member)
+            players.add(member.id)
+    ordered = sorted(groups.items(), key=lambda item: (-item[1]["position"], item[0].casefold()))
+    lines = []
+    for heading, group in ordered:
+        lines.append(f"# {heading}")
+        for name in sorted(group["members"].values(), key=str.casefold):
+            lines.append(f"- {name}")
+        lines.append("")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines, len(players)
 
-def build_players_roster_embed(lines, guild=None):
+def build_players_roster_embed(lines, guild=None, player_count=None):
     now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
     description = "\n".join(lines) if lines else "Пока нет игроков с ролями."
     if len(description) > 4000:
         description = description[:3990].rsplit("\n", 1)[0] + "\n…"
     embed = discord.Embed(title="👥 Players FLCN", description=description,
                           color=discord.Color.from_rgb(88, 101, 242))
-    embed.set_footer(text=f"Игроков: {len(lines)} • Обновлено: {now}")
+    count = len(lines) if player_count is None else player_count
+    embed.set_footer(text=f"Игроков: {count} • Обновлено: {now}")
     if guild is not None and guild.icon:
         embed.set_thumbnail(url=guild.icon.url)
     return embed
@@ -1017,7 +1019,7 @@ async def _update_players_roster():
     if not members:
         log.warning("players_roster: список участников пуст, пропускаю")
         return None
-    lines = build_players_roster_lines(members)
+    lines, player_count = build_players_roster_sections(members)
     channel = bot.get_channel(PLAYERS_CHANNEL_ID)
     if channel is None and GUILD_ID:
         public_guild = bot.get_guild(GUILD_ID)
@@ -1026,7 +1028,7 @@ async def _update_players_roster():
     if channel is None:
         log.warning("players_roster: канал %s не найден", PLAYERS_CHANNEL_ID)
         return None
-    embed = build_players_roster_embed(lines, channel.guild)
+    embed = build_players_roster_embed(lines, channel.guild, player_count)
     message_id = get_setting(PLAYERS_ROSTER_MESSAGE_KEY)
     message = None
     created = False
@@ -1050,7 +1052,7 @@ async def _update_players_roster():
         except discord.HTTPException:
             log.exception("players_roster: не удалось отправить сообщение")
             return None
-    return {"players": len(lines), "message_id": str(message.id), "created": created}
+    return {"players": player_count, "message_id": str(message.id), "created": created}
 
 @tasks.loop(minutes=5)
 async def players_roster_loop():
