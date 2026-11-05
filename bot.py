@@ -945,6 +945,9 @@ PLAYERS_EXCLUDED_ROLE_IDS = {
 }
 PLAYERS_EXCLUDED_ROLE_NAMES = {"MAIN", "OPTIMIZATION", "WARN 1", "WARN 2", "WARN 3", "BOT", "FLCN"}
 PLAYERS_ROSTER_HIDDEN_USER_IDS = {730839064026021889, 1517120484351938611, 1523799887282438398}
+PLAYERS_ROSTER_EXTRA_ROLE_IDS = {
+    773243438673952839: {1560405533381361736},
+}
 
 def _normalized_role_name(name):
     return unicodedata.normalize("NFKC", name or "").strip()
@@ -974,10 +977,16 @@ def build_players_roster_sections(members):
         if not roles:
             continue
         role = max(roles, key=lambda r: r.position)
-        heading = _players_role_label(role)
-        group = groups.setdefault(heading, {"position": role.position, "members": {}})
-        group["position"] = max(group["position"], role.position)
-        group["members"][member.id] = _players_member_name(member)
+        member_roles = [role]
+        for extra_id in PLAYERS_ROSTER_EXTRA_ROLE_IDS.get(member.id, ()):
+            extra_role = member.guild.get_role(extra_id)
+            if extra_role is not None and not _is_players_role_excluded(extra_role):
+                member_roles.append(extra_role)
+        for role in member_roles:
+            heading = _players_role_label(role)
+            group = groups.setdefault(heading, {"position": role.position, "members": {}})
+            group["position"] = max(group["position"], role.position)
+            group["members"][member.id] = _players_member_name(member)
         players.add(member.id)
     ordered = sorted(groups.items(), key=lambda item: (-item[1]["position"], item[0].casefold()))
     lines = []
