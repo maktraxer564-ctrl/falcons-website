@@ -66,6 +66,9 @@ TRANSCRIPT_CHANNEL_ID = int(os.getenv("TRANSCRIPT_CHANNEL_ID", "0") or 0)
 MEETING_CHANNEL_ID = int(os.getenv("MEETING_CHANNEL_ID", "1560429785119723590") or 1560429785119723590)
 TICKET_REMINDER_MINUTES = int(os.getenv("TICKET_REMINDER_MINUTES", "30") or 30)
 RUST_MIN_HOURS = int(os.getenv("RUST_MIN_HOURS", "3000") or 3000)
+STEAM_API_KEY = os.getenv("STEAM_API_KEY", "").strip()
+STEAM_CACHE_TTL = 600
+PLAYER_COOLDOWN_SECONDS = 5
 WARN_TIMEOUT_COUNT = int(os.getenv("WARN_TIMEOUT_COUNT", "3") or 3)
 WARN_TIMEOUT_MINUTES = int(os.getenv("WARN_TIMEOUT_MINUTES", "60") or 60)
 WARN_KICK_COUNT = int(os.getenv("WARN_KICK_COUNT", "5") or 5)
@@ -227,6 +230,20 @@ def init_db():
             created_at INTEGER NOT NULL,
             PRIMARY KEY (event_id, user_id)
         );
+        CREATE TABLE IF NOT EXISTS steam_players (
+            steam_id TEXT PRIMARY KEY,
+            persona_name TEXT NOT NULL DEFAULT '',
+            avatar_url TEXT NOT NULL DEFAULT '',
+            first_seen INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS steam_name_history (
+            steam_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            first_seen INTEGER NOT NULL,
+            last_seen INTEGER NOT NULL,
+            PRIMARY KEY (steam_id, name)
+        );
         CREATE INDEX IF NOT EXISTS idx_invites_invited ON invites(guild_id, invited_id);
         """)
         ticket_cols = {row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()}
@@ -243,6 +260,9 @@ def init_db():
             conn.execute("ALTER TABLE wipe_events ADD COLUMN reminder_at INTEGER")
         if "reminder_sent" not in wipe_cols:
             conn.execute("ALTER TABLE wipe_events ADD COLUMN reminder_sent INTEGER NOT NULL DEFAULT 0")
+        profile_cols = {row[1] for row in conn.execute("PRAGMA table_info(member_profiles)").fetchall()}
+        if "steam_id" not in profile_cols:
+            conn.execute("ALTER TABLE member_profiles ADD COLUMN steam_id TEXT NOT NULL DEFAULT ''")
 
 def next_ticket_number(guild_id):
     with _db() as conn:
@@ -323,13 +343,15 @@ def setting_bool(key, default):
         return default
     return raw == "1"
 
-def save_member_profile(user_id, steam_nick, real_name):
+def save_member_profile(user_id, steam_nick, real_name, steam_id=None):
     with _db() as conn:
         conn.execute(
-            "INSERT INTO member_profiles(user_id, steam_nick, real_name, updated_at) VALUES(?,?,?,?)"
+            "INSERT INTO member_profiles(user_id, steam_nick, real_name, steam_id, updated_at) VALUES(?,?,?,?,?)"
             " ON CONFLICT(user_id) DO UPDATE SET steam_nick=excluded.steam_nick,"
-            " real_name=excluded.real_name, updated_at=excluded.updated_at",
-            (str(user_id), str(steam_nick or ""), str(real_name or ""), int(time.time())))
+            " real_name=excluded.real_name,"
+            " steam_id=CASE WHEN excluded.steam_id<>'' THEN excluded.steam_id ELSE member_profiles.steam_id END,"
+            " updated_at=excluded.updated_at",
+            (str(user_id), str(steam_nick or ""), str(real_name or ""), str(steam_id or ""), int(time.time())))
 
 def get_member_profile(user_id):
     with _db() as conn:
@@ -1452,6 +1474,258 @@ async def fetch_steam_profile(url):
         return None, real_name
     return (unescape(m.group(1)).strip() or None), real_name
 
+STEAM_ID64_RE = re.compile(r"(?<!\d)(7656119\d{10})(?!\d)")
+STEAM_PROFILE_URL_RE = re.compile(r"steamcommunity\.com/profiles/(7656119\d{10})", re.IGNORECASE)
+STEAM_VANITY_URL_RE = re.compile(r"steamcommunity\.com/id/([^/?#\s]+)", re.IGNORECASE)
+STEAM_VANITY_INPUT_RE = re.compile(r"^[A-Za-z0-9_.-]{2,64}$")
+STEAM_STATUS_LABELS = {0: "офлайн", 1: "онлайн", 2: "занят", 3: "отошёл", 4: "спит", 5: "хочет обменять", 6: "ищет игру"}
+_player_cache = {}
+_player_last_use = {}
+
+def _steam_headers():
+    return {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"}
+
+async def _steam_api_get(path, params):
+    if not STEAM_API_KEY:
+        return None, "no_key"
+    query = dict(params)
+    query["key"] = STEAM_API_KEY
+    timeout = aiohttp.ClientTimeout(total=15)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout, headers=_steam_headers()) as session:
+            async with session.get(f"https://api.steampowered.com/{path}", params=query) as resp:
+                if resp.status in (401, 403):
+                    return None, "bad_key"
+                if resp.status == 429:
+                    return None, "rate_limit"
+                if resp.status != 200:
+                    return None, f"http_{resp.status}"
+                return await resp.json(), None
+    except asyncio.TimeoutError:
+        return None, "timeout"
+    except Exception:
+        log.exception("Steam API: запрос %s не удался", path)
+        return None, "error"
+
+async def steam_resolve_vanity(vanity):
+    data, err = await _steam_api_get("ISteamUser/ResolveVanityURL/v1/", {"vanityurl": vanity})
+    if err:
+        return None, err
+    response = (data or {}).get("response") or {}
+    steam_id = str(response.get("steamid") or "")
+    if str(response.get("success")) == "1" and STEAM_ID64_RE.fullmatch(steam_id):
+        return steam_id, None
+    return None, "not_found"
+
+async def steam_id_from_url(url):
+    text = str(url or "")
+    m = STEAM_PROFILE_URL_RE.search(text)
+    if m:
+        return m.group(1)
+    m = STEAM_VANITY_URL_RE.search(text)
+    if not m:
+        return ""
+    steam_id, err = await steam_resolve_vanity(m.group(1))
+    return steam_id if not err else ""
+
+async def steam_get_summary(steam_id):
+    data, err = await _steam_api_get("ISteamUser/GetPlayerSummaries/v2/", {"steamids": str(steam_id)})
+    if err:
+        return None, err
+    players = ((data or {}).get("response") or {}).get("players") or []
+    if not players:
+        return None, "not_found"
+    return players[0], None
+
+async def steam_get_rust(steam_id):
+    data, err = await _steam_api_get("IPlayerService/GetOwnedGames/v1/", {
+        "steamid": str(steam_id),
+        "include_appinfo": 0,
+        "include_played_free_games": 1,
+        "appids_filter[0]": 252490,
+    })
+    if err:
+        return None, err
+    response = (data or {}).get("response") or {}
+    for game in response.get("games") or []:
+        try:
+            if int(game.get("appid") or 0) == 252490:
+                return game, None
+        except (TypeError, ValueError):
+            continue
+    if not response:
+        return None, "private"
+    return None, "no_rust"
+
+def get_member_profile_by_steam_id(steam_id):
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT * FROM member_profiles WHERE steam_id=? AND steam_id<>'' LIMIT 1",
+            (str(steam_id),)).fetchone()
+    return dict(row) if row else None
+
+async def resolve_member_steam(user_id, guild=None):
+    user_id = str(user_id)
+    profile = get_member_profile(user_id) or {}
+    steam_id = clean_nick_part(profile.get("steam_id"))
+    if not (steam_id.isdigit() and len(steam_id) == 17):
+        try:
+            await resolve_member_profile(int(user_id))
+        except Exception:
+            log.exception("Не удалось подтянуть Steam ID для %s", user_id)
+        profile = get_member_profile(user_id) or {}
+        steam_id = clean_nick_part(profile.get("steam_id"))
+    if steam_id.isdigit() and len(steam_id) == 17:
+        return steam_id, None
+    member = guild.get_member(int(user_id)) if guild is not None and user_id.isdigit() else None
+    who = member.mention if member is not None else f"`{user_id}`"
+    return None, (
+        f"У участника {who} нет Steam ID в базе. "
+        "Пусть пройдёт тикет с ссылкой Steam — или кинь его Steam ID/ссылку вручную."
+    )
+
+async def resolve_steam_input(raw, guild=None):
+    text = str(raw or "").strip()
+    if not text:
+        return None, "Пустой идентификатор.", None
+    mention = re.fullmatch(r"<@!?(\d{15,20})>", text)
+    if mention:
+        steam_id, err = await resolve_member_steam(mention.group(1), guild)
+        return steam_id, err, mention.group(1)
+    if text.isdigit():
+        if len(text) == 17 and text.startswith("7656119"):
+            return text, None, None
+        steam_id, err = await resolve_member_steam(text, guild)
+        return steam_id, err, text
+    m = STEAM_PROFILE_URL_RE.search(text)
+    if m:
+        return m.group(1), None, None
+    m = STEAM_VANITY_URL_RE.search(text)
+    vanity = m.group(1) if m else None
+    if vanity is None and STEAM_VANITY_INPUT_RE.fullmatch(text):
+        vanity = text
+    if vanity:
+        steam_id, err = await steam_resolve_vanity(vanity)
+        if err == "not_found":
+            return None, f"Не нашёл Steam-профиль по «{vanity}».", None
+        if err:
+            return None, steam_error_text(err), None
+        return steam_id, None, None
+    if "battlemetrics.com/players/" in text.casefold():
+        return None, "BattleMetrics больше не отдаёт данные бесплатно. Кинь Steam ID или ссылку Steam.", None
+    return None, "Не понял идентификатор. Кинь Steam ID, ссылку Steam или @упоминание.", None
+
+def record_steam_identity(steam_id, name, avatar):
+    steam_id = str(steam_id)
+    name = clean_nick_part(name)
+    avatar = str(avatar or "")
+    now = int(time.time())
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT persona_name, first_seen FROM steam_players WHERE steam_id=?",
+            (steam_id,)).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO steam_players(steam_id, persona_name, avatar_url, first_seen, updated_at)"
+                " VALUES(?,?,?,?,?)",
+                (steam_id, name, avatar, now, now))
+            return
+        old_name = clean_nick_part(row["persona_name"])
+        if name and old_name and old_name.casefold() != name.casefold():
+            conn.execute(
+                "INSERT INTO steam_name_history(steam_id, name, first_seen, last_seen) VALUES(?,?,?,?)"
+                " ON CONFLICT(steam_id, name) DO UPDATE SET last_seen=excluded.last_seen",
+                (steam_id, old_name, int(row["first_seen"] or now), now))
+            conn.execute(
+                "UPDATE steam_players SET persona_name=?, avatar_url=?, updated_at=? WHERE steam_id=?",
+                (name, avatar, now, steam_id))
+        else:
+            conn.execute(
+                "UPDATE steam_players SET avatar_url=?, updated_at=? WHERE steam_id=?",
+                (avatar, now, steam_id))
+
+def steam_past_names(steam_id, current_name, limit=5):
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT name, last_seen FROM steam_name_history WHERE steam_id=? ORDER BY last_seen DESC LIMIT ?",
+            (str(steam_id), int(limit) + 5)).fetchall()
+    result = []
+    seen = {clean_nick_part(current_name).casefold()}
+    for row in rows:
+        name = clean_nick_part(row["name"])
+        key = name.casefold()
+        if not name or key in seen:
+            continue
+        seen.add(key)
+        result.append((name, int(row["last_seen"] or 0)))
+        if len(result) >= limit:
+            break
+    return result
+
+def _plural_ru(n, one, few, many):
+    n = abs(int(n))
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return few
+    return many
+
+def format_relative_ru(ts):
+    ts = int(ts or 0)
+    if ts <= 0:
+        return "неизвестно"
+    delta = max(0, int(time.time()) - ts)
+    if delta < 60:
+        return "только что"
+    if delta < 3600:
+        n = delta // 60
+        return f"{n} {_plural_ru(n, 'минуту', 'минуты', 'минут')} назад"
+    if delta < 86400:
+        n = delta // 3600
+        return f"{n} {_plural_ru(n, 'час', 'часа', 'часов')} назад"
+    if delta < 86400 * 30:
+        n = delta // 86400
+        return f"{n} {_plural_ru(n, 'день', 'дня', 'дней')} назад"
+    if delta < 86400 * 365:
+        n = delta // (86400 * 30)
+        return f"{n} {_plural_ru(n, 'месяц', 'месяца', 'месяцев')} назад"
+    n = delta // (86400 * 365)
+    return f"{n} {_plural_ru(n, 'год', 'года', 'лет')} назад"
+
+def format_date_ru(ts):
+    try:
+        return datetime.datetime.fromtimestamp(int(ts)).strftime("%d.%m.%Y")
+    except (TypeError, ValueError, OSError):
+        return "неизвестно"
+
+def format_hours_ru(minutes):
+    hours = max(0, int(minutes or 0)) // 60
+    return f"{hours:,}".replace(",", " ") + " ч"
+
+def steam_error_text(err):
+    return {
+        "no_key": "STEAM_API_KEY не задан на хосте.",
+        "bad_key": "Steam отклонил API-ключ (403). Нужен новый ключ.",
+        "rate_limit": "Steam временно лимитирует запросы. Попробуй через минуту.",
+        "timeout": "Steam не ответил вовремя. Попробуй ещё раз.",
+        "not_found": "Steam не нашёл такой профиль.",
+        "private": "Профиль закрыт: часы Rust скрыты.",
+        "no_rust": "Rust на этом аккаунте не найден.",
+        "error": "Не удалось получить данные Steam. Попробуй позже.",
+    }.get(str(err or ""), "Не удалось получить данные Steam.")
+
+def _steam_cache_get(steam_id):
+    item = _player_cache.get(str(steam_id))
+    if not item:
+        return None
+    if time.time() - item[0] > STEAM_CACHE_TTL:
+        _player_cache.pop(str(steam_id), None)
+        return None
+    return item[1]
+
+def _steam_cache_set(steam_id, data):
+    _player_cache[str(steam_id)] = (time.time(), data)
+
 def clean_nick_part(value):
     return " ".join(str(value or "").split()).strip("|").strip()
 
@@ -1566,6 +1840,7 @@ async def resolve_member_profile(user_id):
         steam_nick, steam_real = await fetch_steam_profile(steam_url)
         if not steam_nick:
             return profile
+        steam_id = await steam_id_from_url(steam_url)
         real_name = clean_nick_part(typed_name or steam_real)
         if not real_name:
             old_real = clean_nick_part(profile.get("real_name"))
@@ -1573,8 +1848,8 @@ async def resolve_member_profile(user_id):
                 real_name = old_real
         if is_placeholder_real(real_name) or is_placeholder_steam(real_name):
             real_name = ""
-        save_member_profile(user_id, steam_nick, real_name)
-        return {"steam_nick": steam_nick, "real_name": real_name}
+        save_member_profile(user_id, steam_nick, real_name, steam_id)
+        return {"steam_nick": steam_nick, "real_name": real_name, "steam_id": steam_id}
     except Exception:
         log.exception("Не удалось подтянуть Steam-профиль для %s", user_id)
         return profile
@@ -1752,6 +2027,7 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
         steam_nick, steam_real = await fetch_steam_profile(steam_url)
         if not steam_nick:
             return " Ник не изменён: не удалось прочитать профиль Steam."
+        steam_id = await steam_id_from_url(steam_url)
         steam = clean_nick_part(steam_nick)
         if not steam:
             return " Ник не изменён: пустой Steam-ник."
@@ -1778,7 +2054,7 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
             real_name = display_real_name(member, steam)
         if is_placeholder_real(real_name) or is_placeholder_steam(real_name):
             real_name = ""
-        save_member_profile(member.id, steam, real_name)
+        save_member_profile(member.id, steam, real_name, steam_id)
         nick = f"FLCN. | {steam}"[:32]
         await member.edit(nick=nick, reason=f"FLCN ticket #{ticket['number']}")
         log_action(guild.id, "ticket_nick", actor=actor, target=member, details=nick)
@@ -2622,6 +2898,107 @@ async def players_update_cmd(interaction):
     await interaction.followup.send(
         f"Список игроков обновлён: {result['players']}. Сообщение: {result['message_id']}.",
         ephemeral=True)
+
+@bot.tree.command(name="player", description="Пробить Rust-игрока по Steam ID, ссылке или @упоминанию")
+@app_commands.describe(identifier="Steam ID, vanity URL или Discord-упоминание игрока")
+async def player_lookup(interaction, identifier: str):
+    now = time.monotonic()
+    last = _player_last_use.get(interaction.user.id, 0)
+    if now - last < PLAYER_COOLDOWN_SECONDS:
+        wait = int(PLAYER_COOLDOWN_SECONDS - (now - last)) + 1
+        return await interaction.response.send_message(f"Подожди {wait} сек.", ephemeral=True)
+    _player_last_use[interaction.user.id] = now
+    await interaction.response.defer(thinking=True)
+    steam_id, err, discord_user_id = await resolve_steam_input(identifier, interaction.guild)
+    if err:
+        return await interaction.followup.send(err, ephemeral=True)
+    cached = _steam_cache_get(steam_id)
+    if cached:
+        summary = cached.get("summary")
+        rust_game = cached.get("rust_game")
+        rust_err = cached.get("rust_err")
+    else:
+        summary, summary_err = await steam_get_summary(steam_id)
+        if summary_err:
+            return await interaction.followup.send(steam_error_text(summary_err), ephemeral=True)
+        rust_game, rust_err = await steam_get_rust(steam_id)
+        _steam_cache_set(steam_id, {"summary": summary, "rust_game": rust_game, "rust_err": rust_err})
+    persona = clean_nick_part(summary.get("personaname")) or "Неизвестный"
+    avatar = str(summary.get("avatarfull") or summary.get("avatarmedium") or "")
+    profile_url = str(summary.get("profileurl") or f"https://steamcommunity.com/profiles/{steam_id}")
+    record_steam_identity(steam_id, persona, avatar)
+    try:
+        visibility = int(summary.get("communityvisibilitystate") or 0)
+    except (TypeError, ValueError):
+        visibility = 0
+    try:
+        persona_state = int(summary.get("personastate") or 0)
+    except (TypeError, ValueError):
+        persona_state = 0
+    try:
+        created = int(summary.get("timecreated") or 0)
+    except (TypeError, ValueError):
+        created = 0
+    embed = discord.Embed(title=persona, url=profile_url, color=0x57F287,
+                          timestamp=discord.utils.utcnow())
+    if avatar:
+        embed.set_thumbnail(url=avatar)
+    embed.add_field(name="Steam ID", value=f"`{steam_id}`", inline=True)
+    embed.add_field(
+        name="Steam",
+        value=(f"[Профиль]({profile_url})\n"
+               f"{'открыт' if visibility == 3 else 'скрыт'} • "
+               f"{STEAM_STATUS_LABELS.get(persona_state, 'неизвестно')}"),
+        inline=True)
+    if created:
+        embed.add_field(name="Аккаунт",
+                        value=f"с {format_date_ru(created)}\n({format_relative_ru(created)})",
+                        inline=True)
+    if rust_game:
+        lines = [f"**{format_hours_ru(rust_game.get('playtime_forever'))}** всего"]
+        two_weeks = int(rust_game.get("playtime_2weeks") or 0)
+        last_played = int(rust_game.get("rtime_last_played") or 0)
+        if two_weeks:
+            lines.append(f"{format_hours_ru(two_weeks)} за 2 недели")
+        if last_played:
+            lines.append(f"Последний запуск: {format_relative_ru(last_played)}")
+        embed.add_field(name="Rust", value="\n".join(lines), inline=True)
+    elif rust_err == "private":
+        embed.add_field(name="Rust", value="Скрыто (приватный профиль)", inline=True)
+    elif rust_err == "no_rust":
+        embed.add_field(name="Rust", value="Не найден", inline=True)
+    else:
+        embed.add_field(name="Rust", value="Нет данных", inline=True)
+    profile = get_member_profile_by_steam_id(steam_id)
+    member = None
+    if discord_user_id and interaction.guild:
+        member = interaction.guild.get_member(int(discord_user_id))
+    if profile and member is None and interaction.guild:
+        member = interaction.guild.get_member(int(profile.get("user_id") or 0))
+    if profile or member:
+        lines = []
+        if profile:
+            if profile.get("steam_nick"):
+                lines.append(f"Steam-ник: **{discord.utils.escape_markdown(clean_nick_part(profile['steam_nick']))}**")
+            if profile.get("real_name"):
+                lines.append(f"Имя: {discord.utils.escape_markdown(clean_nick_part(profile['real_name']))}")
+        if member is not None:
+            lines.append(f"Discord: {member.mention}")
+            role_names = [r.name for r in member.roles if not r.is_default() and not r.managed]
+            if role_names:
+                lines.append("Роли: " + ", ".join(role_names[:6]))
+        if lines:
+            embed.add_field(name="FLCN", value="\n".join(lines)[:1000], inline=False)
+    past = steam_past_names(steam_id, persona)
+    if past:
+        past_value = "\n".join(
+            f"• **{discord.utils.escape_markdown(name)}** — {format_relative_ru(ts)}"
+            for name, ts in past)
+    else:
+        past_value = "Пока пусто — история копится с этого запроса."
+    embed.add_field(name="Past Names", value=past_value[:1000], inline=False)
+    embed.set_footer(text="FALCONS • Steam", icon_url=avatar or None)
+    await interaction.followup.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
 @bot.tree.command(name="setup_server", description="Настроить роли и каналы бота для этого сервера")
 @app_commands.describe(staff_role="Роль Ticket Staff этого сервера",
