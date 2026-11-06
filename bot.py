@@ -67,7 +67,7 @@ MEETING_CHANNEL_ID = int(os.getenv("MEETING_CHANNEL_ID", "1560429785119723590") 
 TICKET_REMINDER_MINUTES = int(os.getenv("TICKET_REMINDER_MINUTES", "30") or 30)
 RUST_MIN_HOURS = int(os.getenv("RUST_MIN_HOURS", "3000") or 3000)
 STEAM_API_KEY = os.getenv("STEAM_API_KEY", "").strip()
-STEAM_CACHE_TTL = 600
+STEAM_CACHE_TTL = 180
 PLAYER_COOLDOWN_SECONDS = 5
 WARN_TIMEOUT_COUNT = int(os.getenv("WARN_TIMEOUT_COUNT", "3") or 3)
 WARN_TIMEOUT_MINUTES = int(os.getenv("WARN_TIMEOUT_MINUTES", "60") or 60)
@@ -1542,19 +1542,21 @@ async def steam_get_rust(steam_id):
         "steamid": str(steam_id),
         "include_appinfo": 0,
         "include_played_free_games": 1,
-        "appids_filter[0]": 252490,
     })
     if err:
         return None, err
     response = (data or {}).get("response") or {}
-    for game in response.get("games") or []:
+    if not response:
+        return None, "hidden"
+    games = response.get("games") or []
+    for game in games:
         try:
             if int(game.get("appid") or 0) == 252490:
+                if "playtime_forever" not in game:
+                    return None, "hidden"
                 return game, None
         except (TypeError, ValueError):
             continue
-    if not response:
-        return None, "private"
     return None, "no_rust"
 
 def get_member_profile_by_steam_id(steam_id):
@@ -1710,6 +1712,7 @@ def steam_error_text(err):
         "timeout": "Steam не ответил вовремя. Попробуй ещё раз.",
         "not_found": "Steam не нашёл такой профиль.",
         "private": "Профиль закрыт: часы Rust скрыты.",
+        "hidden": "Детали игр скрыты: часы Rust недоступны.",
         "no_rust": "Rust на этом аккаунте не найден.",
         "error": "Не удалось получить данные Steam. Попробуй позже.",
     }.get(str(err or ""), "Не удалось получить данные Steam.")
@@ -2912,25 +2915,27 @@ async def player_lookup(interaction, identifier: str):
     steam_id, err, discord_user_id = await resolve_steam_input(identifier, interaction.guild)
     if err:
         return await interaction.followup.send(err, ephemeral=True)
-    cached = _steam_cache_get(steam_id)
-    if cached:
-        summary = cached.get("summary")
-        rust_game = cached.get("rust_game")
-        rust_err = cached.get("rust_err")
-    else:
-        summary, summary_err = await steam_get_summary(steam_id)
-        if summary_err:
-            return await interaction.followup.send(steam_error_text(summary_err), ephemeral=True)
-        rust_game, rust_err = await steam_get_rust(steam_id)
-        _steam_cache_set(steam_id, {"summary": summary, "rust_game": rust_game, "rust_err": rust_err})
-    persona = clean_nick_part(summary.get("personaname")) or "Неизвестный"
-    avatar = str(summary.get("avatarfull") or summary.get("avatarmedium") or "")
-    profile_url = str(summary.get("profileurl") or f"https://steamcommunity.com/profiles/{steam_id}")
-    record_steam_identity(steam_id, persona, avatar)
+    summary, summary_err = await steam_get_summary(steam_id)
+    if summary_err:
+        return await interaction.followup.send(steam_error_text(summary_err), ephemeral=True)
     try:
         visibility = int(summary.get("communityvisibilitystate") or 0)
     except (TypeError, ValueError):
         visibility = 0
+    rust_game = None
+    rust_err = None
+    if visibility != 3:
+        rust_err = "profile_private"
+    else:
+        rust_game = _steam_cache_get(steam_id)
+        if rust_game is None:
+            rust_game, rust_err = await steam_get_rust(steam_id)
+            if rust_game is not None:
+                _steam_cache_set(steam_id, rust_game)
+    persona = clean_nick_part(summary.get("personaname")) or "Неизвестный"
+    avatar = str(summary.get("avatarfull") or summary.get("avatarmedium") or "")
+    profile_url = str(summary.get("profileurl") or f"https://steamcommunity.com/profiles/{steam_id}")
+    record_steam_identity(steam_id, persona, avatar)
     try:
         persona_state = int(summary.get("personastate") or 0)
     except (TypeError, ValueError):
@@ -2963,10 +2968,12 @@ async def player_lookup(interaction, identifier: str):
         if last_played:
             lines.append(f"Последний запуск: {format_relative_ru(last_played)}")
         embed.add_field(name="Rust", value="\n".join(lines), inline=True)
-    elif rust_err == "private":
-        embed.add_field(name="Rust", value="Скрыто (приватный профиль)", inline=True)
+    elif rust_err == "profile_private":
+        embed.add_field(name="Rust", value="Скрыто (профиль приватный)", inline=True)
+    elif rust_err == "hidden":
+        embed.add_field(name="Rust", value="Скрыто (детали игр закрыты)", inline=True)
     elif rust_err == "no_rust":
-        embed.add_field(name="Rust", value="Не найден", inline=True)
+        embed.add_field(name="Rust", value="Rust не найден", inline=True)
     else:
         embed.add_field(name="Rust", value="Нет данных", inline=True)
     profile = get_member_profile_by_steam_id(steam_id)
@@ -2997,7 +3004,9 @@ async def player_lookup(interaction, identifier: str):
     else:
         past_value = "Пока пусто — история копится с этого запроса."
     embed.add_field(name="Past Names", value=past_value[:1000], inline=False)
-    embed.set_footer(text="FALCONS • Steam", icon_url=avatar or None)
+    embed.set_footer(
+        text="FALCONS • часы по Steam, не серверные" if rust_game else "FALCONS • Steam",
+        icon_url=avatar or None)
     await interaction.followup.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
 @bot.tree.command(name="setup_server", description="Настроить роли и каналы бота для этого сервера")
