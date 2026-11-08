@@ -105,12 +105,9 @@ CATEGORY_QUESTIONS = {
 }
 CATEGORY_LABELS = {"clan": "Набор в клан", "partner": "Партнёрство", "question": "Вопрос по клану", "report": "Жалоба на игрока", "other": "Другое обращение"}
 
-CLAN_APPLY_ROLE_GROUPS = (
-    ("Какую роль хочешь в клане?", (
-        "Билдер", "Пилот", "Сап. Билдер", "Сап. Пилот", "Крафтер",
-        "Фермер", "Комбатёр", "Коллер", "Электрик",
-    )),
-    ("Стафф", ("Тикет стафф", "Модератор")),
+CLAN_APPLY_ROLES = (
+    "Билдер", "Пилот", "Сап. Билдер", "Сап. Пилот", "Крафтер",
+    "Фермер", "Комбатёр", "Коллер", "Электрик", "Тикет стафф",
 )
 
 def _db():
@@ -2087,67 +2084,42 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
         return " Ник не изменён: ошибка при обработке Steam."
 
 def clan_form_questions():
-    return load_questions("clan")
-
-class ClanRolesModal(discord.ui.Modal, title="Какую роль хочешь в клане?"):
-    def __init__(self, answers):
-        super().__init__(timeout=600)
-        self.answers = answers
-        self.role_groups = []
-        for index, (label_text, roles) in enumerate(CLAN_APPLY_ROLE_GROUPS):
-            group = discord.ui.CheckboxGroup(
-                custom_id=f"flcn:clan_role_group:{index}",
-                required=(index == 0),
-                min_values=1 if index == 0 else 0,
-                max_values=len(roles),
-                options=[discord.CheckboxGroupOption(label=role, value=role) for role in roles])
-            self.role_groups.append(group)
-            description = ("Строитель — предоставьте коды/видео своих баз; "
-                           "PvP — 55+ убийств в режиме FFA.") if index == 0 else None
-            self.add_item(discord.ui.Label(text=label_text, description=description, component=group))
-
-    async def on_submit(self, modal_interaction):
-        selected = []
-        for group in self.role_groups:
-            for value in group.values:
-                if value and value not in selected:
-                    selected.append(value)
-        self.answers.append(("Желаемая роль", ", ".join(selected) if selected else "—"))
-        await modal_interaction.response.defer(ephemeral=True, thinking=True)
-        await create_ticket(modal_interaction, "clan", self.answers)
+    return load_questions("clan")[:4]
 
 async def start_clan_application(interaction):
     questions = clan_form_questions()
     if not questions:
         return await interaction.response.send_message("Анкета пока не настроена.", ephemeral=True)
-    answers = []
 
-    async def show_batch(inter, start):
-        batch = questions[start:start + 5]
-        class ClanQuestionsModal(discord.ui.Modal, title="Заявка в клан"):
-            def __init__(self):
-                super().__init__(timeout=600)
-                self.inputs = []
-                for question in batch:
-                    placeholder = "Напиши ответ…"
-                    if question.strip().lower().startswith("steam"):
-                        placeholder = "Ссылка, затем имя: https://steamcommunity.com/id/xxx, Саша"
-                    field = discord.ui.TextInput(placeholder=placeholder[:100],
-                        style=discord.TextStyle.paragraph, required=True, min_length=1, max_length=1000)
-                    self.inputs.append((question, field))
-                    self.add_item(discord.ui.Label(text=question[:45], component=field))
+    class ClanApplyModal(discord.ui.Modal, title="Заявка в клан"):
+        def __init__(self):
+            super().__init__(timeout=600)
+            self.inputs = []
+            for question in questions:
+                placeholder = "Напиши ответ…"
+                if question.strip().lower().startswith("steam"):
+                    placeholder = "Ссылка, затем имя: https://steamcommunity.com/id/xxx, Саша"
+                field = discord.ui.TextInput(placeholder=placeholder[:100],
+                    style=discord.TextStyle.paragraph, required=True, min_length=1, max_length=1000)
+                self.inputs.append((question, field))
+                self.add_item(discord.ui.Label(text=question[:45], component=field))
+            self.roles = discord.ui.CheckboxGroup(
+                custom_id="flcn:clan_roles",
+                required=True, min_values=1, max_values=len(CLAN_APPLY_ROLES),
+                options=[discord.CheckboxGroupOption(label=role, value=role) for role in CLAN_APPLY_ROLES])
+            self.add_item(discord.ui.Label(text="Какую роль хочешь в клане?",
+                description=("Строитель — предоставьте коды/видео своих баз; "
+                             "PvP — 55+ убийств в режиме FFA."),
+                component=self.roles))
 
-            async def on_submit(self, modal_interaction):
-                answers.extend((question, str(field.value)) for question, field in self.inputs)
-                next_start = start + len(batch)
-                if next_start < len(questions):
-                    await show_batch(modal_interaction, next_start)
-                else:
-                    await modal_interaction.response.send_modal(ClanRolesModal(answers))
+        async def on_submit(self, modal_interaction):
+            answers = [(question, str(field.value)) for question, field in self.inputs]
+            selected = [value for value in self.roles.values if value]
+            answers.append(("Желаемая роль", ", ".join(selected) if selected else "—"))
+            await modal_interaction.response.defer(ephemeral=True, thinking=True)
+            await create_ticket(modal_interaction, "clan", answers)
 
-        await inter.response.send_modal(ClanQuestionsModal())
-
-    await show_batch(interaction, 0)
+    await interaction.response.send_modal(ClanApplyModal())
 
 async def start_application(interaction, category_key):
     if category_key == "clan":
