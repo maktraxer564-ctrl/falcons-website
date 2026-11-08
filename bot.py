@@ -2441,20 +2441,13 @@ def parse_guild_self_roles(guild):
         return [(rid, label) for rid, label in parse_self_roles() if guild.get_role(rid) is not None]
     return []
 
-class SelfRoleSelect(discord.ui.Select):
-    def __init__(self, roles):
-        options = [discord.SelectOption(label=label, value=str(rid)) for rid, label in roles]
-        super().__init__(placeholder="Выбери роли…", min_values=0, max_values=max(1, len(options)),
-                         options=options, custom_id="flcn:selfroles")
-
-    async def callback(self, interaction):
-        pass
-
 class SelfRolesView(discord.ui.View):
     def __init__(self, roles):
         super().__init__(timeout=None)
-        if roles:
-            self.add_item(SelfRoleSelect(roles))
+        for role_id, label in roles[:25]:
+            self.add_item(discord.ui.Button(label=label[:80],
+                custom_id=f"flcn:selfrole:{role_id}",
+                style=discord.ButtonStyle.secondary))
 
 async def promote_newcomer(member, chosen):
     if not chosen:
@@ -2477,12 +2470,45 @@ async def promote_newcomer(member, chosen):
         return None
     return main_role.name
 
+async def handle_self_role_button(interaction, custom_id):
+    if interaction.guild is None or not isinstance(interaction.user, discord.Member):
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    try:
+        role_id = int(custom_id.rsplit(":", 1)[1])
+    except (IndexError, ValueError):
+        return
+    roles = parse_guild_self_roles(interaction.guild)
+    if role_id not in {rid for rid, _ in roles}:
+        return await interaction.response.send_message("Этой роли нет в панели.", ephemeral=True)
+    role = interaction.guild.get_role(role_id)
+    if role is None:
+        return await interaction.response.send_message("Роль не найдена.", ephemeral=True)
+    member = interaction.user
+    chosen = {rid for rid, _ in roles if interaction.guild.get_role(rid) in member.roles}
+    try:
+        if role in member.roles:
+            await member.remove_roles(role, reason="FLCN self-roles")
+            chosen.discard(role_id)
+            text = f"Роль {role.mention} снята."
+        else:
+            await member.add_roles(role, reason="FLCN self-roles")
+            chosen.add(role_id)
+            text = f"Роль {role.mention} выдана."
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("self-roles: не удалось изменить роль %s", role_id)
+        return await interaction.response.send_message("Не удалось изменить роль (права бота).", ephemeral=True)
+    await promote_newcomer(member, chosen)
+    await interaction.response.send_message(text, ephemeral=True)
+
 @bot.event
 async def on_interaction(interaction):
     if interaction.type is not discord.InteractionType.component:
         return
     data = interaction.data or {}
-    if data.get("custom_id") != "flcn:selfroles":
+    custom_id = str(data.get("custom_id") or "")
+    if custom_id.startswith("flcn:selfrole:"):
+        return await handle_self_role_button(interaction, custom_id)
+    if custom_id != "flcn:selfroles":
         return
     if interaction.guild is None or not isinstance(interaction.user, discord.Member):
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
@@ -3128,7 +3154,7 @@ async def setup_roles(interaction):
         return await interaction.response.send_message(
             "Само-роли для этого сервера не настроены. Добавь их командой /selfrole_add.", ephemeral=True)
     embed = discord.Embed(title="🎭 Само-роли", color=discord.Color.blurple(),
-                          description="Выбери роли в меню ниже. Можно выбрать несколько или снять уже выбранные.")
+                          description="Нажми на кнопку с ролью, чтобы выдать её себе или снять. Можно несколько.")
     embed.add_field(name="Доступные роли", value="\n".join(label for _, label in roles)[:1024], inline=False)
     await interaction.channel.send(embed=embed, view=SelfRolesView(roles))
     await interaction.response.send_message("Панель само-ролей опубликована.", ephemeral=True)
