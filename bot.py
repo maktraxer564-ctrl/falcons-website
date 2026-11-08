@@ -106,6 +106,14 @@ CATEGORY_QUESTIONS = {
 }
 CATEGORY_LABELS = {"clan": "Набор в клан", "partner": "Партнёрство", "question": "Вопрос по клану", "report": "Жалоба на игрока", "other": "Другое обращение"}
 
+CLAN_APPLY_ROLE_GROUPS = (
+    ("Какую роль хочешь в клане?", (
+        "Билдер", "Пилот", "Сап. Билдер", "Сап. Пилот", "Крафтер",
+        "Фермер", "Комбатёр", "Коллер", "Электрик",
+    )),
+    ("Стафф", ("Тикет стафф", "Модератор")),
+)
+
 def _db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -1379,12 +1387,12 @@ async def create_ticket(interaction, category_key, answers):
             embed.add_field(name=question[:256], value=answer, inline=False)
     embed.add_field(name="Предыдущие заявки", value=build_history_text(guild, interaction.user.id), inline=False)
     if category_key == "clan":
-        embed.set_footer(text="Для набора приложи скрин Steam и ссылку BattleMetrics.")
+        embed.set_footer(text="Для набора приложи скрин Steam.")
 
     view = TicketActionsView()
     await channel.send(content=staff_role.mention if staff_role else None, embed=embed, view=view)
     if category_key == "clan":
-        await channel.send(f"{interaction.user.mention} Прекрепи сюда скрин Steam и ссылку на BattleMetrics , ответы я не умею читать")
+        await channel.send(f"{interaction.user.mention} Прикрепи сюда скрин Steam, ответы я не умею читать")
     try:
         await interaction.followup.send(f"Готово! Твоя заявка создана: {channel.mention}", ephemeral=True)
     except Exception:
@@ -2079,7 +2087,63 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
         log.exception("Ошибка смены ника по Steam")
         return " Ник не изменён: ошибка при обработке Steam."
 
+def clan_form_questions():
+    result = []
+    for question in load_questions("clan"):
+        low = (question or "").casefold()
+        if not low.strip():
+            continue
+        if "battlemetrics" in low or "battle metrics" in low:
+            continue
+        if "роль" in low and ("хочешь" in low or "хотите" in low):
+            continue
+        result.append(question)
+    return result[:3]
+
+async def start_clan_application(interaction):
+    questions = clan_form_questions()
+
+    class ClanApplyModal(discord.ui.Modal, title="Заявка в клан"):
+        def __init__(self):
+            super().__init__(timeout=600)
+            self.inputs = []
+            for question in questions:
+                placeholder = "Напиши ответ…"
+                if question.strip().lower().startswith("steam"):
+                    placeholder = "Ссылка, затем имя: https://steamcommunity.com/id/xxx, Саша"
+                field = discord.ui.TextInput(placeholder=placeholder[:100],
+                    style=discord.TextStyle.paragraph, required=True, min_length=1, max_length=1000)
+                self.inputs.append((question, field))
+                self.add_item(discord.ui.Label(text=question[:45], component=field))
+            self.role_groups = []
+            for index, (label_text, roles) in enumerate(CLAN_APPLY_ROLE_GROUPS):
+                group = discord.ui.CheckboxGroup(
+                    custom_id=f"flcn:clan_role_group:{index}",
+                    required=(index == 0),
+                    min_values=1 if index == 0 else 0,
+                    max_values=len(roles),
+                    options=[discord.CheckboxGroupOption(label=role, value=role) for role in roles])
+                self.role_groups.append(group)
+                description = ("Строитель — предоставьте коды/видео своих баз; "
+                               "PvP — 55+ убийств в режиме FFA.") if index == 0 else None
+                self.add_item(discord.ui.Label(text=label_text, description=description, component=group))
+
+        async def on_submit(self, modal_interaction):
+            answers = [(question, str(field.value)) for question, field in self.inputs]
+            selected = []
+            for group in self.role_groups:
+                for value in group.values:
+                    if value and value not in selected:
+                        selected.append(value)
+            answers.append(("Желаемая роль", ", ".join(selected) if selected else "—"))
+            await modal_interaction.response.defer(ephemeral=True, thinking=True)
+            await create_ticket(modal_interaction, "clan", answers)
+
+    await interaction.response.send_modal(ClanApplyModal())
+
 async def start_application(interaction, category_key):
+    if category_key == "clan":
+        return await start_clan_application(interaction)
     questions = load_questions(category_key)
     if not questions:
         return await interaction.response.send_message("Анкета пока не настроена.", ephemeral=True)
