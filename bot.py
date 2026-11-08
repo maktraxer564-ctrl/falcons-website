@@ -2477,27 +2477,32 @@ async def handle_self_role_button(interaction, custom_id):
         role_id = int(custom_id.rsplit(":", 1)[1])
     except (IndexError, ValueError):
         return
-    roles = parse_guild_self_roles(interaction.guild)
-    if role_id not in {rid for rid, _ in roles}:
+    panel = []
+    for rid, _ in parse_guild_self_roles(interaction.guild):
+        role = interaction.guild.get_role(rid)
+        if role is not None:
+            panel.append((rid, role))
+    if role_id not in {rid for rid, _ in panel}:
         return await interaction.response.send_message("Этой роли нет в панели.", ephemeral=True)
-    role = interaction.guild.get_role(role_id)
-    if role is None:
-        return await interaction.response.send_message("Роль не найдена.", ephemeral=True)
+    role = next(r for rid, r in panel if rid == role_id)
     member = interaction.user
-    chosen = {rid for rid, _ in roles if interaction.guild.get_role(rid) in member.roles}
+    held = {rid for rid, r in panel if r in member.roles}
     try:
         if role in member.roles:
             await member.remove_roles(role, reason="FLCN self-roles")
-            chosen.discard(role_id)
+            held.discard(role_id)
             text = f"Роль {role.mention} снята."
         else:
             await member.add_roles(role, reason="FLCN self-roles")
-            chosen.add(role_id)
+            others = [r for rid, r in panel if rid != role_id and r in member.roles]
+            if others:
+                await member.remove_roles(*others, reason="FLCN self-roles: только одна роль")
+            held = {role_id}
             text = f"Роль {role.mention} выдана."
     except (discord.Forbidden, discord.HTTPException):
         log.exception("self-roles: не удалось изменить роль %s", role_id)
         return await interaction.response.send_message("Не удалось изменить роль (права бота).", ephemeral=True)
-    await promote_newcomer(member, chosen)
+    await promote_newcomer(member, held)
     await interaction.response.send_message(text, ephemeral=True)
 
 @bot.event
@@ -3154,8 +3159,10 @@ async def setup_roles(interaction):
         return await interaction.response.send_message(
             "Само-роли для этого сервера не настроены. Добавь их командой /selfrole_add.", ephemeral=True)
     embed = discord.Embed(title="🎭 Само-роли", color=discord.Color.blurple(),
-                          description="Нажми на кнопку с ролью, чтобы выдать её себе или снять. Можно несколько.")
-    embed.add_field(name="Доступные роли", value="\n".join(label for _, label in roles)[:1024], inline=False)
+                          description=("🎭 Выбирай ТОЛЬКО ОДНУ роль — она показывает кем ты пришёл в клан.\n\n"
+                                       "🛡 Роль не даёт прав. Даже «Коллер» не сможет кикать или банить.\n"
+                                       "Права выдаёт только лидер вручную.\n\n"
+                                       "✅ Выбрал роль → получил MAIN → ты в FALCON."))
     await interaction.channel.send(embed=embed, view=SelfRolesView(roles))
     await interaction.response.send_message("Панель само-ролей опубликована.", ephemeral=True)
 
