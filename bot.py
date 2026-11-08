@@ -106,6 +106,12 @@ CATEGORY_QUESTIONS = {
 }
 CATEGORY_LABELS = {"clan": "Набор в клан", "partner": "Партнёрство", "question": "Вопрос по клану", "report": "Жалоба на игрока", "other": "Другое обращение"}
 
+CLAN_APPLY_QUESTIONS = (
+    "Возраст — сколько тебе лет?",
+    "Часы в Rust — сколько часов наиграно?",
+    "Steam — ссылка и имя (через запятую)",
+)
+
 CLAN_APPLY_ROLE_GROUPS = (
     ("Какую роль хочешь в клане?", (
         "Билдер", "Пилот", "Сап. Билдер", "Сап. Пилот", "Крафтер",
@@ -2088,17 +2094,7 @@ async def apply_accept_nick(guild, channel, member, actor, ticket):
         return " Ник не изменён: ошибка при обработке Steam."
 
 def clan_form_questions():
-    result = []
-    for question in load_questions("clan"):
-        low = (question or "").casefold()
-        if not low.strip():
-            continue
-        if "battlemetrics" in low or "battle metrics" in low:
-            continue
-        if "роль" in low and ("хочешь" in low or "хотите" in low):
-            continue
-        result.append(question)
-    return result[:3]
+    return list(CLAN_APPLY_QUESTIONS)
 
 async def start_clan_application(interaction):
     questions = clan_form_questions()
