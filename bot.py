@@ -3143,7 +3143,7 @@ async def setup_tickets(interaction):
                      "⚔️ **Набор в клан** — от 15 лет и от 3000 часов в Rust.\n"
                      "Скриншот Steam понадобится только для заявки в клан."),
         color=discord.Color.blurple())
-    file = discord.File("falcons.png", filename="falcons.png")
+    file = discord.File("assets/falcons_ticket.png", filename="falcons.png")
     embed.set_image(url="attachment://falcons.png")
     await interaction.channel.send(file=file, embed=embed, view=TicketPanelView())
     await interaction.response.send_message("Панель заявок опубликована.", ephemeral=True)
