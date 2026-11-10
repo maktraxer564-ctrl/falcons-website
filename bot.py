@@ -2421,6 +2421,65 @@ class RecruitmentApplyView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(RecruitmentApplyButton())
 
+def build_recruitment_embed():
+    """Build the standalone recruitment post; ticket controls remain separate."""
+    embed = discord.Embed(
+        title="FALCONS RECRUITMENT",
+        description=(
+            "**MAIN — ОСНОВНОЙ СОСТАВ**\n"
+            "────────────────────────"
+        ),
+        colour=discord.Colour.from_rgb(46, 48, 54),
+    )
+    embed.add_field(
+        name="ТРЕБОВАНИЯ",
+        value="**Возраст**\n15+\n\n**Часы**\n3000+\n\n**FC / R2**\n40+",
+        inline=True,
+    )
+    embed.add_field(
+        name="АКТИВНОСТЬ",
+        value="**FFA / UKN**\n40+\n\n**Онлайн**\n8+ часов в дни вайпа.",
+        inline=True,
+    )
+    embed.add_field(
+        name="────────────────────────",
+        value=(
+            "**ДОПОЛНИТЕЛЬНЫЕ НАПРАВЛЕНИЯ**\n"
+            "BUILD — строительство.\n"
+            "ELECTRIC — электричество.\n"
+            "FARM — фарм.\n"
+            "INDUSTRIAL — производство и автоматизация.\n\n"
+            "*Для сильных игроков возможны исключения.*"
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="────────────────────────",
+        value="**Готов вступить в FALCONS?**\nНажми кнопку ниже и подай заявку.",
+        inline=False,
+    )
+    embed.set_footer(text="FALCONS · RUST CLAN")
+    return embed
+
+def component_has_custom_id(component, custom_id):
+    if getattr(component, "custom_id", None) == custom_id:
+        return True
+    return any(component_has_custom_id(child, custom_id)
+               for child in (getattr(component, "children", None) or []))
+
+async def find_recruitment_message(channel):
+    """Limit updates to this channel and to the dedicated recruitment button."""
+    try:
+        async for message in channel.history(limit=100):
+            if bot.user and message.author.id != bot.user.id:
+                continue
+            if any(component_has_custom_id(component, "flcn:recruit_apply")
+                   for component in (message.components or [])):
+                return message
+    except Exception:
+        log.exception("Не удалось найти recruitment-сообщение")
+    return None
+
 def build_ticket_panel_view():
     view = discord.ui.LayoutView()
     container = discord.ui.Container(accent_colour=discord.Color.blurple())
@@ -3175,6 +3234,25 @@ async def setup_tickets(interaction):
     file = discord.File("assets/falcons_ticket.png", filename="falcons.png")
     await interaction.channel.send(file=file, view=build_ticket_panel_view())
     await interaction.response.send_message("Панель заявок опубликована.", ephemeral=True)
+
+@bot.tree.command(name="setup_recruitment", description="Опубликовать FALCONS RECRUITMENT в текущем канале")
+async def setup_recruitment(interaction):
+    if interaction.guild is None:
+        return await interaction.response.send_message("Только на сервере.", ephemeral=True)
+    if not is_staff_interaction(interaction):
+        return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
+
+    embed = build_recruitment_embed()
+    view = RecruitmentApplyView()
+    existing = await find_recruitment_message(interaction.channel)
+    if existing is not None:
+        file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
+        await existing.edit(embed=embed, view=view, attachments=[file])
+        return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
+
+    file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
+    await interaction.channel.send(embed=embed, file=file, view=view)
+    await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
 async def setup_roles(interaction):
