@@ -2429,33 +2429,23 @@ def build_recruitment_embeds():
 
     panel = discord.Embed(
         title="FALCONS RECRUITMENT",
-        description="BUILD YOUR LEGACY. JOIN THE TEAM.",
-        colour=discord.Colour.from_rgb(18, 18, 18),
-    )
-    panel.add_field(name="◆ MAIN", value="\u200b", inline=False)
-    panel.add_field(
-        name="15+  ·  8+ ЧАСОВ",
-        value="Возраст\n\nОнлайн в дни вайпа",
-        inline=True,
-    )
-    panel.add_field(
-        name="3000+  ·  40+ / 40+",
-        value="Часов Rust\n\nFC / R2 · FFA / UKN",
-        inline=True,
-    )
-    panel.add_field(
-        name="◇ ДОПОЛНИТЕЛЬНЫЕ НАПРАВЛЕНИЯ",
-        value=(
-            "**BUILD** — строительство · **ELECTRIC** — электричество\n"
-            "**FARM** — фарм · **INDUSTRIAL** — производство и автоматизация\n\n"
+        description=(
+            "# MAIN\n"
+            "────────────────────────\n\n"
+            "## 15+ — ВОЗРАСТ\n\n"
+            "## 3000+ — ЧАСОВ RUST\n\n"
+            "## 40+ — FC / R2\n\n"
+            "## 40+ — FFA / UKN\n\n"
+            "## 8+ ЧАСОВ — ОНЛАЙН В ДНИ ВАЙПА\n\n"
+            "────────────────────────\n\n"
+            "# ДОПОЛНИТЕЛЬНЫЕ НАПРАВЛЕНИЯ\n\n"
+            "## BUILD — СТРОИТЕЛЬСТВО\n\n"
+            "## ELECTRIC — ЭЛЕКТРИЧЕСТВО\n\n"
+            "## FARM — ФАРМ\n\n"
+            "## INDUSTRIAL — ПРОИЗВОДСТВО И АВТОМАТИЗАЦИЯ\n\n"
             "*Для сильных игроков возможны исключения.*"
         ),
-        inline=False,
-    )
-    panel.add_field(
-        name="✦ ГОТОВ ВСТУПИТЬ?",
-        value="Нажми кнопку ниже и подай заявку.",
-        inline=False,
+        colour=discord.Colour.from_rgb(18, 18, 18),
     )
     panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
     return [banner, panel]
@@ -2472,8 +2462,14 @@ async def find_recruitment_message(channel):
         async for message in channel.history(limit=100):
             if bot.user and message.author.id != bot.user.id:
                 continue
-            if any(component_has_custom_id(component, "flcn:recruit_apply")
-                   for component in (message.components or [])):
+            has_apply_button = any(
+                component_has_custom_id(component, "flcn:recruit_apply")
+                for component in (message.components or [])
+            )
+            has_recruitment_title = any(
+                embed.title == "FALCONS RECRUITMENT" for embed in message.embeds
+            )
+            if has_apply_button or has_recruitment_title:
                 return message
     except Exception:
         log.exception("Не удалось найти recruitment-сообщение")
@@ -2499,7 +2495,7 @@ async def refresh_existing_recruitment_message():
             file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
             await message.edit(
                 embeds=build_recruitment_embeds(),
-                view=RecruitmentApplyView(),
+                view=None,
                 attachments=[file],
             )
             log.info("Recruitment message layout updated: %s", message.id)
@@ -3272,15 +3268,14 @@ async def setup_recruitment(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
 
     embeds = build_recruitment_embeds()
-    view = RecruitmentApplyView()
     existing = await find_recruitment_message(interaction.channel)
     if existing is not None:
         file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
-        await existing.edit(embeds=embeds, view=view, attachments=[file])
+        await existing.edit(embeds=embeds, view=None, attachments=[file])
         return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
 
     file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
-    await interaction.channel.send(embeds=embeds, file=file, view=view)
+    await interaction.channel.send(embeds=embeds, file=file)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
