@@ -3138,10 +3138,16 @@ async def setup_tickets(interaction):
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
-    embed = discord.Embed(title="FALCONS SUPPORT",
-        description=("**Выбери категорию обращения в меню ниже.**\n\n"
-                     "⚔️ **Набор в клан** — от 15 лет и от 3000 часов в Rust.\n"
-                     "Скриншот Steam понадобится только для заявки в клан."),
+    embed = discord.Embed(title="FALCONS — RECRUITMENT",
+        description=("────────────────────────\n"
+                     "✓ **15+ лет**\n"
+                     "✓ **3.000 часов**\n"
+                     "✓ **Онлайн от 7 часов**\n"
+                     "✓ **Набить 40 киллов на FC**\n"
+                     "✓ **Наличие опыта игры в клане**\n"
+                     "✓ **Хорошее понимание игры**\n"
+                     "────────────────────────\n"
+                     "● **Тикет ты можешь открыть по кнопке ниже**"),
         color=discord.Color.blurple())
     file = discord.File("assets/falcons_ticket.png", filename="falcons.png")
     embed.set_image(url="attachment://falcons.png")
