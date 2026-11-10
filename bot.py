@@ -2423,6 +2423,7 @@ def build_ticket_panel_view():
     container.add_item(discord.ui.Separator())
     container.add_item(discord.ui.TextDisplay("● **Тикет ты можешь открыть по кнопке ниже**"))
     container.add_item(discord.ui.ActionRow(TicketCategorySelect()))
+    container.add_item(discord.ui.TextDisplay("||@everyone||"))
     view.add_item(container)
     return view
 
