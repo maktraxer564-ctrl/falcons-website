@@ -2421,45 +2421,43 @@ class RecruitmentApplyView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(RecruitmentApplyButton())
 
-def build_recruitment_embed():
-    """Build the standalone recruitment post; ticket controls remain separate."""
-    embed = discord.Embed(
+def build_recruitment_embeds():
+    """Build one recruitment message: banner first, native criteria second."""
+    banner = discord.Embed(colour=discord.Colour.from_rgb(18, 18, 18))
+    banner.set_image(url="attachment://falcons_ticket.png")
+
+    panel = discord.Embed(
         title="FALCONS RECRUITMENT",
-        description=(
-            "**MAIN — ОСНОВНОЙ СОСТАВ**\n"
-            "────────────────────────"
-        ),
-        colour=discord.Colour.from_rgb(46, 48, 54),
+        description="BUILD YOUR LEGACY. JOIN THE TEAM.",
+        colour=discord.Colour.from_rgb(18, 18, 18),
     )
-    embed.add_field(
-        name="ТРЕБОВАНИЯ",
-        value="**Возраст**\n15+\n\n**Часы**\n3000+\n\n**FC / R2**\n40+",
+    panel.add_field(name="◆ MAIN", value="\u200b", inline=False)
+    panel.add_field(
+        name="15+  ·  8+ ЧАСОВ",
+        value="Возраст\n\nОнлайн в дни вайпа",
         inline=True,
     )
-    embed.add_field(
-        name="АКТИВНОСТЬ",
-        value="**FFA / UKN**\n40+\n\n**Онлайн**\n8+ часов в дни вайпа.",
+    panel.add_field(
+        name="3000+  ·  40+ / 40+",
+        value="Часов Rust\n\nFC / R2 · FFA / UKN",
         inline=True,
     )
-    embed.add_field(
-        name="────────────────────────",
+    panel.add_field(
+        name="◇ ДОПОЛНИТЕЛЬНЫЕ НАПРАВЛЕНИЯ",
         value=(
-            "**ДОПОЛНИТЕЛЬНЫЕ НАПРАВЛЕНИЯ**\n"
-            "BUILD — строительство.\n"
-            "ELECTRIC — электричество.\n"
-            "FARM — фарм.\n"
-            "INDUSTRIAL — производство и автоматизация.\n\n"
+            "**BUILD** — строительство · **ELECTRIC** — электричество\n"
+            "**FARM** — фарм · **INDUSTRIAL** — производство и автоматизация\n\n"
             "*Для сильных игроков возможны исключения.*"
         ),
         inline=False,
     )
-    embed.add_field(
-        name="────────────────────────",
-        value="**Готов вступить в FALCONS?**\nНажми кнопку ниже и подай заявку.",
+    panel.add_field(
+        name="✦ ГОТОВ ВСТУПИТЬ?",
+        value="Нажми кнопку ниже и подай заявку.",
         inline=False,
     )
-    embed.set_footer(text="FALCONS · RUST CLAN")
-    return embed
+    panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
+    return [banner, panel]
 
 def component_has_custom_id(component, custom_id):
     if getattr(component, "custom_id", None) == custom_id:
@@ -3242,16 +3240,16 @@ async def setup_recruitment(interaction):
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
 
-    embed = build_recruitment_embed()
+    embeds = build_recruitment_embeds()
     view = RecruitmentApplyView()
     existing = await find_recruitment_message(interaction.channel)
     if existing is not None:
-        file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
-        await existing.edit(embed=embed, view=view, attachments=[file])
+        file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+        await existing.edit(embeds=embeds, view=view, attachments=[file])
         return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
 
-    file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
-    await interaction.channel.send(embed=embed, file=file, view=view)
+    file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+    await interaction.channel.send(embeds=embeds, file=file, view=view)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
