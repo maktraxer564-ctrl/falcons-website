@@ -1126,6 +1126,7 @@ async def on_ready():
         clan_role_sync.start()
     if not players_roster_loop.is_running():
         players_roster_loop.start()
+    await refresh_existing_recruitment_message()
     for guild in bot.guilds:
         if GUILD_ID and guild.id == GUILD_ID:
             continue
@@ -2477,6 +2478,36 @@ async def find_recruitment_message(channel):
     except Exception:
         log.exception("Не удалось найти recruitment-сообщение")
     return None
+
+
+recruitment_layout_refresh_done = False
+
+
+async def refresh_existing_recruitment_message():
+    """Migrate the single existing recruitment post without creating a duplicate."""
+    global recruitment_layout_refresh_done
+    if recruitment_layout_refresh_done or not GUILD_ID:
+        return
+    guild = bot.get_guild(GUILD_ID)
+    if guild is None:
+        return
+    for channel in guild.text_channels:
+        message = await find_recruitment_message(channel)
+        if message is None:
+            continue
+        try:
+            file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+            await message.edit(
+                embeds=build_recruitment_embeds(),
+                view=RecruitmentApplyView(),
+                attachments=[file],
+            )
+            log.info("Recruitment message layout updated: %s", message.id)
+            recruitment_layout_refresh_done = True
+        except (discord.Forbidden, discord.HTTPException):
+            log.exception("Unable to update recruitment message: %s", message.id)
+        return
+
 
 def build_ticket_panel_view():
     view = discord.ui.LayoutView()
