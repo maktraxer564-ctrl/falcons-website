@@ -2407,6 +2407,25 @@ class TicketPanelView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketCategorySelect())
 
+def build_ticket_panel_view():
+    view = discord.ui.LayoutView()
+    container = discord.ui.Container(accent_colour=discord.Color.blurple())
+    container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(media="attachment://falcons.png")))
+    container.add_item(discord.ui.TextDisplay("## FALCONS — RECRUITMENT"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "✓ **15+ лет**\n\n"
+        "✓ **3.000 часов**\n\n"
+        "✓ **Онлайн от 7 часов**\n\n"
+        "✓ **Набить 40 киллов на FC**\n\n"
+        "✓ **Наличие опыта игры в клане**\n\n"
+        "✓ **Хорошее понимание игры**"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay("● **Тикет ты можешь открыть по кнопке ниже**"))
+    container.add_item(discord.ui.ActionRow(TicketCategorySelect()))
+    view.add_item(container)
+    return view
+
 def parse_self_roles():
     roles = []
     for part in SELF_ROLES.split(";"):
@@ -3138,20 +3157,8 @@ async def setup_tickets(interaction):
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
-    embed = discord.Embed(title="FALCONS — RECRUITMENT",
-        description=("────────────────────────\n"
-                     "✓ **15+ лет**\n"
-                     "✓ **3.000 часов**\n"
-                     "✓ **Онлайн от 7 часов**\n"
-                     "✓ **Набить 40 киллов на FC**\n"
-                     "✓ **Наличие опыта игры в клане**\n"
-                     "✓ **Хорошее понимание игры**\n"
-                     "────────────────────────\n"
-                     "● **Тикет ты можешь открыть по кнопке ниже**"),
-        color=discord.Color.blurple())
     file = discord.File("assets/falcons_ticket.png", filename="falcons.png")
-    embed.set_image(url="attachment://falcons.png")
-    await interaction.channel.send(file=file, embed=embed, view=TicketPanelView())
+    await interaction.channel.send(file=file, view=build_ticket_panel_view())
     await interaction.response.send_message("Панель заявок опубликована.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
