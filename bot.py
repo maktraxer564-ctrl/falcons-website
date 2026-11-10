@@ -502,6 +502,7 @@ class FalconsBot(commands.Bot):
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
+        self.add_view(RecruitmentApplyView())
         with _db() as conn:
             wipe_ids = [row[0] for row in conn.execute("SELECT id FROM wipe_events WHERE message_id IS NOT NULL")]
         for wipe_id in wipe_ids:
@@ -2406,6 +2407,19 @@ class TicketPanelView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(TicketCategorySelect())
+
+class RecruitmentApplyButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="ПОДАТЬ ЗАЯВКУ", style=discord.ButtonStyle.secondary,
+                         custom_id="flcn:recruit_apply")
+
+    async def callback(self, interaction):
+        await start_application(interaction, "clan")
+
+class RecruitmentApplyView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(RecruitmentApplyButton())
 
 def build_ticket_panel_view():
     view = discord.ui.LayoutView()
