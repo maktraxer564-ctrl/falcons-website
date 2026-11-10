@@ -502,7 +502,6 @@ class FalconsBot(commands.Bot):
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
-        self.add_view(RecruitmentPanelView())
         with _db() as conn:
             wipe_ids = [row[0] for row in conn.execute("SELECT id FROM wipe_events WHERE message_id IS NOT NULL")]
         for wipe_id in wipe_ids:
@@ -2408,71 +2407,25 @@ class TicketPanelView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketCategorySelect())
 
-class RecruitmentApplyButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="ПОДАТЬ ЗАЯВКУ", style=discord.ButtonStyle.secondary,
-                         custom_id="flcn:recruit_apply")
-
-    async def callback(self, interaction):
-        await start_application(interaction, "clan")
-
-class RecruitmentPanelView(discord.ui.LayoutView):
-    def __init__(self):
-        super().__init__(timeout=None)
-        container = discord.ui.Container(accent_colour=discord.Colour.from_rgb(255, 255, 255))
-        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(media="attachment://falcons.png")))
-        container.add_item(discord.ui.TextDisplay(
-            "## FALCONS RECRUITMENT\n"
-            "JOIN THE TEAM · PLAY TOGETHER · WIN TOGETHER"))
-        container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay(
-            "**◆ MAIN — ОСНОВНОЙ СОСТАВ**\n\n"
-            "**Возраст:** 15+\n"
-            "**Опыт:** 3000+ часов Rust\n"
-            "**FC / R2:** 40+\n"
-            "**FFA / UKN:** 40+\n"
-            "**Онлайн:** от 8 часов в дни вайпа.\n\n"
-            "Для действительно сильных игроков возможны исключения."))
-        container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay(
-            "**◇ ОТКРЫТЫЕ НАПРАВЛЕНИЯ**\n\n"
-            "**BUILD** — строительство баз.\n"
-            "**ELECTRIC** — электричество и ловушки.\n"
-            "**FARM** — фарм ресурсов.\n"
-            "**INDUSTRIAL** — производство и автоматизация.\n\n"
-            "Опыт от 3000 часов. Возможны исключения для опытных игроков."))
-        container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay(
-            "**✦ ЧТО МЫ ПРЕДЛАГАЕМ**\n\n"
-            "— Организованная игра и координация.\n"
-            "— Рейды, защиты и совместные вайпы.\n"
-            "— Разбор ошибок и развитие состава."))
-        container.add_item(discord.ui.Separator())
-        container.add_item(discord.ui.TextDisplay(
-            "**◆ ХОЧЕШЬ К НАМ?**\n\n"
-            "Нажми кнопку ниже и оставь заявку."))
-        container.add_item(discord.ui.ActionRow(RecruitmentApplyButton()))
-        self.add_item(container)
-
-def component_has_custom_id(component, custom_id):
-    if getattr(component, "custom_id", None) == custom_id:
-        return True
-    for child in (getattr(component, "children", None) or []):
-        if component_has_custom_id(child, custom_id):
-            return True
-    return False
-
-async def find_recruitment_panel(channel):
-    try:
-        async for msg in channel.history(limit=100):
-            if bot.user and msg.author.id != bot.user.id:
-                continue
-            for comp in (msg.components or []):
-                if component_has_custom_id(comp, "flcn:recruit_apply"):
-                    return msg
-    except Exception:
-        log.exception("не удалось найти панель набора")
-    return None
+def build_ticket_panel_view():
+    view = discord.ui.LayoutView()
+    container = discord.ui.Container(accent_colour=discord.Color.blurple())
+    container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(media="attachment://falcons.png")))
+    container.add_item(discord.ui.TextDisplay("## FALCONS — RECRUITMENT"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "✓ **15+ лет**\n\n"
+        "✓ **3.000 часов**\n\n"
+        "✓ **Онлайн от 7 часов**\n\n"
+        "✓ **Набить 40 киллов на FC**\n\n"
+        "✓ **Наличие опыта игры в клане**\n\n"
+        "✓ **Хорошее понимание игры**"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay("● **Тикет ты можешь открыть по кнопке ниже**"))
+    container.add_item(discord.ui.ActionRow(TicketCategorySelect()))
+    container.add_item(discord.ui.TextDisplay("||@everyone||"))
+    view.add_item(container)
+    return view
 
 def parse_self_roles():
     roles = []
@@ -3205,15 +3158,9 @@ async def setup_tickets(interaction):
         return await interaction.response.send_message("Только на сервере.", ephemeral=True)
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
-    view = RecruitmentPanelView()
-    existing = await find_recruitment_panel(interaction.channel)
-    if existing is not None:
-        await existing.edit(view=view)
-        await interaction.response.send_message("Панель набора обновлена.", ephemeral=True)
-        return
     file = discord.File("assets/falcons_ticket.png", filename="falcons.png")
-    await interaction.channel.send(file=file, view=view)
-    await interaction.response.send_message("Панель набора опубликована.", ephemeral=True)
+    await interaction.channel.send(file=file, view=build_ticket_panel_view())
+    await interaction.response.send_message("Панель заявок опубликована.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
 async def setup_roles(interaction):
