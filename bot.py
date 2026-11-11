@@ -1,4 +1,4 @@
-import io
+﻿import io
 import os
 import json
 import re
@@ -2414,9 +2414,9 @@ def build_recruitment_embeds():
         title="FALCONS RECRUITMENT",
         colour=discord.Colour.from_rgb(18, 18, 18),
     )
-    banner.set_image(url="attachment://falcons_ticket.png")
+    banner.set_image(url="attachment://falcons_recruitment_banner.png")
 
-    sep = "\u2500" * 40
+    sep = "\u2500" * 16
     panel = discord.Embed(
         description="# MAIN — ОСНОВНОЙ СОСТАВ",
         colour=discord.Colour.from_rgb(18, 18, 18),
@@ -2471,8 +2471,12 @@ def build_recruitment_embeds():
     panel.add_field(name="\u200b", value=sep, inline=False)
     panel.add_field(
         name="\u200b",
-        value=("**ХОЧЕШЬ В FALCONS?**\n"
-               "Оставь заявку в канале тикетов — мы рассмотрим её."),
+        value="**ХОЧЕШЬ В FALCONS?**",
+        inline=False,
+    )
+    panel.add_field(
+        name="\u200b",
+        value="Оставь заявку в канале тикетов — мы рассмотрим её.",
         inline=False,
     )
     panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
@@ -2525,7 +2529,7 @@ async def refresh_existing_recruitment_message():
         if message is None:
             continue
         try:
-            file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+            file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
             if message.flags.value & (1 << 15):
                 await message.delete()
                 await channel.send(embeds=build_recruitment_embeds(), file=file)
@@ -3306,7 +3310,7 @@ async def setup_recruitment(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
 
     existing = await find_recruitment_message(interaction.channel)
-    file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+    file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
     if existing is not None:
         if existing.flags.value & (1 << 15):
             await existing.delete()
