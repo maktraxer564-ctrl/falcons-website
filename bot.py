@@ -2446,6 +2446,8 @@ def recruitment_post_matches(message):
     """Match the recruitment post both in legacy embeds and Components V2 form."""
     if any(embed.title == "FALCONS RECRUITMENT" for embed in message.embeds):
         return True
+    if any(att.filename == "falcons_ticket.png" for att in message.attachments):
+        return True
 
     def walk(components):
         for comp in components or []:
