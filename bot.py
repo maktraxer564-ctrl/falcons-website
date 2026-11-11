@@ -2446,15 +2446,15 @@ def recruitment_post_matches(message):
     """Match the recruitment post both in legacy embeds and Components V2 form."""
     if any(embed.title == "FALCONS RECRUITMENT" for embed in message.embeds):
         return True
-    if any(att.filename == "falcons_ticket.png" for att in message.attachments):
-        return True
 
     def walk(components):
         for comp in components or []:
-            content = getattr(comp, "content", None)
-            if isinstance(comp, discord.ui.TextDisplay) and content and "FALCONS RECRUITMENT" in content:
+            text = str(comp)
+            if "falcons_ticket" in text or "FALCONS RECRUITMENT" in text:
                 return True
             if walk(getattr(comp, "children", None)):
+                return True
+            if walk(getattr(comp, "items", None)):
                 return True
         return False
 
