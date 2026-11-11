@@ -2408,75 +2408,55 @@ class TicketPanelView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketCategorySelect())
 
-def build_recruitment_embeds():
-    """Build one recruitment message: full-width banner + compact two-column panel."""
-    banner = discord.Embed(
-        title="FALCONS RECRUITMENT",
-        colour=discord.Colour.from_rgb(18, 18, 18),
-    )
-    banner.set_image(url="attachment://falcons_ticket.png")
+def build_recruitment_view():
+    """Recruitment post as Components V2: real separators, large headings."""
+    container = discord.ui.Container(accent_colour=discord.Colour.from_rgb(18, 18, 18))
+    container.add_item(discord.ui.MediaGallery(
+        discord.MediaGalleryItem(media="attachment://falcons_ticket.png")))
+    container.add_item(discord.ui.TextDisplay("# MAIN — ОСНОВНОЙ СОСТАВ"))
+    container.add_item(discord.ui.TextDisplay(
+        "## Возраст — 15+ · Опыт — 3000+ часов Rust\n"
+        "## FC / R2 — 40+ · FFA / UKN — 40+\n"
+        "## ОНЛАЙН — 8+ часов в дни вайпа"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "## НАПРАВЛЕНИЯ\n"
+        "**PVP** — рейды, защиты, роуминг и командные перестрелки.\n"
+        "**BUILD** — строительство баз.\n"
+        "**ELECTRIC** — электричество и ловушки.\n"
+        "**INDUSTRIAL** — производство и автоматизация.\n"
+        "*Для сильных игроков возможны исключения.*"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "## ЧТО МЫ ПРЕДЛАГАЕМ\n"
+        "• Организованная игра и координация.\n"
+        "• Рейды, защиты и совместные вайпы.\n"
+        "• Разбор ошибок и развитие состава."))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "## ХОЧЕШЬ В FALCONS?\n"
+        "Оставь заявку в канале тикетов — мы рассмотрим её."))
+    container.add_item(discord.ui.TextDisplay(
+        "-# FALCONS — PLAY TOGETHER. WIN TOGETHER."))
+    view = discord.ui.LayoutView()
+    view.add_item(container)
+    return view
 
-    gap = {"name": "\u200b", "value": "\u200b", "inline": False}
-    panel = discord.Embed(
-        description="# MAIN — ОСНОВНОЙ СОСТАВ",
-        colour=discord.Colour.from_rgb(18, 18, 18),
-    )
-    panel.add_field(
-        name="\u200b",
-        value="**Возраст** — 15+\n**Опыт** — 3000+ часов Rust",
-        inline=True,
-    )
-    panel.add_field(
-        name="\u200b",
-        value="**FC / R2** — 40+\n**FFA / UKN** — 40+",
-        inline=True,
-    )
-    panel.add_field(
-        name="\u200b",
-        value="**ОНЛАЙН** — 8+ часов в дни вайпа",
-        inline=False,
-    )
-    panel.add_field(**gap)
-    panel.add_field(
-        name="\u200b",
-        value="**НАПРАВЛЕНИЯ**",
-        inline=False,
-    )
-    panel.add_field(
-        name="\u200b",
-        value=("**PVP** — рейды, защиты, роуминг и командные перестрелки.\n"
-               "**BUILD** — строительство баз."),
-        inline=True,
-    )
-    panel.add_field(
-        name="\u200b",
-        value=("**ELECTRIC** — электричество и ловушки.\n"
-               "**INDUSTRIAL** — производство и автоматизация."),
-        inline=True,
-    )
-    panel.add_field(
-        name="\u200b",
-        value="*Для сильных игроков возможны исключения.*",
-        inline=False,
-    )
-    panel.add_field(**gap)
-    panel.add_field(
-        name="\u200b",
-        value=("**ЧТО МЫ ПРЕДЛАГАЕМ**\n"
-               "• Организованная игра и координация.\n"
-               "• Рейды, защиты и совместные вайпы.\n"
-               "• Разбор ошибок и развитие состава."),
-        inline=False,
-    )
-    panel.add_field(**gap)
-    panel.add_field(
-        name="\u200b",
-        value=("**ХОЧЕШЬ В FALCONS?**\n"
-               "Оставь заявку в канале тикетов — мы рассмотрим её."),
-        inline=False,
-    )
-    panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
-    return [banner, panel]
+def recruitment_post_matches(message):
+    """Match the recruitment post both in legacy embeds and Components V2 form."""
+    if any(embed.title == "FALCONS RECRUITMENT" for embed in message.embeds):
+        return True
+
+    def walk(components):
+        for comp in components or []:
+            content = getattr(comp, "content", None)
+            if isinstance(comp, discord.ui.TextDisplay) and content and "FALCONS RECRUITMENT" in content:
+                return True
+            if walk(getattr(comp, "children", None)):
+                return True
+        return False
+
+    return walk(message.components)
 
 async def find_recruitment_message(channel):
     """Limit updates to the existing FALCONS RECRUITMENT post."""
@@ -2484,7 +2464,7 @@ async def find_recruitment_message(channel):
         async for message in channel.history(limit=100):
             if bot.user and message.author.id != bot.user.id:
                 continue
-            if any(embed.title == "FALCONS RECRUITMENT" for embed in message.embeds):
+            if recruitment_post_matches(message):
                 return message
     except Exception:
         log.exception("Не удалось найти recruitment-сообщение")
@@ -2509,8 +2489,8 @@ async def refresh_existing_recruitment_message():
         try:
             file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
             await message.edit(
-                embeds=build_recruitment_embeds(),
-                view=None,
+                view=build_recruitment_view(),
+                embeds=[],
                 attachments=[file],
             )
             log.info("Recruitment message layout updated: %s", message.id)
@@ -3282,15 +3262,15 @@ async def setup_recruitment(interaction):
     if not is_staff_interaction(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
 
-    embeds = build_recruitment_embeds()
+    view = build_recruitment_view()
     existing = await find_recruitment_message(interaction.channel)
     if existing is not None:
         file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
-        await existing.edit(embeds=embeds, view=None, attachments=[file])
+        await existing.edit(view=view, embeds=[], attachments=[file])
         return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
 
     file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
-    await interaction.channel.send(embeds=embeds, file=file)
+    await interaction.channel.send(view=view, file=file)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
