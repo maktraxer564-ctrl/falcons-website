@@ -2409,12 +2409,13 @@ class TicketPanelView(discord.ui.View):
         self.add_item(TicketCategorySelect())
 
 def build_recruitment_embeds():
-    """Build one recruitment message: banner first, compact criteria second."""
+    """Build one recruitment message: banner first, wide two-column sections."""
     banner = discord.Embed(colour=discord.Colour.from_rgb(18, 18, 18))
-    banner.set_image(url="attachment://falcons_recruitment_banner.png")
+    banner.set_image(url="attachment://falcons_ticket.png")
 
+    sep = "\u2500" * 32
     panel = discord.Embed(title="FALCONS RECRUITMENT", colour=discord.Colour.from_rgb(18, 18, 18))
-    panel.add_field(name="◆ MAIN — ОСНОВНОЙ СОСТАВ", value="\u200b", inline=False)
+    panel.add_field(name="\u200b", value="## MAIN — ОСНОВНОЙ СОСТАВ", inline=False)
     panel.add_field(
         name="\u200b",
         value="**Возраст** — 15+\n**Опыт** — 3000+ часов Rust",
@@ -2427,19 +2428,22 @@ def build_recruitment_embeds():
     )
     panel.add_field(
         name="\u200b",
-        value="**Онлайн** — 8+ часов в дни вайпа",
+        value="**ОНЛАЙН** — 8+ часов в дни вайпа",
         inline=False,
     )
-    panel.add_field(name="\u200b", value="\u200b", inline=False)
-    panel.add_field(name="◇ НАПРАВЛЕНИЯ", value="\u200b", inline=False)
+    panel.add_field(name="\u200b", value=sep, inline=False)
+    panel.add_field(name="\u200b", value="## НАПРАВЛЕНИЯ", inline=False)
     panel.add_field(
         name="\u200b",
-        value="**BUILD** — строительство баз.\n**FARM** — фарм ресурсов.",
+        value=("**PVP** — рейды, защиты, роуминг и командные перестрелки.\n"
+               "**BUILD** — строительство баз.\n"
+               "**FARM** — фарм ресурсов."),
         inline=True,
     )
     panel.add_field(
         name="\u200b",
-        value="**ELECTRIC** — электричество и ловушки.\n**INDUSTRIAL** — производство и автоматизация.",
+        value=("**ELECTRIC** — электричество и ловушки.\n"
+               "**INDUSTRIAL** — производство и автоматизация."),
         inline=True,
     )
     panel.add_field(
@@ -2447,10 +2451,19 @@ def build_recruitment_embeds():
         value="*Для сильных игроков возможны исключения.*",
         inline=False,
     )
-    panel.add_field(name="\u200b", value="\u200b", inline=False)
+    panel.add_field(name="\u200b", value=sep, inline=False)
+    panel.add_field(name="\u200b", value="## ЧТО МЫ ПРЕДЛАГАЕМ", inline=False)
     panel.add_field(
         name="\u200b",
-        value="Хочешь вступить в FALCONS? Оставь заявку — мы рассмотрим её.",
+        value=("• Организованная игра и координация.\n"
+               "• Рейды, защиты и совместные вайпы.\n"
+               "• Разбор ошибок и развитие состава."),
+        inline=False,
+    )
+    panel.add_field(name="\u200b", value=sep, inline=False)
+    panel.add_field(
+        name="\u200b",
+        value="## ХОЧЕШЬ В FALCONS?\nОставь заявку в канале тикетов — мы рассмотрим её.",
         inline=False,
     )
     panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
@@ -2485,7 +2498,7 @@ async def refresh_existing_recruitment_message():
         if message is None:
             continue
         try:
-            file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
+            file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
             await message.edit(
                 embeds=build_recruitment_embeds(),
                 view=None,
@@ -3263,11 +3276,11 @@ async def setup_recruitment(interaction):
     embeds = build_recruitment_embeds()
     existing = await find_recruitment_message(interaction.channel)
     if existing is not None:
-        file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
+        file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
         await existing.edit(embeds=embeds, view=None, attachments=[file])
         return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
 
-    file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
+    file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
     await interaction.channel.send(embeds=embeds, file=file)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
