@@ -2409,13 +2409,16 @@ class TicketPanelView(discord.ui.View):
         self.add_item(TicketCategorySelect())
 
 def build_recruitment_embeds():
-    """Build one recruitment message: banner first, wide two-column sections."""
+    """Build one recruitment message: wide banner + compact two-column panel."""
     banner = discord.Embed(colour=discord.Colour.from_rgb(18, 18, 18))
-    banner.set_image(url="attachment://falcons_ticket.png")
+    banner.set_image(url="attachment://recruitment_banner_wide.png")
 
-    sep = "\u2500" * 32
-    panel = discord.Embed(title="FALCONS RECRUITMENT", colour=discord.Colour.from_rgb(18, 18, 18))
-    panel.add_field(name="\u200b", value="## MAIN — ОСНОВНОЙ СОСТАВ", inline=False)
+    sep = "\u2500" * 14
+    panel = discord.Embed(
+        title="FALCONS RECRUITMENT",
+        description="# MAIN — ОСНОВНОЙ СОСТАВ",
+        colour=discord.Colour.from_rgb(18, 18, 18),
+    )
     panel.add_field(
         name="\u200b",
         value="**Возраст** — 15+\n**Опыт** — 3000+ часов Rust",
@@ -2432,12 +2435,11 @@ def build_recruitment_embeds():
         inline=False,
     )
     panel.add_field(name="\u200b", value=sep, inline=False)
-    panel.add_field(name="\u200b", value="## НАПРАВЛЕНИЯ", inline=False)
+    panel.add_field(name="НАПРАВЛЕНИЯ", value="\u200b", inline=False)
     panel.add_field(
         name="\u200b",
         value=("**PVP** — рейды, защиты, роуминг и командные перестрелки.\n"
-               "**BUILD** — строительство баз.\n"
-               "**FARM** — фарм ресурсов."),
+               "**BUILD** — строительство баз."),
         inline=True,
     )
     panel.add_field(
@@ -2452,7 +2454,7 @@ def build_recruitment_embeds():
         inline=False,
     )
     panel.add_field(name="\u200b", value=sep, inline=False)
-    panel.add_field(name="\u200b", value="## ЧТО МЫ ПРЕДЛАГАЕМ", inline=False)
+    panel.add_field(name="ЧТО МЫ ПРЕДЛАГАЕМ", value="\u200b", inline=False)
     panel.add_field(
         name="\u200b",
         value=("• Организованная игра и координация.\n"
@@ -2462,8 +2464,8 @@ def build_recruitment_embeds():
     )
     panel.add_field(name="\u200b", value=sep, inline=False)
     panel.add_field(
-        name="\u200b",
-        value="## ХОЧЕШЬ В FALCONS?\nОставь заявку в канале тикетов — мы рассмотрим её.",
+        name="ХОЧЕШЬ В FALCONS?",
+        value="Оставь заявку в канале тикетов — мы рассмотрим её.",
         inline=False,
     )
     panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
@@ -2498,7 +2500,7 @@ async def refresh_existing_recruitment_message():
         if message is None:
             continue
         try:
-            file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+            file = discord.File("assets/recruitment_banner_wide.png", filename="recruitment_banner_wide.png")
             await message.edit(
                 embeds=build_recruitment_embeds(),
                 view=None,
@@ -3276,11 +3278,11 @@ async def setup_recruitment(interaction):
     embeds = build_recruitment_embeds()
     existing = await find_recruitment_message(interaction.channel)
     if existing is not None:
-        file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+        file = discord.File("assets/recruitment_banner_wide.png", filename="recruitment_banner_wide.png")
         await existing.edit(embeds=embeds, view=None, attachments=[file])
         return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
 
-    file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+    file = discord.File("assets/recruitment_banner_wide.png", filename="recruitment_banner_wide.png")
     await interaction.channel.send(embeds=embeds, file=file)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
