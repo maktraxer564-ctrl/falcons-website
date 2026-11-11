@@ -2415,8 +2415,8 @@ def build_recruitment_view():
         discord.MediaGalleryItem(media="attachment://falcons_ticket.png")))
     container.add_item(discord.ui.TextDisplay("# MAIN — ОСНОВНОЙ СОСТАВ"))
     container.add_item(discord.ui.TextDisplay(
-        "## Возраст — 15+ · Опыт — 3000+ часов Rust\n"
-        "## FC / R2 — 40+ · FFA / UKN — 40+\n"
+        "## Возраст — 15+ · FC / R2 — 40+\n"
+        "## Опыт — 3000+ часов Rust · FFA / UKN — 40+\n"
         "## ОНЛАЙН — 8+ часов в дни вайпа"))
     container.add_item(discord.ui.Separator())
     container.add_item(discord.ui.TextDisplay(
