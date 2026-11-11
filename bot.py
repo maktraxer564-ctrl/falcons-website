@@ -502,7 +502,6 @@ class FalconsBot(commands.Bot):
         self.add_view(TicketActionsView())
         self.add_view(CloseTicketView())
         self.add_view(TicketPanelView())
-        self.add_view(RecruitmentApplyView())
         with _db() as conn:
             wipe_ids = [row[0] for row in conn.execute("SELECT id FROM wipe_events WHERE message_id IS NOT NULL")]
         for wipe_id in wipe_ids:
@@ -2409,67 +2408,61 @@ class TicketPanelView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketCategorySelect())
 
-class RecruitmentApplyButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="ПОДАТЬ ЗАЯВКУ", style=discord.ButtonStyle.secondary,
-                         custom_id="flcn:recruit_apply")
-
-    async def callback(self, interaction):
-        await start_application(interaction, "clan")
-
-class RecruitmentApplyView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(RecruitmentApplyButton())
-
 def build_recruitment_embeds():
-    """Build one recruitment message: banner first, native criteria second."""
+    """Build one recruitment message: banner first, compact criteria second."""
     banner = discord.Embed(colour=discord.Colour.from_rgb(18, 18, 18))
-    banner.set_image(url="attachment://falcons_ticket.png")
+    banner.set_image(url="attachment://falcons_recruitment_banner.png")
 
-    panel = discord.Embed(
-        title="FALCONS RECRUITMENT",
-        description=(
-            "# MAIN\n"
-            "────────────────────────\n\n"
-            "## 15+ — ВОЗРАСТ\n\n"
-            "## 3000+ — ЧАСОВ RUST\n\n"
-            "## 40+ — FC / R2\n\n"
-            "## 40+ — FFA / UKN\n\n"
-            "## 8+ ЧАСОВ — ОНЛАЙН В ДНИ ВАЙПА\n\n"
-            "────────────────────────\n\n"
-            "# ДОПОЛНИТЕЛЬНЫЕ НАПРАВЛЕНИЯ\n\n"
-            "## BUILD — СТРОИТЕЛЬСТВО\n\n"
-            "## ELECTRIC — ЭЛЕКТРИЧЕСТВО\n\n"
-            "## FARM — ФАРМ\n\n"
-            "## INDUSTRIAL — ПРОИЗВОДСТВО И АВТОМАТИЗАЦИЯ\n\n"
-            "*Для сильных игроков возможны исключения.*"
-        ),
-        colour=discord.Colour.from_rgb(18, 18, 18),
+    panel = discord.Embed(title="FALCONS RECRUITMENT", colour=discord.Colour.from_rgb(18, 18, 18))
+    panel.add_field(name="◆ MAIN — ОСНОВНОЙ СОСТАВ", value="\u200b", inline=False)
+    panel.add_field(
+        name="\u200b",
+        value="**Возраст** — 15+\n**Опыт** — 3000+ часов Rust",
+        inline=True,
+    )
+    panel.add_field(
+        name="\u200b",
+        value="**FC / R2** — 40+\n**FFA / UKN** — 40+",
+        inline=True,
+    )
+    panel.add_field(
+        name="\u200b",
+        value="**Онлайн** — 8+ часов в дни вайпа",
+        inline=False,
+    )
+    panel.add_field(name="\u200b", value="\u200b", inline=False)
+    panel.add_field(name="◇ НАПРАВЛЕНИЯ", value="\u200b", inline=False)
+    panel.add_field(
+        name="\u200b",
+        value="**BUILD** — строительство баз.\n**FARM** — фарм ресурсов.",
+        inline=True,
+    )
+    panel.add_field(
+        name="\u200b",
+        value="**ELECTRIC** — электричество и ловушки.\n**INDUSTRIAL** — производство и автоматизация.",
+        inline=True,
+    )
+    panel.add_field(
+        name="\u200b",
+        value="*Для сильных игроков возможны исключения.*",
+        inline=False,
+    )
+    panel.add_field(name="\u200b", value="\u200b", inline=False)
+    panel.add_field(
+        name="\u200b",
+        value="Хочешь вступить в FALCONS? Оставь заявку — мы рассмотрим её.",
+        inline=False,
     )
     panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
     return [banner, panel]
 
-def component_has_custom_id(component, custom_id):
-    if getattr(component, "custom_id", None) == custom_id:
-        return True
-    return any(component_has_custom_id(child, custom_id)
-               for child in (getattr(component, "children", None) or []))
-
 async def find_recruitment_message(channel):
-    """Limit updates to this channel and to the dedicated recruitment button."""
+    """Limit updates to the existing FALCONS RECRUITMENT post."""
     try:
         async for message in channel.history(limit=100):
             if bot.user and message.author.id != bot.user.id:
                 continue
-            has_apply_button = any(
-                component_has_custom_id(component, "flcn:recruit_apply")
-                for component in (message.components or [])
-            )
-            has_recruitment_title = any(
-                embed.title == "FALCONS RECRUITMENT" for embed in message.embeds
-            )
-            if has_apply_button or has_recruitment_title:
+            if any(embed.title == "FALCONS RECRUITMENT" for embed in message.embeds):
                 return message
     except Exception:
         log.exception("Не удалось найти recruitment-сообщение")
@@ -2492,7 +2485,7 @@ async def refresh_existing_recruitment_message():
         if message is None:
             continue
         try:
-            file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+            file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
             await message.edit(
                 embeds=build_recruitment_embeds(),
                 view=None,
@@ -3270,11 +3263,11 @@ async def setup_recruitment(interaction):
     embeds = build_recruitment_embeds()
     existing = await find_recruitment_message(interaction.channel)
     if existing is not None:
-        file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+        file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
         await existing.edit(embeds=embeds, view=None, attachments=[file])
         return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
 
-    file = discord.File("assets/falcons_ticket.png", filename="falcons_ticket.png")
+    file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
     await interaction.channel.send(embeds=embeds, file=file)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
