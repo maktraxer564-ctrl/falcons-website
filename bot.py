@@ -2416,24 +2416,24 @@ def build_recruitment_view():
         discord.MediaGalleryItem(media="attachment://falcons_recruitment_banner.jpg")))
     container.add_item(discord.ui.TextDisplay(
         "## ◆ MAIN\n"
-        "**15+** Возраст · **3K+** Часов Rust\n"
-        "**8H+** Онлайн в вайп · **40/40** FC / FFA"))
-    container.add_item(discord.ui.Separator())
+        "**15+** Возраст\u2003\u2003\u2003\u2003\u2003**3K+** Часов Rust\n"
+        "**8H+** Онлайн в вайп\u2003**40/40** FC / FFA"))
     container.add_item(discord.ui.TextDisplay(
         "## ◇ ОТКРЫТЫЕ РОЛИ\n"
         "PVP · BUILD · ELECTRIC · INDUSTRIAL"))
-    container.add_item(discord.ui.Separator())
     container.add_item(discord.ui.TextDisplay(
         "## ✦ ЧТО ТЕБЯ ЖДЁТ\n"
         "• Организованная игра и координация.\n"
         "• Рейды, защиты и совместные вайпы.\n"
         "• Разбор ошибок и развитие состава."))
-    container.add_item(discord.ui.Separator())
     container.add_item(discord.ui.TextDisplay(
         "## ГОТОВ ВСТУПИТЬ?\n"
         "\u200b\n"
         "\u200b\n"
-        "Оставь заявку в канале тикетов — мы рассмотрим её."))
+        "Оставь заявку в канале тикетов — мы рассмотрим её.\n"
+        "\u200b\n"
+        "\u200b\n"
+        "\u200b"))
     container.add_item(discord.ui.TextDisplay(
         "-# FALCONS — PLAY TOGETHER. WIN TOGETHER."))
     view = discord.ui.LayoutView()
