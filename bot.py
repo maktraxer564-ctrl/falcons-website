@@ -2412,7 +2412,7 @@ def build_recruitment_view():
     """Recruitment post as Components V2: one full-width card, real thin separators."""
     container = discord.ui.Container(accent_colour=discord.Colour.from_rgb(18, 18, 18))
     container.add_item(discord.ui.MediaGallery(
-        discord.MediaGalleryItem(media="attachment://falcons_recruitment_banner.png")))
+        discord.MediaGalleryItem(media="attachment://falcons_recruitment_banner.jpg")))
     container.add_item(discord.ui.TextDisplay(
         "# MAIN — ОСНОВНОЙ СОСТАВ\n"
         "**Возраст** — 15+ · **Опыт** — 3000+ часов Rust · **FC / R2** — 40+ · **FFA / UKN** — 40+\n"
@@ -2497,30 +2497,49 @@ recruitment_layout_refresh_done = False
 
 
 async def refresh_existing_recruitment_message():
-    """Migrate the single existing recruitment post without creating a duplicate."""
+    """Consolidate recruitment posts: keep one Components V2 post, drop the rest."""
     global recruitment_layout_refresh_done
     if recruitment_layout_refresh_done or not GUILD_ID:
         return
     guild = bot.get_guild(GUILD_ID)
     if guild is None:
         return
+    file = discord.File("assets/falcons_recruitment_banner.jpg", filename="falcons_recruitment_banner.jpg")
+    posts = []
     for channel in guild.text_channels:
-        message = await find_recruitment_message(channel)
-        if message is None:
+        try:
+            async for message in channel.history(limit=100):
+                if bot.user and message.author.id != bot.user.id:
+                    continue
+                if recruitment_post_matches(message):
+                    posts.append(message)
+        except Exception:
+            log.exception("Не удалось проверить канал %s", channel.id)
+    if not posts:
+        recruitment_layout_refresh_done = True
+        return
+    posts.sort(key=lambda m: m.created_at)
+    v2 = [m for m in posts if m.flags.value & (1 << 15)]
+    target = v2[-1] if v2 else None
+    for message in posts:
+        if message is target:
             continue
         try:
-            file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
-            if message.flags.value & (1 << 15):
-                await message.edit(view=build_recruitment_view(), attachments=[file])
-                log.info("Recruitment V2 message updated: %s", message.id)
-            else:
-                await message.delete()
-                await channel.send(view=build_recruitment_view(), file=file)
-                log.info("Recruitment post replaced with components layout: %s", message.id)
-            recruitment_layout_refresh_done = True
+            await message.delete()
+            log.info("Recruitment duplicate removed: %s", message.id)
         except (discord.Forbidden, discord.HTTPException):
-            log.exception("Unable to update recruitment message: %s", message.id)
-        return
+            log.exception("Unable to remove duplicate recruitment post: %s", message.id)
+    try:
+        if target is not None:
+            await target.edit(view=build_recruitment_view(), attachments=[file])
+            log.info("Recruitment V2 message updated: %s", target.id)
+        else:
+            newest = posts[-1]
+            await newest.channel.send(view=build_recruitment_view(), file=file)
+            log.info("Recruitment post created in channel %s", newest.channel.id)
+    except (discord.Forbidden, discord.HTTPException):
+        log.exception("Unable to update recruitment message: %s", message.id)
+    recruitment_layout_refresh_done = True
 
 
 def build_ticket_panel_view():
@@ -3286,7 +3305,7 @@ async def setup_recruitment(interaction):
         return await interaction.response.send_message("Нужна роль Ticket Staff или права.", ephemeral=True)
 
     existing = await find_recruitment_message(interaction.channel)
-    file = discord.File("assets/falcons_recruitment_banner.png", filename="falcons_recruitment_banner.png")
+    file = discord.File("assets/falcons_recruitment_banner.jpg", filename="falcons_recruitment_banner.jpg")
     if existing is not None:
         if existing.flags.value & (1 << 15):
             await existing.edit(view=build_recruitment_view(), attachments=[file])
