@@ -2409,12 +2409,32 @@ class TicketPanelView(discord.ui.View):
         self.add_item(TicketCategorySelect())
 
 def build_recruitment_view():
-    """Recruitment post as Components V2: banner art + designed content card image."""
+    """Recruitment post as Components V2: banner + mock-style sections as real text."""
     container = discord.ui.Container(accent_colour=discord.Colour.from_rgb(18, 18, 18))
     container.add_item(discord.ui.MediaGallery(
         discord.MediaGalleryItem(media="attachment://falcons_recruitment_banner.jpg")))
-    container.add_item(discord.ui.MediaGallery(
-        discord.MediaGalleryItem(media="attachment://falcons_recruitment_content.png")))
+    container.add_item(discord.ui.TextDisplay(
+        "## ◆ MAIN\n"
+        "**15+** Возраст · **3K+** Часов Rust\n"
+        "**8H+** Онлайн в вайп · **40/40** FC / FFA"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "## ◇ ОТКРЫТЫЕ РОЛИ\n"
+        "PVP · BUILD · ELECTRIC · INDUSTRIAL"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "## ✦ ЧТО ТЕБЯ ЖДЁТ\n"
+        "• Организованная игра и координация.\n"
+        "• Рейды, защиты и совместные вайпы.\n"
+        "• Разбор ошибок и развитие состава."))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        "## ГОТОВ ВСТУПИТЬ?\n"
+        "\u200b\n"
+        "\u200b\n"
+        "Оставь заявку в канале тикетов — мы рассмотрим её."))
+    container.add_item(discord.ui.TextDisplay(
+        "-# FALCONS — PLAY TOGETHER. WIN TOGETHER."))
     view = discord.ui.LayoutView()
     view.add_item(container)
     return view
@@ -2481,7 +2501,6 @@ async def refresh_existing_recruitment_message():
     if guild is None:
         return
     file_banner = discord.File("assets/falcons_recruitment_banner.jpg", filename="falcons_recruitment_banner.jpg")
-    file_content = discord.File("assets/falcons_recruitment_content.png", filename="falcons_recruitment_content.png")
     posts = []
     for channel in guild.text_channels:
         try:
@@ -2508,11 +2527,11 @@ async def refresh_existing_recruitment_message():
             log.exception("Unable to remove duplicate recruitment post: %s", message.id)
     try:
         if target is not None:
-            await target.edit(view=build_recruitment_view(), attachments=[file_banner, file_content])
+            await target.edit(view=build_recruitment_view(), attachments=[file_banner])
             log.info("Recruitment V2 message updated: %s", target.id)
         else:
             newest = posts[-1]
-            await newest.channel.send(view=build_recruitment_view(), files=[file_banner, file_content])
+            await newest.channel.send(view=build_recruitment_view(), file=file_banner)
             log.info("Recruitment post created in channel %s", newest.channel.id)
     except (discord.Forbidden, discord.HTTPException):
         log.exception("Unable to update recruitment message: %s", message.id)
@@ -3283,17 +3302,16 @@ async def setup_recruitment(interaction):
 
     existing = await find_recruitment_message(interaction.channel)
     file_banner = discord.File("assets/falcons_recruitment_banner.jpg", filename="falcons_recruitment_banner.jpg")
-    file_content = discord.File("assets/falcons_recruitment_content.png", filename="falcons_recruitment_content.png")
     if existing is not None:
         if existing.flags.value & (1 << 15):
-            await existing.edit(view=build_recruitment_view(), attachments=[file_banner, file_content])
+            await existing.edit(view=build_recruitment_view(), attachments=[file_banner])
             return await interaction.response.send_message("FALCONS RECRUITMENT обновлён.", ephemeral=True)
         await existing.delete()
-        await interaction.channel.send(view=build_recruitment_view(), files=[file_banner, file_content])
+        await interaction.channel.send(view=build_recruitment_view(), file=file_banner)
         return await interaction.response.send_message(
             "Старый embed-пост удалён, FALCONS RECRUITMENT опубликован в Components V2.", ephemeral=True)
 
-    await interaction.channel.send(view=build_recruitment_view(), files=[file_banner, file_content])
+    await interaction.channel.send(view=build_recruitment_view(), file=file_banner)
     await interaction.response.send_message("FALCONS RECRUITMENT опубликован.", ephemeral=True)
 
 @bot.tree.command(name="setup_roles", description="Опубликовать панель само-ролей")
