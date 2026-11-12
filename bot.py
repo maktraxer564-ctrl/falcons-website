@@ -2416,17 +2416,20 @@ def build_recruitment_view():
         discord.MediaGalleryItem(media="attachment://falcons_recruitment_banner.jpg")))
     container.add_item(discord.ui.TextDisplay(
         "## ◆ MAIN\n"
+        "\u200b\n"
         "**15+** Возраст\u2003\u2003\u2003\u2003\u2003**3K+** Часов Rust\n"
         "**8H+** Онлайн в вайп\u2003**40/40** FC / FFA\n"
         "\u200b\n"
         "\u200b"))
     container.add_item(discord.ui.TextDisplay(
         "## ◇ ОТКРЫТЫЕ РОЛИ\n"
+        "\u200b\n"
         "PVP · BUILD · ELECTRIC · INDUSTRIAL\n"
         "\u200b\n"
         "\u200b"))
     container.add_item(discord.ui.TextDisplay(
         "## ✦ ЧТО ТЕБЯ ЖДЁТ\n"
+        "\u200b\n"
         "• Организованная игра и координация.\n"
         "• Рейды, защиты и совместные вайпы.\n"
         "• Разбор ошибок и развитие состава.\n"
