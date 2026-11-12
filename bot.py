@@ -2417,15 +2417,21 @@ def build_recruitment_view():
     container.add_item(discord.ui.TextDisplay(
         "## ◆ MAIN\n"
         "**15+** Возраст\u2003\u2003\u2003\u2003\u2003**3K+** Часов Rust\n"
-        "**8H+** Онлайн в вайп\u2003**40/40** FC / FFA"))
+        "**8H+** Онлайн в вайп\u2003**40/40** FC / FFA\n"
+        "\u200b\n"
+        "\u200b"))
     container.add_item(discord.ui.TextDisplay(
         "## ◇ ОТКРЫТЫЕ РОЛИ\n"
-        "PVP · BUILD · ELECTRIC · INDUSTRIAL"))
+        "PVP · BUILD · ELECTRIC · INDUSTRIAL\n"
+        "\u200b\n"
+        "\u200b"))
     container.add_item(discord.ui.TextDisplay(
         "## ✦ ЧТО ТЕБЯ ЖДЁТ\n"
         "• Организованная игра и координация.\n"
         "• Рейды, защиты и совместные вайпы.\n"
-        "• Разбор ошибок и развитие состава."))
+        "• Разбор ошибок и развитие состава.\n"
+        "\u200b\n"
+        "\u200b"))
     container.add_item(discord.ui.TextDisplay(
         "## ГОТОВ ВСТУПИТЬ?\n"
         "\u200b\n"
