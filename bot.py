@@ -1,4 +1,5 @@
 ﻿import io
+import base64
 import os
 import json
 import re
@@ -3953,6 +3954,53 @@ async def http_meeting(request):
     log.info("Собрание запущено с сайта: guild %s, войс %s, запустил %s", guild.id, voice.id, actor.id)
     return aiohttp_web.json_response({"ok": True})
 
+async def http_send_chat(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    data = await request.json()
+    guild = _resolve_guild(data.get("guild_id"))
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    actor = guild.get_member(int(data.get("actor_id", 0)))
+    if not has_staff_perms(actor):
+        return aiohttp_web.json_response({"ok": False, "error": "staff access required"}, status=403)
+    channel = guild.get_channel(int(data.get("channel_id", 0)))
+    if not isinstance(channel, discord.TextChannel):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid text channel"}, status=400)
+    content = str(data.get("content", "")).strip()
+    raw_files = data.get("files") or []
+    if not content and not raw_files:
+        return aiohttp_web.json_response({"ok": False, "error": "empty message"}, status=400)
+    if len(content) > 2000:
+        return aiohttp_web.json_response({"ok": False, "error": "message too long"}, status=400)
+    if not isinstance(raw_files, list) or len(raw_files) > 10:
+        return aiohttp_web.json_response({"ok": False, "error": "too many files"}, status=400)
+    files = []
+    total = 0
+    for f in raw_files:
+        if not isinstance(f, dict):
+            return aiohttp_web.json_response({"ok": False, "error": "invalid file"}, status=400)
+        name = str(f.get("name") or "file.png").replace("/", "_").replace("\\", "_")[:64] or "file.png"
+        try:
+            blob = base64.b64decode(str(f.get("data") or ""), validate=True)
+        except Exception:
+            return aiohttp_web.json_response({"ok": False, "error": "invalid file data"}, status=400)
+        if not blob:
+            return aiohttp_web.json_response({"ok": False, "error": "empty file"}, status=400)
+        total += len(blob)
+        if total > 24 * 1024 * 1024:
+            return aiohttp_web.json_response({"ok": False, "error": "files too large (max 24MB total)"}, status=400)
+        files.append(discord.File(io.BytesIO(blob), filename=name))
+    try:
+        message = await channel.send(content=content or None, files=files or None)
+    except discord.Forbidden:
+        return aiohttp_web.json_response({"ok": False, "error": "bot cannot post in that channel"}, status=403)
+    except discord.HTTPException:
+        log.exception("Failed to send panel chat message")
+        return aiohttp_web.json_response({"ok": False, "error": "Discord rejected the message"}, status=502)
+    log.info("Сообщение из панели: канал %s, автор %s, файлов %s", channel.id, actor.id, len(files))
+    return aiohttp_web.json_response({"ok": True, "message_id": str(message.id)})
+
 async def http_announce_wipe(request):
     if not _check_secret(request):
         return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
@@ -4010,7 +4058,7 @@ async def http_voice_channels(request):
     return aiohttp_web.json_response({"ok": True, "channels": channels})
 
 async def start_bot_http():
-    app = aiohttp_web.Application()
+    app = aiohttp_web.Application(client_max_size=64 * 1024 * 1024)
     app.router.add_post("/bot/ticket/close", http_close_ticket)
     app.router.add_post("/bot/ticket/accept", http_accept_ticket)
     app.router.add_post("/bot/ticket/reject", http_reject_ticket)
@@ -4028,6 +4076,7 @@ async def start_bot_http():
     app.router.add_post("/bot/meeting", http_meeting)
     app.router.add_get("/bot/voice-channels", http_voice_channels)
     app.router.add_post("/bot/wipe", http_announce_wipe)
+    app.router.add_post("/bot/chat", http_send_chat)
     app.router.add_get("/bot/text-channels", http_text_channels)
     runner = aiohttp_web.AppRunner(app)
     await runner.setup()

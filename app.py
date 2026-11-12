@@ -815,6 +815,44 @@ def api_wipe():
     })
     return jsonify(body), status
 
+@app.post("/api/botchat")
+def api_botchat():
+    user = _current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "invalid json"}), 400
+    channel_id = _id_str(data.get("channel_id"))
+    content = str(data.get("content", "")).strip()
+    files = data.get("files") or []
+    if not channel_id:
+        return jsonify({"ok": False, "error": "invalid channel"}), 400
+    if not content and not files:
+        return jsonify({"ok": False, "error": "empty message"}), 400
+    if len(content) > 2000:
+        return jsonify({"ok": False, "error": "message too long"}), 400
+    if not isinstance(files, list) or len(files) > 10:
+        return jsonify({"ok": False, "error": "too many files"}), 400
+    clean = []
+    total = 0
+    for f in files:
+        if not isinstance(f, dict):
+            return jsonify({"ok": False, "error": "invalid file"}), 400
+        blob = str(f.get("data") or "")
+        if not blob:
+            return jsonify({"ok": False, "error": "empty file"}), 400
+        total += (len(blob) * 3) // 4
+        if total > 24 * 1024 * 1024:
+            return jsonify({"ok": False, "error": "files too large (max 24MB total)"}), 400
+        clean.append({"name": str(f.get("name") or "file.png").replace("/", "_").replace("\\", "_")[:64],
+                      "data": blob})
+    ok, status, body = _bot_post("/bot/chat", {
+        "guild_id": _current_guild(), "actor_id": user.get("id"), "channel_id": channel_id,
+        "content": content, "files": clean
+    })
+    return jsonify(body), status
+
 @app.post("/api/invites/reward")
 def api_invites_reward():
     user = _current_user()

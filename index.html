@@ -109,6 +109,7 @@ body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),v
     <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
     <button data-page="meeting"><span class="ico">🚨</span>Собрание</button>
     <button data-page="wipe"><span class="ico">📝</span>Вайп</button>
+    <button data-page="botchat"><span class="ico">💬</span>BOT-CHAT</button>
     <button data-page="stats"><span class="ico">▥</span>Статистика</button>
     <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
     <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
@@ -244,6 +245,20 @@ body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),v
     <div class="setting"><div><b>Просить участников указать причину</b><div class="sub">Добавить кнопку для комментария рядом с ответами</div></div><input type="checkbox" id="wipe-reason"></div>
     <div class="q-row"><button class="btn reject" id="wipe-go">Опубликовать вайп</button></div>
     <div class="mutednote">В Discord будут кнопки «Принял», «Не смогу» и «Опоздаю». Повторный ответ обновит предыдущий.</div>
+  </div>
+</section>
+
+<section class="page" id="botchat">
+  <div class="hero"><h1>💬 BOT-CHAT</h1><p>Напиши текст, прикрепи скрины — бот опубликует в выбранный канал.</p></div>
+  <div class="card">
+    <div class="punish-form">
+      <div><div class="sub">Канал Discord</div><select id="bc-channel" class="q-input"><option value="">Загрузка…</option></select></div>
+    </div>
+    <div style="margin-top:12px"><div class="sub">Текст сообщения</div><textarea id="bc-text" class="q-input" maxlength="2000" rows="5" style="width:100%;resize:vertical" placeholder="Что написать в Discord?"></textarea></div>
+    <div style="margin-top:12px"><div class="sub">Скрины / фото (до 10 файлов, каждый ≤ 8 МБ, всего ≤ 24 МБ)</div><input id="bc-files" type="file" multiple accept="image/*" style="width:100%"></div>
+    <div class="sub" id="bc-files-note" style="margin-top:6px"></div>
+    <div class="q-row"><button class="btn reject" id="bc-go">Отправить в Discord</button></div>
+    <div class="mutednote">Сообщение придёт от имени бота FLCN в выбранный канал. Текст и картинки публикуются как обычное сообщение.</div>
   </div>
 </section>
 
@@ -962,6 +977,59 @@ async function publishWipeFromPanel(){
     finally{btn.disabled=!ME.staff;}
 }
 
+async function loadBotChatChannels(){
+    const sel=$('bc-channel');if(!sel)return;
+    sel.innerHTML='';
+    try{
+        const r=await fetch('/api/text-channels',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const channels=Array.isArray(j.channels)?j.channels:[];
+        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
+        channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
+    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
+}
+
+async function sendBotChat(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const channel_id=$('bc-channel').value;
+    const content=$('bc-text').value.trim();
+    const inp=$('bc-files');
+    const list=inp?Array.from(inp.files||[]):[];
+    if(!channel_id)return toast('Выбери канал',true);
+    if(!content&&!list.length)return toast('Напиши текст или прикрепи файл',true);
+    const files=[];
+    let total=0;
+    for(const f of list){
+        if(f.size>8*1024*1024)return toast('Файл '+f.name+' больше 8 МБ',true);
+        total+=f.size;
+        if(total>24*1024*1024)return toast('Суммарно файлы больше 24 МБ',true);
+        const bytes=new Uint8Array(await f.arrayBuffer());
+        let bin='';const chunk=0x8000;
+        for(let i=0;i<bytes.length;i+=chunk){bin+=String.fromCharCode.apply(null,bytes.subarray(i,Math.min(i+chunk,bytes.length)));}
+        files.push({name:f.name,data:btoa(bin)});
+    }
+    if(!confirm('Отправить сообщение в выбранный канал Discord?'))return;
+    const btn=$('bc-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/botchat',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel_id,content,files})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Сообщение отправлено в Discord');
+        $('bc-text').value='';if(inp)inp.value='';const n=$('bc-files-note');if(n)n.textContent='';
+    }catch(e){toast('Ошибка: '+e.message,true);}
+    finally{btn.disabled=!ME.staff;}
+}
+
+function initBotChat(){
+    const go=$('bc-go');if(!go)return;
+    if(!go._init){go._init=true;go.onclick=sendBotChat;}
+    go.disabled=!ME.staff;
+    const inp=$('bc-files');
+    if(inp&&!inp._init){inp._init=true;inp.onchange=()=>{const n=$('bc-files-note');if(n){const fs=Array.from(inp.files||[]);n.textContent=fs.length?(fs.length+' файл(ов) · '+Math.round(fs.reduce((a,f)=>a+f.size,0)/1024)+' КБ'):'';}};}
+    loadBotChatChannels();
+}
+
 async function announceMeeting(){
     if(!ME.staff)return toast('Доступ только для стаффа панели',true);
     const sel=$('meeting-channel');
@@ -992,6 +1060,7 @@ function showPage(id){
     if(id==='moderation')initModeration();
     if(id==='meeting')initMeeting();
     if(id==='wipe')initWipe();
+    if(id==='botchat')initBotChat();
     if(id==='stats'){loadBotStatus();loadAnalytics();}
     if(id==='settings')initSettings();
 }
