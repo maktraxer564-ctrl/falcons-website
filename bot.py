@@ -2416,7 +2416,7 @@ def build_recruitment_embeds():
     )
     banner.set_image(url="attachment://falcons_recruitment_banner.png")
 
-    sep = "\u2500" * 16
+    gap = {"name": "\u200b", "value": "\u200b", "inline": False}
     panel = discord.Embed(
         description="# MAIN — ОСНОВНОЙ СОСТАВ",
         colour=discord.Colour.from_rgb(18, 18, 18),
@@ -2436,7 +2436,7 @@ def build_recruitment_embeds():
         value="**ОНЛАЙН** — 8+ часов в дни вайпа",
         inline=False,
     )
-    panel.add_field(name="\u200b", value=sep, inline=False)
+    panel.add_field(**gap)
     panel.add_field(
         name="\u200b",
         value="**НАПРАВЛЕНИЯ**",
@@ -2459,7 +2459,7 @@ def build_recruitment_embeds():
         value="*Для сильных игроков возможны исключения.*",
         inline=False,
     )
-    panel.add_field(name="\u200b", value=sep, inline=False)
+    panel.add_field(**gap)
     panel.add_field(
         name="\u200b",
         value=("**ЧТО МЫ ПРЕДЛАГАЕМ**\n"
@@ -2468,15 +2468,13 @@ def build_recruitment_embeds():
                "• Разбор ошибок и развитие состава."),
         inline=False,
     )
-    panel.add_field(name="\u200b", value=sep, inline=False)
+    panel.add_field(**gap)
     panel.add_field(
         name="\u200b",
-        value="**ХОЧЕШЬ В FALCONS?**",
-        inline=False,
-    )
-    panel.add_field(
-        name="\u200b",
-        value="Оставь заявку в канале тикетов — мы рассмотрим её.",
+        value=("**ХОЧЕШЬ В FALCONS?**\n"
+               "\u200b\n"
+               "\u200b\n"
+               "Оставь заявку в канале тикетов — мы рассмотрим её."),
         inline=False,
     )
     panel.set_footer(text="FALCONS — PLAY TOGETHER. WIN TOGETHER.")
