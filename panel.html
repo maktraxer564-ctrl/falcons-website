@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FALCONS — Панель управления</title>
+<link rel="manifest" href="/manifest.json"><link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#070811"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="FALCONS">
+<style>
+:root{--bg:#070811;--panel:#0c0d19;--line:#242239;--muted:#9294b3;--text:#eef0ff;--purple:#782cff;--purple2:#a35cff;--green:#21e6a0;--red:#ff4d6d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#20103b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.4 Inter,Segoe UI,Arial,sans-serif}
+button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:245px 1fr;min-height:100vh}
+.side{padding:22px 15px;border-right:1px solid var(--line);background:#080914;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:12px;padding:0 12px 28px}.bird{font-size:35px;color:var(--purple2);filter:drop-shadow(0 0 12px #782cff)}
+.brand b{font-size:22px;letter-spacing:2px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}
+.nav{display:grid;gap:7px}.nav button{border:0;color:#bcbdd6;background:transparent;text-align:left;padding:13px 14px;border-radius:10px;display:flex;gap:12px;align-items:center}
+.nav button:hover,.nav button.active{background:linear-gradient(100deg,#4e1a9e,#29144f);color:white}
+.ico{width:21px;text-align:center;font-size:18px}
+.sidefoot{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:15px;color:var(--muted);font-size:12px}
+.main{min-width:0}.top{height:67px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 28px;background:#090914c9}
+.pill{padding:10px 13px;border:1px solid #38265a;border-radius:9px;background:#111020;color:#eee}
+.avatar{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#3b1769;border:1px solid #a35cff;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.content{padding:27px;max-width:1600px;margin:auto}
+.hero{padding:26px;border-radius:16px;border:1px solid #292044;background:linear-gradient(110deg,#111020f2 0%,#151025e8 50%,#241044c9 100%);position:relative;overflow:hidden;margin-bottom:20px}
+.hero:after{content:'🦅';position:absolute;right:38px;top:-34px;font-size:155px;opacity:.13;transform:rotate(-12deg)}
+h1{margin:0 0 7px;font-size:29px}h1 span{color:var(--purple2)}p{margin:0;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:14px;margin-bottom:16px}
+.card{background:linear-gradient(145deg,#0e0f1c,#090a14);border:1px solid var(--line);border-radius:13px;padding:18px;min-width:0}
+.stat-icon{color:var(--purple2);font-size:23px}.label{color:#a6a7c3;font-size:12px;margin-top:12px}
+.num{font-size:28px;font-weight:700;margin:2px 0}.sub{color:var(--muted);font-size:11px}
+.grid{display:grid;grid-template-columns:1.35fr .9fr .8fr;gap:15px}
+.card h2{font-size:16px;margin:0 0 18px}
+.rowitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #1d1d30;flex-wrap:wrap}
+.rowitem:last-child{border-bottom:0}
+.tag{font-size:11px;border-radius:20px;padding:5px 9px;background:#321765;color:#d8c5ff;text-decoration:none;white-space:nowrap}
+a.tag:hover{background:#4a2390}
+.btn{border:0;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;color:#fff}
+.btn.accept{background:#1a7a4f}.btn.accept:hover{background:#22a86a}
+.btn.reject{background:#7a1a2c}.btn.reject:hover{background:#a8223a}
+.btn.call{background:#2a3a8a}.btn.call:hover{background:#3d52b8}
+.btn.close{background:#a01836}.btn.close:hover{background:#c72449}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ticket-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.quick button{width:100%;text-align:left;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:11px;margin:4px 0}
+.quick button:hover{border-color:var(--purple2);background:#1b1031}
+.page{display:none}.page.active{display:block}
+.setting{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);gap:10px}
+.setting:last-child{border-bottom:0}
+.empty{margin:16px 0 4px;padding:18px;border:1px dashed #2d2a47;border-radius:10px;color:#7f809d;font-size:12px;line-height:1.5}
+.mutednote{font-size:11px;color:#7f809d;margin-top:20px}
+.loginwrap{min-height:100vh;display:grid;place-items:center;padding:20px}
+.logincard{width:100%;max-width:380px;text-align:center;padding:30px}
+.loginbtn{display:inline-block;background:linear-gradient(100deg,#4e1a9e,#782cff);color:#fff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:10px}
+.loginbtn:hover{filter:brightness(1.12)}
+.toast{position:fixed;right:22px;bottom:22px;background:#1a1230;border:1px solid #7540c8;border-radius:10px;padding:13px 18px;display:none;box-shadow:0 10px 35px #0008;z-index:9999;max-width:400px}
+.dim{color:#6b6c88}
+.tk-stale{color:#ffbd59;font-size:11px;margin:4px 0 8px}
+.activity{display:flex;align-items:flex-end;gap:8px;height:180px;padding:14px 6px 0;border-bottom:1px solid #29263d;background:repeating-linear-gradient(to bottom,transparent 0 39px,#211f32 40px);margin-bottom:8px}
+.act-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.act-bar{width:100%;background:linear-gradient(#a85aff,#5520c8);border-radius:5px 5px 0 0;box-shadow:0 0 12px #6b25ca55;min-height:2px;transition:.3s}
+.act-bar:hover{filter:brightness(1.2)}
+.act-num{font-size:12px;font-weight:700;color:#e8e5ff}
+.act-day{font-size:11px;color:#9294b3}
+[hidden]{display:none!important}
+button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
+.tag.st-ok{background:#0f3b2c;color:#6ff2c0}.tag.st-no{background:#2a2540;color:#a9a6c9}
+.q-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+.q-input{flex:1;min-width:0;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:10px 12px;font:inherit}
+.q-input:focus{border-color:var(--purple2);outline:none}
+.punish-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:6px}
+.punish-form .q-input{width:100%}
+.inv-actions{display:flex;gap:6px;flex-wrap:wrap}
+.setting input[type=checkbox]{width:18px;height:18px;accent-color:var(--purple2);cursor:pointer}
+.setting input[type=checkbox]:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.sidefoot{display:none}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
+:root{--bg:#0b0e11;--panel:#11161b;--line:#232c33;--muted:#8c999f;--text:#f2f5f6;--purple:#54c49d;--purple2:#9ce6cd;--green:#69d6a5;--red:#ef7b77}
+body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),var(--bg);font-family:'DM Sans','Segoe UI',Arial,sans-serif}
+.app{grid-template-columns:252px minmax(0,1fr)}
+.side{position:sticky;top:0;height:100vh;padding:26px 16px 18px;border-right:1px solid var(--line);background:#0e1215}
+.brand{gap:12px;padding:3px 11px 32px}.bird{height:38px;width:38px;border-radius:12px;background:var(--purple2);color:#0a1713;display:grid;place-items:center;font-size:21px;filter:none}.brand b{font-size:16px;letter-spacing:2.3px}.brand small{letter-spacing:1.6px}
+.nav{gap:4px}.nav button{position:relative;color:#9aa7ac;padding:10px 12px;border-radius:9px;font-size:13px}.nav button:hover{background:#17201f;color:#e9f4ef}.nav button.active{background:linear-gradient(100deg,#19342d,#15231f);color:var(--purple2)}.nav button.active:before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:24px;background:var(--purple);border-radius:4px}
+.ico{width:19px;font-size:16px}.sidefoot{border-color:var(--line);border-radius:12px;background:#11161b}
+.top{height:72px;border-color:var(--line);padding:0 clamp(20px,4vw,54px);background:#0c1013}.pill{border-color:var(--line);border-radius:9px;background:#11171b;color:#dbe5e2}.pill:hover{border-color:#3c6657}#guildSelect{font-size:12px}
+.content{max-width:1500px;padding:36px clamp(20px,4vw,54px) 60px}.hero{padding:27px;border-radius:13px;border-color:#294038;background:linear-gradient(110deg,#111b19f2 0%,#15211ee8 55%,#18352bc9 100%);margin-bottom:17px}.hero:after{content:'F';font-family:Arial,sans-serif;font-weight:800;color:var(--purple2);right:32px;top:-37px;font-size:170px;opacity:.07;transform:none}h1{font-family:'Manrope','Segoe UI',sans-serif;font-size:clamp(26px,3vw,36px);letter-spacing:-1px}h1 span{color:var(--purple2)}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:17px}.card{background:var(--panel);border-color:var(--line);border-radius:13px;padding:18px}.stat-icon{color:var(--purple2)}.label{color:#a6b2b4}.num{font-family:'Manrope','Segoe UI',sans-serif;font-size:27px;letter-spacing:-.6px}.sub{color:var(--muted)}
+.grid{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr) minmax(250px,.8fr);gap:15px}.card h2{font-family:'Manrope','Segoe UI',sans-serif;font-size:14px;font-weight:650;margin-bottom:15px}.rowitem{border-color:#20282d}.tag{background:#183127;color:var(--purple2)}a.tag:hover{background:#23483a}.btn{border-radius:8px}.btn.accept{background:#1a7a4f}.btn.reject{background:#753b3b}.btn.call{background:#294850}.btn.close{background:#923947}.quick button{background:#141c1c;border-color:#26352f;color:#e3ece9}.quick button:hover{border-color:var(--purple);background:#17251f}
+.empty{border-color:#30413a;color:#92a39e}.mutednote{color:#81918c}.loginbtn{background:linear-gradient(100deg,#27634f,#54c49d);color:#07130e}.toast{background:#14211d;border-color:#39705b}.activity{height:205px;border-color:#273137;background:repeating-linear-gradient(to bottom,transparent 0 49px,#20292e 50px)}.act-bar{background:linear-gradient(180deg,#a2e8cf,#3f9b79);box-shadow:0 0 12px #58c49d2b;border-radius:6px 6px 2px 2px}.act-num{color:#c5d5d0}.act-day{color:#849197}.tag.st-ok{background:#183127;color:#9ce6cd}.tag.st-no{background:#292a28;color:#c5b996}
+.q-input{background:#11171b;border-color:#263238;color:var(--text);border-radius:9px}.q-input:focus{border-color:var(--purple);box-shadow:0 0 0 3px #54c49d20}.setting{border-color:#20282d}.setting input[type=checkbox]{accent-color:var(--purple)}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-column:1/-1}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.side{position:relative;height:auto;padding:12px 14px 10px;border-right:0;border-bottom:1px solid var(--line)}.side .brand{padding:0 4px 12px}.brand .bird{width:30px;height:30px;font-size:17px}.brand b{font-size:14px}.nav{display:flex;overflow:auto;gap:5px}.nav button{white-space:nowrap;padding:8px 10px;font-size:11px}.nav button.active:before{display:none}.sidefoot{display:none}.content{padding:24px 16px 45px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid{grid-template-columns:1fr}.quick{grid-column:auto}.hero:after{right:0;font-size:100px}.top{height:62px;padding:0 16px}.activity{height:175px}}
+</style></head><body>
+
+<div class="loginwrap" id="loginScreen" hidden>
+  <div class="card logincard">
+    <div class="brand" style="justify-content:center;padding:0 0 18px"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
+    <p id="loginMsg">Войдите через Discord, чтобы открыть панель.</p>
+    <a class="loginbtn" href="/auth/discord">Войти через Discord</a>
+    <p style="margin-top:16px;font-size:12px"><a href="/" style="color:#92a39e;text-decoration:none">← На главную</a></p>
+  </div>
+</div>
+
+<div class="app" id="app" hidden>
+<aside class="side">
+  <div class="brand"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
+  <nav class="nav" id="nav">
+    <button class="active" data-page="home"><span class="ico">⌂</span>Главная</button>
+    <button data-page="tickets"><span class="ico">▤</span>Тикеты</button>
+    <button data-page="apps"><span class="ico">▣</span>Заявки в клан</button>
+    <button data-page="logs"><span class="ico">◷</span>Логи</button>
+    <button data-page="members"><span class="ico">♟</span>Роли и участники</button>
+    <button data-page="invites"><span class="ico">↗</span>Инвайты</button>
+    <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
+    <button data-page="meeting"><span class="ico">🚨</span>Собрание</button>
+    <button data-page="wipe"><span class="ico">📝</span>Вайп</button>
+    <button data-page="botchat"><span class="ico">💬</span>BOT-CHAT</button>
+    <button data-page="stats"><span class="ico">▥</span>Статистика</button>
+    <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
+    <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
+    <button data-page="roles"><span class="ico">♛</span>Роли и права</button>
+  </nav>
+  <div class="sidefoot">🦅 <b style="color:#eee">Falcons Bot</b><br><br>Панель<br><span style="color:#a35cff">♥</span> Сделано для Falcons</div>
+</aside>
+<main class="main">
+<header class="top">
+  <div class="avatar" id="avatar">?</div>
+  <div><b id="userName">…</b><div class="sub" id="userRole">Вход через Discord</div></div>
+  <select id="guildSelect" class="pill" style="display:none;max-width:280px" onchange="changeGuild(this.value)" title="Выбор сервера"></select>
+  <span class="pill" id="localClock" title="Твоё локальное время" style="padding:8px 14px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap">--:--:--</span>
+  <button class="pill" onclick="logout()">Выйти</button>
+</header>
+<div class="content">
+<section class="page active" id="home">
+  <div class="hero"><h1>Добро пожаловать,</h1><h1><span id="heroName">…</span></h1><p>Панель управления Discord-сервером FALCONS</p></div>
+  <div class="stats">
+    <div class="card"><div class="stat-icon">♟</div><div class="label">Участников</div><div class="num" id="s-total">—</div><div class="sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">●</div><div class="label">Онлайн</div><div class="num" id="s-online">—</div><div class="sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">♛</div><div class="label">Клан</div><div class="num" id="s-clan">—</div><div class="sub">данные бота</div></div>
+    <div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num" id="s-tickets">—</div><div class="sub" id="s-tickets-sub">ожидание</div></div>
+    <div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num" id="s-apps">—</div><div class="sub" id="s-apps-sub">ожидание</div></div>
+    <div class="card"><div class="stat-icon">↗</div><div class="label">Рекрутеров</div><div class="num dim" id="s-invites">—</div><div class="sub" id="s-invites-sub">данные бота</div></div>
+  </div>
+  <div class="card" style="margin-bottom:15px">
+    <h2>📊 Активность за 7 дней</h2>
+    <div class="activity" id="activityChart"><div class="empty">Загрузка…</div></div>
+    <div class="sub" id="activityNote">Сколько человек зашло на сервер каждый день.</div>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>▤ Последние тикеты</h2><div id="recent-tickets"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
+    <div class="card"><h2>▣ Последние заявки</h2><div id="recent-apps"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('apps')">Все заявки →</button></div>
+    <div class="card quick"><h2>ϟ Быстрые действия</h2>
+      <button onclick="showPage('tickets')">▤ Открыть тикеты</button>
+      <button onclick="showPage('apps')">▣ Заявки в клан</button>
+      <button onclick="showPage('logs')">◷ Логи стаффа</button>
+    </div>
+  </div>
+  <div class="mutednote" id="statsNote">Данные обновляются ботом раз в 10 минут.</div>
+</section>
+
+<section class="page" id="tickets">
+  <div class="hero"><h1>Тикеты</h1><p>Все открытые обращения на сервере</p></div>
+  <div class="card" id="ticketsList"><div class="empty">Загрузка…</div></div>
+</section>
+
+<section class="page" id="apps">
+  <div class="hero"><h1>Заявки в клан</h1><p>Тикеты категории «Набор в клан»</p></div>
+  <div class="card" id="appsList"><div class="empty">Загрузка…</div></div>
+</section>
+
+<section class="page" id="logs">
+  <div class="hero"><h1>Логи стаффа</h1><p>История действий администрации</p></div>
+  <div class="card" id="logsList"><div class="empty">Загрузка…</div></div>
+</section>
+
+<section class="page" id="members">
+  <div class="hero"><h1>Роли и участники</h1><p>Состав сервера</p></div>
+  <div class="card">
+    <div class="setting"><div><b>Участников на сервере</b><div class="sub">данные бота</div></div><b id="m-total">—</b></div>
+    <div class="setting"><div><b>Онлайн сейчас</b><div class="sub">данные бота</div></div><b id="m-online">—</b></div>
+    <div class="setting"><div><b>Участников клана</b><div class="sub">по роли клана</div></div><b id="m-clan">—</b></div>
+  </div>
+  <div class="mutednote">Управление ролями из панели пока не реализовано. Всё делается командами бота в Discord.</div>
+</section>
+
+<section class="page" id="invites">
+  <div class="hero"><h1>Инвайты и рекрутинг</h1><p>Топ рекрутеров по активным приглашениям</p></div>
+  <div class="card" id="invitesList"><div class="empty">Загрузка…</div></div>
+  <div class="mutednote">Кнопка «Выдать награду» повторно выдаёт роли за достигнутые пороги приглашений.</div>
+</section>
+
+<section class="page" id="moderation">
+  <div class="hero"><h1>Модерация</h1><p>Наказания и история игрока</p></div>
+  <div class="card" style="margin-bottom:15px">
+    <h2>⬡ Выдать наказание</h2>
+    <div class="punish-form">
+      <div><div class="sub">Действие</div>
+        <select id="pun-action" class="q-input">
+          <option value="warn">Предупреждение</option>
+          <option value="timeout">Таймаут</option>
+          <option value="kick">Кик</option>
+          <option value="ban">Бан</option>
+        </select></div>
+      <div><div class="sub">Discord ID игрока</div>
+        <input id="pun-user" class="q-input" placeholder="123456789012345678" inputmode="numeric"></div>
+      <div id="pun-minutes-wrap"><div class="sub">Минуты (для таймаута)</div>
+        <input id="pun-minutes" class="q-input" type="number" min="1" max="40320" value="60"></div>
+    </div>
+    <div class="q-row">
+      <input id="pun-reason" class="q-input" placeholder="Причина (игрок получит её в ЛС)" maxlength="500">
+      <button class="btn reject" id="pun-go">Применить</button>
+    </div>
+    <div class="mutednote">Наказание выполняет бот от твоего имени. Нужны права Ticket Staff.</div>
+  </div>
+  <div class="card">
+    <h2>◷ Наказания игрока</h2>
+    <div class="q-row">
+      <input id="hist-user" class="q-input" placeholder="Discord ID игрока" inputmode="numeric">
+      <button class="pill" id="hist-go">Показать</button>
+    </div>
+    <div id="hist-list" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section class="page" id="meeting">
+  <div class="hero"><h1>🚨 Собрание клана</h1><p>Массовое оповещение: пинг в канал и ЛС участникам клана</p></div>
+  <div class="card">
+    <h2>🔊 Куда собираемся</h2>
+    <div class="q-row">
+      <select id="meeting-channel" class="q-input"><option value="">Загрузка…</option></select>
+      <button class="btn reject" id="meeting-go">ОБЪЯВИТЬ СОБРАНИЕ</button>
+    </div>
+    <div class="mutednote">Бот пингует @everyone 3 раза в течение 2 минут и пишет в ЛС участникам клана, которые онлайн и ещё не в войсе.</div>
+  </div>
+</section>
+
+<section class="page" id="wipe">
+  <div class="hero"><h1>📝 Объявление о вайпе</h1><p>Опубликуй объявление с датой, временем и сбором ответов в Discord.</p></div>
+  <div class="card">
+    <div class="punish-form">
+      <div><div class="sub">Заголовок</div><input id="wipe-title" class="q-input" maxlength="256" placeholder="Например: Вайп Rust Way Chill 2"></div>
+      <div><div class="sub">Rust-сервер</div><input id="wipe-server" class="q-input" maxlength="100" placeholder="Название сервера"></div>
+      <div><div class="sub">Канал объявления</div><select id="wipe-channel" class="q-input"><option value="">Загрузка…</option></select></div>
+      <div><div class="sub">Кого тегать</div><select id="wipe-mention" class="q-input"><option value="main">@main (роль)</option><option value="everyone">@everyone</option><option value="none">Не тегать</option></select></div>
+      <div><div class="sub">Дата</div><input id="wipe-date" class="q-input" type="date"></div>
+      <div><div class="sub">Время (Москва)</div><input id="wipe-time" class="q-input" type="time"></div>
+    </div>
+    <div style="margin-top:12px"><div class="sub">Фото для объявления (ссылка)</div><input id="wipe-image" class="q-input" maxlength="400" placeholder="https://... — картинка прикрепится к объявлению (в Discord можно просто прикрепить файл через /wipe)"></div>
+    <div style="margin-top:12px"><div class="sub">Описание</div><textarea id="wipe-description" class="q-input" maxlength="3500" rows="4" style="width:100%;resize:vertical" placeholder="Подробности вайпа"></textarea></div>
+    <div class="setting"><div><b>Просить участников указать причину</b><div class="sub">Добавить кнопку для комментария рядом с ответами</div></div><input type="checkbox" id="wipe-reason"></div>
+    <div class="q-row"><button class="btn reject" id="wipe-go">Опубликовать вайп</button></div>
+    <div class="mutednote">В Discord будут кнопки «Принял», «Не смогу» и «Опоздаю». Повторный ответ обновит предыдущий.</div>
+  </div>
+</section>
+
+<section class="page" id="botchat">
+  <div class="hero"><h1>💬 BOT-CHAT</h1><p>Напиши текст, прикрепи скрины — бот опубликует в выбранный канал.</p></div>
+  <div class="card">
+    <div class="punish-form">
+      <div><div class="sub">Канал Discord</div><select id="bc-channel" class="q-input"><option value="">Загрузка…</option></select></div>
+    </div>
+    <div style="margin-top:12px"><div class="sub">Текст сообщения</div><textarea id="bc-text" class="q-input" maxlength="2000" rows="5" style="width:100%;resize:vertical" placeholder="Что написать в Discord?"></textarea></div>
+    <div style="margin-top:12px"><div class="sub">Скрины / фото (до 10 файлов, каждый ≤ 8 МБ, всего ≤ 24 МБ)</div><input id="bc-files" type="file" multiple accept="image/*" style="width:100%"></div>
+    <div class="sub" id="bc-files-note" style="margin-top:6px"></div>
+    <div class="q-row"><button class="btn reject" id="bc-go">Отправить в Discord</button></div>
+    <div class="mutednote">Сообщение придёт от имени бота FLCN в выбранный канал. Текст и картинки публикуются как обычное сообщение.</div>
+  </div>
+</section>
+
+<section class="page" id="stats">
+  <div class="hero"><h1>Статистика</h1><p>Обзор активности и состава сервера</p></div>
+  <div class="card">
+    <div class="setting"><div><b>Участников</b></div><b id="st-total">—</b></div>
+    <div class="setting"><div><b>Онлайн</b></div><b id="st-online">—</b></div>
+    <div class="setting"><div><b>Клан</b></div><b id="st-clan">—</b></div>
+    <div class="setting"><div><b>Обновлено</b></div><b id="st-updated">—</b></div>
+  </div>
+  <div class="card" style="margin-top:15px">
+    <h2>📈 Онлайн за 7 дней</h2>
+    <div class="activity" id="analyticsChart"><div class="empty">Загрузка…</div></div>
+    <div class="sub" id="analyticsNote">Средний онлайн по дням.</div>
+  </div>
+  <div class="card" style="margin-top:15px">
+    <h2>🤖 Статус бота</h2>
+    <div class="setting"><div><b>Бот</b><div class="sub">Discord-подключение</div></div><span class="tag st-no" id="st-bot">проверка…</span></div>
+    <div class="setting"><div><b>Задержка</b></div><b id="st-bot-latency">—</b></div>
+    <div class="setting"><div><b>Серверы</b></div><b id="st-bot-guilds">—</b></div>
+  </div>
+</section>
+
+<section class="page" id="settings">
+  <div class="hero"><h1>Настройки</h1><p>Подключение и параметры панели</p></div>
+  <div class="card">
+    <div class="setting"><div><b>Вход через Discord</b><div class="sub">OAuth2 · работает</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>Твоя роль в панели</b></div><b id="st-panel-role">—</b></div>
+    <div class="setting"><div><b>ID пользователя</b></div><b id="st-uid" class="dim">—</b></div>
+  </div>
+  <div class="card" style="margin-top:15px">
+    <h2>👋 Приветствие и прощание</h2>
+    <div class="setting">
+      <div><b>Приветствие новых участников</b><div class="sub">сообщение при входе на сервер</div></div>
+      <input type="checkbox" id="set-welcome">
+    </div>
+    <div class="setting">
+      <div><b>Прощание при выходе</b><div class="sub">сообщение, когда участник покидает сервер</div></div>
+      <input type="checkbox" id="set-goodbye">
+    </div>
+    <div class="q-row">
+      <input id="set-welcome-text" class="q-input" maxlength="500" placeholder="Текст приветствия">
+      <button class="pill" id="set-welcome-save">Сохранить</button>
+    </div>
+    <div class="q-row">
+      <input id="set-goodbye-text" class="q-input" maxlength="500" placeholder="Текст прощания">
+      <button class="pill" id="set-goodbye-save">Сохранить</button>
+    </div>
+    <div class="mutednote" id="set-note">Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).</div>
+  </div>
+</section>
+
+<section class="page" id="qsettings">
+  <div class="hero"><h1>Настройки анкет</h1><p>Вопросы, которые бот задаёт при создании тикета</p></div>
+  <div class="card">
+    <div class="setting">
+      <div><b>Категория</b><div class="sub">clan / partner / question / report / other</div></div>
+      <select id="q-category" class="pill">
+        <option value="clan">Набор в клан</option>
+        <option value="partner">Партнёрство</option>
+        <option value="question">Вопрос по клану</option>
+        <option value="report">Жалоба на игрока</option>
+        <option value="other">Другое обращение</option>
+      </select>
+    </div>
+    <div id="q-list"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="pill" id="q-add">+ Добавить вопрос</button>
+      <button class="btn accept" id="q-save">Сохранить</button>
+      <button class="pill" id="q-reload">Перезагрузить конфиг</button>
+    </div>
+    <div class="mutednote">Изменения применяются к новым тикетам. Открытые тикеты не меняются.</div>
+  </div>
+</section>
+
+<section class="page" id="roles">
+  <div class="hero"><h1>Роли и права доступа</h1><p>Разграничение доступа к панели</p></div>
+  <div class="card">
+    <div class="setting"><div><b>OWNER</b><div class="sub">полный доступ к панели и боту</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>TICKET STAFF</b><div class="sub">доступ к тикетам и заявкам</div></div><span class="tag st-ok">Работает</span></div>
+    <div class="setting"><div><b>DEP LEADER</b><div class="sub">используется ботом для прав в тикетах</div></div><span class="tag st-no">Только в боте</span></div>
+    <div class="setting"><div><b>Обычные участники</b><div class="sub">без доступа к панели</div></div><span class="tag st-ok">Работает</span></div>
+  </div>
+</section>
+
+</div></main></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let ME={user:null,staff:false,tickets:null,stats:null,panelRole:null,inviteLeaderboard:[]};
+
+function toast(msg,isError){
+  const t=$('toast');t.textContent=msg;
+  t.style.borderColor=isError?'#a8223a':'#7540c8';
+  t.style.display='block';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500);
+}
+
+const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',question:'Вопрос по клану',report:'Жалоба на игрока',other:'Другое'};
+const MOD_LABEL={warn:'Предупреждение',timeout:'Таймаут',untimeout:'Снятие таймаута',kick:'Кик',ban:'Бан',unban:'Разбан'};
+const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—';};
+const fmtTs=ts=>{if(!ts)return '';const d=new Date(ts<1e12?ts*1000:ts);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+
+function tickClock(){
+  const el=$('localClock');if(!el)return;
+  const d=new Date();
+  const t=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  let tz='';
+  try{
+    const parts=new Intl.DateTimeFormat('ru-RU',{timeZoneName:'short'}).formatToParts(d);
+    const p=parts.find(p=>p.type==='timeZoneName');
+    tz=p&&p.value?p.value:'';
+  }catch(e){}
+  el.textContent='🕐 '+t+(tz?' · '+tz:'');
+}
+setInterval(tickClock,1000);
+tickClock();
+
+function showLogin(msg){
+  $('app').hidden=true;$('loginScreen').hidden=false;
+  if(msg)$('loginMsg').textContent=msg;
+}
+function showApp(user){
+  const name=user.global_name||user.username||'Пользователь';
+  $('userName').textContent=name;
+  $('heroName').textContent=name;
+  const av=$('avatar');av.textContent='';
+  if(user.avatar_url&&/^https:\/\//.test(user.avatar_url)){
+    const img=document.createElement('img');img.src=user.avatar_url;img.alt='';
+    img.onerror=()=>{av.textContent=name.charAt(0).toUpperCase();};
+    av.appendChild(img);
+  }else av.textContent=name.charAt(0).toUpperCase();
+  $('loginScreen').hidden=true;$('app').hidden=false;
+}
+
+function renderStats(stats,updatedAt){
+  const s=stats||{total:0,online:0,clan:0};
+  const live=updatedAt!=null;
+  const set=(id,v)=>{const el=$(id);if(el)el.textContent=live?fmt(v):'—';};
+  set('s-total',s.total);set('s-online',s.online);set('s-clan',s.clan);
+  set('m-total',s.total);set('m-online',s.online);set('m-clan',s.clan);
+  set('st-total',s.total);set('st-online',s.online);set('st-clan',s.clan);
+  const st=$('st-updated');if(st)st.textContent=updatedAt?fmtTs(updatedAt):'—';
+  if($('statsNote'))$('statsNote').textContent=updatedAt
+    ? 'Данные обновлены: '+fmtTs(updatedAt)
+    : 'Данные ещё не приходили от бота.';
+}
+
+function renderActivity(joins7d,serverTime){
+    const el=$('activityChart');
+    if(!el)return;
+    el.textContent='';
+    if(!Array.isArray(joins7d)||joins7d.length!==7){
+        el.appendChild(emptyNode('Данные о заходах пока не собраны. Появятся когда бот начнёт считать новых участников.'));
+        if($('activityNote'))$('activityNote').textContent='Сколько человек зашло на сервер каждый день.';
+        return;
+    }
+    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const tsNum=Number(serverTime);
+    const nowTs=Number.isFinite(tsNum)&&tsNum>0?tsNum:Math.floor(Date.now()/1000);
+    const todayIdx=((new Date(nowTs*1000).getDay())+6)%7;
+    const week=[];
+    for(let i=0;i<7;i++){
+        week.push(i<=todayIdx?joins7d[6-(todayIdx-i)]:0);
+    }
+    const max=Math.max(1,...week);
+    week.forEach((val,i)=>{
+        const col=document.createElement('div');col.className='act-col';
+        const num=document.createElement('div');num.className='act-num';num.textContent=val;
+        const bar=document.createElement('div');bar.className='act-bar';
+        bar.style.height=Math.max(2,Math.round((val/max)*130))+'px';
+        if(val===0)bar.style.background='#2a2540';
+        const day=document.createElement('div');day.className='act-day';day.textContent=dayNames[i];
+        col.append(num,bar,day);el.appendChild(col);
+    });
+    const total=joins7d.reduce((a,b)=>a+b,0);
+    if($('activityNote'))$('activityNote').textContent='Всего за 7 дней: '+total+' новых участников.';
+}
+
+function ticketRow(t,opts){
+  opts=opts||{};
+  const row=document.createElement('div');row.className='rowitem';
+  const left=document.createElement('div');left.style.minWidth='180px';
+  const b=document.createElement('b');b.textContent='#'+t.number+' · '+(t.owner_name||'?');
+  const sub=document.createElement('div');sub.className='sub';
+  sub.textContent=(CAT_LABEL[t.category]||t.category)+' · '+fmtTs(t.created_at);
+  left.append(b,sub);row.appendChild(left);
+  const right=document.createElement('div');
+  if(opts.guild&&/^\d+$/.test(String(opts.guild))&&/^\d+$/.test(String(t.channel_id))){
+    const a=document.createElement('a');a.className='tag';
+    a.href='https://discord.com/channels/'+opts.guild+'/'+t.channel_id;
+    a.target='_blank';a.rel='noopener noreferrer';a.textContent='Discord';
+    right.appendChild(a);
+  }
+  if(opts.actions){
+    const actions=document.createElement('div');actions.className='ticket-actions';
+    const mk=(label,cls,fn)=>{const btn=document.createElement('button');btn.className='btn '+cls;btn.textContent=label;btn.onclick=()=>fn(btn);return btn;};
+    if(t.category==='clan'){
+      actions.appendChild(mk('Принять','accept',b=>ticketAction('accept',t.channel_id,null,b)));
+      actions.appendChild(mk('Обзвон','call',b=>ticketAction('call',t.channel_id,null,b)));
+      actions.appendChild(mk('Отклонить','reject',b=>{
+        const reason=prompt('Причина отказа:');
+        if(reason===null)return;
+        if(!reason.trim())return toast('Причина обязательна',true);
+        ticketAction('reject',t.channel_id,reason.trim(),b);
+      }));
+    }
+    actions.appendChild(mk('Закрыть','close',b=>ticketAction('close',t.channel_id,null,b)));
+    right.appendChild(actions);
+  }
+  row.appendChild(right);
+  return row;
+}
+
+async function ticketAction(kind,channelId,reason,btn){
+  if(btn){btn.disabled=true;var old=btn.textContent;btn.textContent='…';}
+  try{
+    const body={channel_id:String(channelId)};
+    if(reason)body.reason=reason;
+    const r=await fetch('/api/ticket/'+kind,{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){throw new Error(j.error||('HTTP '+r.status));}
+    toast('Готово: '+kind);
+    await reloadMe();
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+    if(btn){btn.disabled=false;btn.textContent=old;}
+  }
+}
+
+function emptyNode(text){const d=document.createElement('div');d.className='empty';d.textContent=text;return d;}
+
+function renderInvites(){
+  const el=$('invitesList');if(!el)return;
+  el.textContent='';
+  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+  const rows=Array.isArray(ME.inviteLeaderboard)?ME.inviteLeaderboard:[];
+  if($('s-invites'))$('s-invites').textContent=rows.length?fmt(rows.length):'—';
+  if($('s-invites-sub'))$('s-invites-sub').textContent=rows.length?'топ по активным':'данные бота';
+  if(!rows.length)return el.appendChild(emptyNode('Данных о приглашениях пока нет. Бот собирает их автоматически.'));
+  rows.forEach(r=>{
+    const row=document.createElement('div');row.className='rowitem';
+    const left=document.createElement('div');left.style.minWidth='180px';
+    const b=document.createElement('b');b.textContent=r.user_name||('ID: '+r.user_id);
+    const sub=document.createElement('div');sub.className='sub';
+    sub.textContent='Активных: '+fmt(r.active)+' · Всего: '+fmt(r.invites);
+    left.append(b,sub);row.appendChild(left);
+    const right=document.createElement('div');right.className='inv-actions';
+    const btn=document.createElement('button');btn.className='btn accept';btn.textContent='Выдать награду';
+    btn.onclick=()=>rewardInviter(r.user_id,btn);
+    right.appendChild(btn);row.appendChild(right);
+    el.appendChild(row);
+  });
+}
+
+async function rewardInviter(userId,btn){
+  if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/invites/reward',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(userId)})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    toast(Array.isArray(j.awarded)&&j.awarded.length?('Выдано: '+j.awarded.join(', ')):'Новых наград нет');
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
+function fillTicketsList(el,filterFn,opts){
+  if(!el)return;
+  el.textContent='';
+  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+  const tk=ME.tickets;
+  if(!tk||tk.updated_at==null)return el.appendChild(emptyNode('Ожидание данных от бота…'));
+  let items=Array.isArray(tk.items)?tk.items:[];
+  if(filterFn)items=items.filter(filterFn);
+  if(!items.length)return el.appendChild(emptyNode('Открытых тикетов нет.'));
+  const stale=(Date.now()/1000)-tk.updated_at>25*60;
+  if(stale){
+    const w=document.createElement('div');w.className='tk-stale';
+    w.textContent='Данные устарели, обновлено: '+fmtTs(tk.updated_at);
+    el.appendChild(w);
+  }
+  items.forEach(t=>el.appendChild(ticketRow(t,Object.assign({guild:tk.guild_id},opts||{}))));
+}
+
+function renderTickets(){
+  const tk=ME.tickets;
+  const items=(tk&&Array.isArray(tk.items))?tk.items:[];
+  const clanCount=items.filter(t=>t.category==='clan').length;
+  const live=tk&&tk.updated_at!=null;
+  if($('s-tickets'))$('s-tickets').textContent=live?fmt(items.length):'—';
+  if($('s-tickets-sub'))$('s-tickets-sub').textContent=live?'данные бота':'ожидание';
+  if($('s-apps'))$('s-apps').textContent=live?fmt(clanCount):'—';
+  if($('s-apps-sub'))$('s-apps-sub').textContent=live?'данные бота':'ожидание';
+  fillTicketsList($('recent-tickets'),null,{actions:false});
+  fillTicketsList($('recent-apps'),t=>t.category==='clan',{actions:false});
+  fillTicketsList($('ticketsList'),null,{actions:true});
+  fillTicketsList($('appsList'),t=>t.category==='clan',{actions:true});
+}
+
+async function renderLogs(){
+  const el=$('logsList');if(!el)return;
+  el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+  try{
+    const r=await fetch('/api/logs?limit=100',{credentials:'same-origin'});
+    if(!r.ok){el.textContent='';return el.appendChild(emptyNode('Логи недоступны.'));}
+    const j=await r.json();
+    const logs=(j&&j.logs)||[];
+    el.textContent='';
+    if(!logs.length)return el.appendChild(emptyNode('Пока пусто.'));
+    logs.forEach(l=>{
+      const row=document.createElement('div');row.className='rowitem';
+      const left=document.createElement('div');
+      const b=document.createElement('b');b.textContent=l.action||'—';
+      const sub=document.createElement('div');sub.className='sub';
+      sub.textContent=[fmtTs(l.ts),l.actor_name,l.target_name,l.details].filter(Boolean).join(' · ');
+      left.append(b,sub);row.appendChild(left);
+      el.appendChild(row);
+    });
+  }catch(e){el.textContent='';el.appendChild(emptyNode('Ошибка загрузки логов.'));}
+}
+
+function qRow(text){
+    const row=document.createElement('div');row.className='q-row';
+    const input=document.createElement('input');input.className='q-input';input.value=text||'';
+    input.placeholder='Текст вопроса…';input.maxLength=500;
+    const del=document.createElement('button');del.className='btn reject';del.textContent='Удалить';
+    del.onclick=()=>row.remove();
+    row.append(input,del);
+    return row;
+}
+
+function renderQuestionRows(list){
+    const el=$('q-list');
+    if(!el)return;
+    el.textContent='';
+    (list||[]).forEach(q=>el.appendChild(qRow(q)));
+}
+
+async function loadQuestions(){
+    const el=$('q-list');
+    if(!el)return;
+    if(!ME.staff){
+        el.textContent='';
+        el.appendChild(emptyNode('Доступ только для стаффа панели.'));
+        return;
+    }
+    const cat=$('q-category').value;
+    el.textContent='';
+    el.appendChild(emptyNode('Загрузка…'));
+    try{
+        const r=await fetch('/api/questions',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        renderQuestionRows((j.questions&&j.questions[cat])||[]);
+    }catch(e){
+        el.textContent='';
+        el.appendChild(emptyNode('Не удалось загрузить вопросы: '+e.message));
+    }
+}
+
+async function saveQuestions(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const cat=$('q-category').value;
+    const inputs=[...document.querySelectorAll('#q-list .q-input')];
+    const values=inputs.map(i=>i.value.trim());
+    if(!values.length||values.some(v=>!v))return toast('Заполни все вопросы или удали пустые',true);
+    if(values.length>30)return toast('Максимум 30 вопросов',true);
+    const btn=$('q-save');btn.disabled=true;
+    try{
+        const r=await fetch('/api/questions',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({category:cat,questions:values})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Сохранено: '+values.length+' вопросов');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+async function reloadConfig(){
+    if(ME.panelRole!=='owner')return toast('Перезагрузка конфига доступна только OWNER',true);
+    const btn=$('q-reload');btn.disabled=true;
+    try{
+        const r=await fetch('/api/reload-config',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:'{}'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Конфиг перезагружен');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+function initQSettings(){
+    const sel=$('q-category');
+    if(!sel)return;
+    if(!sel._init){
+        sel._init=true;
+        $('q-add').onclick=()=>{
+            const el=$('q-list');
+            const emp=el.querySelector('.empty');
+            if(emp)emp.remove();
+            el.appendChild(qRow(''));
+        };
+        sel.onchange=loadQuestions;
+        $('q-save').onclick=saveQuestions;
+        $('q-reload').onclick=reloadConfig;
+    }
+    const rb=$('q-reload');
+    if(rb)rb.disabled=ME.panelRole!=='owner';
+    loadQuestions();
+}
+
+function initModeration(){
+    const go=$('pun-go');
+    if(!go)return;
+    if(!go._init){
+        go._init=true;
+        $('pun-action').onchange=()=>{
+            const wrap=$('pun-minutes-wrap');
+            if(wrap)wrap.style.visibility=$('pun-action').value==='timeout'?'visible':'hidden';
+        };
+        $('pun-action').onchange();
+        go.onclick=punishAction;
+        $('hist-go').onclick=loadPunishments;
+    }
+}
+
+async function punishAction(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const action=$('pun-action').value;
+    const userId=$('pun-user').value.trim();
+    const reason=$('pun-reason').value.trim();
+    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
+    if(!reason)return toast('Причина обязательна',true);
+    const body={action:action,user_id:userId,reason:reason};
+    if(action==='timeout'){
+        const m=parseInt($('pun-minutes').value,10);
+        if(!(m>=1&&m<=40320))return toast('Минуты: от 1 до 40320',true);
+        body.duration_minutes=m;
+    }
+    const btn=$('pun-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/punish',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Наказание применено');
+        $('pun-reason').value='';
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+async function loadPunishments(){
+    const el=$('hist-list');if(!el)return;
+    const userId=$('hist-user').value.trim();
+    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
+    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+    try{
+        const r=await fetch('/api/punishments?user_id='+encodeURIComponent(userId)+'&limit=10',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        el.textContent='';
+        const head=document.createElement('div');head.className='sub';
+        head.textContent='Предупреждений: '+fmt(j.warns||0)+(j.user_name?(' · '+j.user_name):'');
+        el.appendChild(head);
+        const rows=Array.isArray(j.punishments)?j.punishments:[];
+        if(!rows.length)return el.appendChild(emptyNode('Наказаний нет.'));
+        rows.forEach(p=>{
+            const row=document.createElement('div');row.className='rowitem';
+            const left=document.createElement('div');
+            const b=document.createElement('b');b.textContent=MOD_LABEL[p.action]||p.action;
+            const sub=document.createElement('div');sub.className='sub';
+            sub.textContent=[fmtTs(p.ts),p.reason||'без причины','мод: '+(p.mod_name||'?')].join(' · ');
+            left.append(b,sub);row.appendChild(left);
+            el.appendChild(row);
+        });
+    }catch(e){
+        el.textContent='';el.appendChild(emptyNode('Ошибка: '+e.message));
+    }
+}
+
+async function loadBotStatus(){
+    const el=$('st-bot');if(!el)return;
+    try{
+        const r=await fetch('/api/bot-status',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        if(j.online){
+            el.textContent='Работает';el.className='tag st-ok';
+            const b=j.bot||{};
+            const lat=$('st-bot-latency');if(lat)lat.textContent=b.latency_ms!=null?(b.latency_ms+' мс'):'—';
+            const g=$('st-bot-guilds');if(g)g.textContent=Array.isArray(b.guilds)?b.guilds.length:'—';
+        }else{
+            el.textContent='Оффлайн';el.className='tag st-no';
+            const lat=$('st-bot-latency');if(lat)lat.textContent='—';
+            const g=$('st-bot-guilds');if(g)g.textContent='—';
+        }
+    }catch(e){
+        el.textContent='Оффлайн';el.className='tag st-no';
+    }
+}
+
+async function loadAnalytics(){
+    const el=$('analyticsChart');if(!el)return;
+    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
+    try{
+        const r=await fetch('/api/analytics',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        renderAnalytics(j.points||[]);
+    }catch(e){
+        el.textContent='';el.appendChild(emptyNode('Аналитика недоступна: '+e.message));
+    }
+}
+
+function renderAnalytics(points){
+    const el=$('analyticsChart');if(!el)return;
+    el.textContent='';
+    if(!Array.isArray(points)||!points.length){
+        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
+        if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням.';
+        return;
+    }
+    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const byDay={};
+    points.forEach(p=>{
+        const d=new Date(Number(p.ts)*1000);
+        if(isNaN(d))return;
+        const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        (byDay[key]=byDay[key]||[]).push(Number(p.online)||0);
+    });
+    const days=Object.keys(byDay).sort().slice(-7);
+    if(!days.length){
+        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
+        return;
+    }
+    const week=days.map(k=>({k:k,avg:Math.round(byDay[k].reduce((a,b)=>a+b,0)/byDay[k].length)}));
+    const max=Math.max(1,...week.map(d=>d.avg));
+    week.forEach(d=>{
+        const col=document.createElement('div');col.className='act-col';
+        const num=document.createElement('div');num.className='act-num';num.textContent=d.avg;
+        const bar=document.createElement('div');bar.className='act-bar';
+        bar.style.height=Math.max(2,Math.round((d.avg/max)*130))+'px';
+        if(d.avg===0)bar.style.background='#2a2540';
+        const parts=d.k.split('-');
+        const idx=((new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2])).getDay())+6)%7;
+        const day=document.createElement('div');day.className='act-day';day.textContent=dayNames[idx];
+        col.append(num,bar,day);el.appendChild(col);
+    });
+    const avgAll=Math.round(week.reduce((a,d)=>a+d.avg,0)/week.length);
+    if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням (запись раз в 10 минут). Среднее за период: '+avgAll+'.';
+}
+
+function initSettings(){
+    const w=$('set-welcome');
+    if(!w)return;
+    if(!w._init){
+        w._init=true;
+        w.onchange=()=>saveSetting('welcome_enabled',w.checked,w);
+        $('set-goodbye').onchange=()=>saveSetting('goodbye_enabled',$('set-goodbye').checked,$('set-goodbye'));
+        $('set-welcome-save').onclick=()=>saveTextSetting('welcome_text','set-welcome-text',$('set-welcome-save'));
+        $('set-goodbye-save').onclick=()=>saveTextSetting('goodbye_text','set-goodbye-text',$('set-goodbye-save'));
+    }
+    loadSettings();
+}
+
+async function loadSettings(){
+    const w=$('set-welcome');if(!w)return;
+    const g=$('set-goodbye');
+    const wt=$('set-welcome-text');
+    const gt=$('set-goodbye-text');
+    const ws=$('set-welcome-save');
+    const gs=$('set-goodbye-save');
+    if(ME.panelRole!=='owner'){
+        w.disabled=true;g.disabled=true;wt.disabled=true;gt.disabled=true;ws.disabled=true;gs.disabled=true;
+        if($('set-note'))$('set-note').textContent='Менять эти настройки может только OWNER.';
+        return;
+    }
+    if($('set-note'))$('set-note').textContent='Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).';
+    try{
+        const r=await fetch('/api/bot-settings',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const s=j.settings||{};
+        w.checked=!!s.welcome_enabled;
+        g.checked=!!s.goodbye_enabled;
+        wt.value=s.welcome_text||'';
+        gt.value=s.goodbye_text||'';
+        w.disabled=false;g.disabled=false;wt.disabled=false;gt.disabled=false;ws.disabled=false;gs.disabled=false;
+    }catch(e){
+        toast('Настройки недоступны: '+e.message,true);
+    }
+}
+
+async function saveTextSetting(key,inputId,btn){
+    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
+    const input=$(inputId);
+    const body={};body[key]=input?input.value.trim():'';
+    if(btn)btn.disabled=true;
+    try{
+        const r=await fetch('/api/bot-settings',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const s=j.settings||{};
+        if(input)input.value=s[key]||'';
+        toast('Сохранено');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        if(btn)btn.disabled=false;
+    }
+}
+
+async function saveSetting(key,value,el){
+    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
+    if(el)el.disabled=true;
+    try{
+        const body={};body[key]=!!value;
+        const r=await fetch('/api/bot-settings',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Сохранено');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+        if(el)el.checked=!value;
+    }finally{
+        if(el)el.disabled=false;
+    }
+}
+
+async function loadVoiceChannels(){
+    const sel=$('meeting-channel');if(!sel)return;
+    sel.innerHTML='';
+    const load=document.createElement('option');load.value='';load.textContent='Загрузка…';sel.appendChild(load);
+    try{
+        const r=await fetch('/api/voice-channels',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const chs=Array.isArray(j.channels)?j.channels:[];
+        sel.innerHTML='';
+        if(!chs.length){const e=document.createElement('option');e.value='';e.textContent='Нет голосовых каналов';sel.appendChild(e);return;}
+        chs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='🔊 '+c.name;sel.appendChild(o);});
+    }catch(e){
+        sel.innerHTML='';
+        const er=document.createElement('option');er.value='';er.textContent='Ошибка загрузки';sel.appendChild(er);
+        toast('Ошибка: '+e.message,true);
+    }
+}
+
+function initMeeting(){
+    const go=$('meeting-go');
+    if(!go)return;
+    if(!go._init){
+        go._init=true;
+        go.onclick=announceMeeting;
+    }
+    go.disabled=!ME.staff;
+    loadVoiceChannels();
+}
+
+async function loadTextChannels(){
+    const sel=$('wipe-channel');if(!sel)return;
+    sel.innerHTML='';
+    try{
+        const r=await fetch('/api/text-channels',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const channels=Array.isArray(j.channels)?j.channels:[];
+        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
+        channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
+    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
+}
+
+function initWipe(){
+    const go=$('wipe-go');if(!go)return;
+    if(!go._init){go._init=true;go.onclick=publishWipeFromPanel;}
+    go.disabled=!ME.staff;
+    loadTextChannels();
+}
+
+async function publishWipeFromPanel(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const data={title:$('wipe-title').value.trim(),description:$('wipe-description').value.trim(),
+        server:$('wipe-server').value.trim(),channel_id:$('wipe-channel').value,
+        date:$('wipe-date').value,time:$('wipe-time').value,ask_for_reason:$('wipe-reason').checked,
+        mention:($('wipe-mention')?$('wipe-mention').value:'main'),image_url:($('wipe-image')?$('wipe-image').value.trim():'')};
+    if(!data.channel_id||!data.title||!data.description||!data.date||!data.time)return toast('Заполни заголовок, описание, канал, дату и время',true);
+    if(!confirm('Опубликовать объявление о вайпе в выбранный канал?'))return;
+    const btn=$('wipe-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/wipe',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Объявление о вайпе опубликовано');
+        $('wipe-title').value='';$('wipe-description').value='';$('wipe-server').value='';$('wipe-reason').checked=false;if($('wipe-image'))$('wipe-image').value='';
+    }catch(e){toast('Ошибка: '+e.message,true);}
+    finally{btn.disabled=!ME.staff;}
+}
+
+async function loadBotChatChannels(){
+    const sel=$('bc-channel');if(!sel)return;
+    sel.innerHTML='';
+    try{
+        const r=await fetch('/api/text-channels',{credentials:'same-origin'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        const channels=Array.isArray(j.channels)?j.channels:[];
+        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
+        channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
+    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
+}
+
+async function sendBotChat(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const channel_id=$('bc-channel').value;
+    const content=$('bc-text').value.trim();
+    const inp=$('bc-files');
+    const list=inp?Array.from(inp.files||[]):[];
+    if(!channel_id)return toast('Выбери канал',true);
+    if(!content&&!list.length)return toast('Напиши текст или прикрепи файл',true);
+    const files=[];
+    let total=0;
+    for(const f of list){
+        if(f.size>8*1024*1024)return toast('Файл '+f.name+' больше 8 МБ',true);
+        total+=f.size;
+        if(total>24*1024*1024)return toast('Суммарно файлы больше 24 МБ',true);
+        const bytes=new Uint8Array(await f.arrayBuffer());
+        let bin='';const chunk=0x8000;
+        for(let i=0;i<bytes.length;i+=chunk){bin+=String.fromCharCode.apply(null,bytes.subarray(i,Math.min(i+chunk,bytes.length)));}
+        files.push({name:f.name,data:btoa(bin)});
+    }
+    if(!confirm('Отправить сообщение в выбранный канал Discord?'))return;
+    const btn=$('bc-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/botchat',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel_id,content,files})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Сообщение отправлено в Discord');
+        $('bc-text').value='';if(inp)inp.value='';const n=$('bc-files-note');if(n)n.textContent='';
+    }catch(e){toast('Ошибка: '+e.message,true);}
+    finally{btn.disabled=!ME.staff;}
+}
+
+function initBotChat(){
+    const go=$('bc-go');if(!go)return;
+    if(!go._init){go._init=true;go.onclick=sendBotChat;}
+    go.disabled=!ME.staff;
+    const inp=$('bc-files');
+    if(inp&&!inp._init){inp._init=true;inp.onchange=()=>{const n=$('bc-files-note');if(n){const fs=Array.from(inp.files||[]);n.textContent=fs.length?(fs.length+' файл(ов) · '+Math.round(fs.reduce((a,f)=>a+f.size,0)/1024)+' КБ'):'';}};}
+    loadBotChatChannels();
+}
+
+async function announceMeeting(){
+    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
+    const sel=$('meeting-channel');
+    const ch=sel?sel.value:'';
+    if(!ch)return toast('Выбери голосовой канал',true);
+    const label=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:ch;
+    if(!confirm('Объявить собрание клана?\n'+label))return;
+    const btn=$('meeting-go');btn.disabled=true;
+    try{
+        const r=await fetch('/api/meeting',{method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},body:JSON.stringify({voice_channel_id:ch})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+        toast('Собрание объявлено. Рассылка идёт в фоне.');
+    }catch(e){
+        toast('Ошибка: '+e.message,true);
+    }finally{
+        btn.disabled=false;
+    }
+}
+
+function showPage(id){
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+    if(id==='logs')renderLogs();
+    if(id==='qsettings')initQSettings();
+    if(id==='invites')renderInvites();
+    if(id==='moderation')initModeration();
+    if(id==='meeting')initMeeting();
+    if(id==='wipe')initWipe();
+    if(id==='botchat')initBotChat();
+    if(id==='stats'){loadBotStatus();loadAnalytics();}
+    if(id==='settings')initSettings();
+}
+
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+
+function applyMe(d){
+  ME.user=d.user||null;ME.staff=!!d.is_staff;ME.tickets=d.tickets||null;ME.panelRole=d.panel_role||null;
+  ME.inviteLeaderboard=Array.isArray(d.invite_leaderboard)?d.invite_leaderboard:[];
+  renderStats(d.stats,d.stats_updated_at);
+  renderActivity(d.joins_7d,d.server_time);
+  renderTickets();
+  renderInvites();
+  if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
+  if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
+  if($('userRole'))$('userRole').textContent=((ME.panelRole==='owner')?'OWNER':(ME.panelRole||'STAFF').toUpperCase())+' · Discord';
+}
+
+async function reloadMe(){
+  const r=await fetch('/api/me',{credentials:'same-origin'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+async function loadGuilds(){
+  try{
+    const r=await fetch('/api/guilds',{credentials:'same-origin'});
+    const j=await r.json().catch(()=>({}));
+    const sel=$('guildSelect');
+    if(!sel||!r.ok||!j.ok)return;
+    const gs=Array.isArray(j.guilds)?j.guilds:[];
+    sel.innerHTML='';
+    gs.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name+' · '+g.members;sel.appendChild(o);});
+    if(j.guild_id)sel.value=j.guild_id;
+    sel.style.display=gs.length>1?'inline-block':'none';
+  }catch(e){}
+}
+
+async function changeGuild(id){
+  if(!id)return;
+  try{
+    const r=await fetch('/api/select-guild',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({guild_id:id})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
+    location.reload();
+  }catch(e){
+    toast('Ошибка: '+e.message,true);
+    loadGuilds();
+  }
+}
+
+let CSRF='';
+const __nativeFetch=window.fetch;
+window.fetch=function(input,init){
+  init=init?Object.assign({},init):{};
+  const m=String(init.method||'GET').toUpperCase();
+  if(m==='POST'){
+    init.headers=Object.assign({},init.headers||{});
+    init.headers['X-CSRF-Token']=CSRF;
+  }
+  return __nativeFetch.call(this,input,init);
+};
+async function loadCsrf(){
+  try{
+    const r=await __nativeFetch('/api/csrf',{credentials:'same-origin'});
+    if(r.ok){const j=await r.json().catch(()=>({}));CSRF=j.token||'';}
+  }catch(e){}
+}
+
+async function init(){
+  try{
+    const data=await reloadMe();
+    if(!data.authenticated||!data.user){showLogin(data.notice||undefined);return;}
+    showApp(data.user);applyMe(data);loadGuilds();loadCsrf();
+    setInterval(async()=>{
+      try{
+        const d=await reloadMe();
+        if(d.authenticated)applyMe(d);
+        else showLogin(d.notice||'Сессия завершена.');
+      }catch(e){}
+    },60000);
+  }catch(e){
+    console.error(e);
+    showLogin('Не удалось связаться с сервером. Обнови страницу.');
+  }
+}
+
+async function logout(){
+  try{await fetch('/auth/logout',{method:'POST',credentials:'same-origin'});}catch(e){}
+  location.reload();
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script></body></html>
+
