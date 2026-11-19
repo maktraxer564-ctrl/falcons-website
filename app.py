@@ -21,6 +21,14 @@ API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "")
 GUILD_ID = os.environ.get("GUILD_ID", "").strip()
 TICKET_STAFF_ROLE_ID = os.environ.get("TICKET_STAFF_ROLE_ID", "").strip()
 PANEL_ADMIN_IDS = {x.strip() for x in os.environ.get("PANEL_ADMIN_IDS", "").split(",") if x.strip().isdigit()}
+PANEL_ROLE_IDS = {x.strip() for x in os.environ.get("PANEL_ROLE_IDS", "").split(",") if x.strip().isdigit()}
+DEFAULT_STAFF_ROLE_IDS = {
+    "1560405533381361744",  # LEADER
+    "1560405533381361741",  # DEPUTY LEADER
+    "1560405533381361736",  # COLLER
+    "1560414872368586783",  # MODERATOR
+    "1560405533381361735",  # TICKET-STAFF
+}
 BOT_API_URL = os.environ.get("BOT_API_URL", "").strip().rstrip("/")
 BOT_API_FALLBACK_URL = os.environ.get(
     "BOT_API_FALLBACK_URL", "https://wfh17bglpu.apps.bot-hosting.cloud"
@@ -46,11 +54,11 @@ try:
 except Exception:
     DB_PATH = "./falcons.db"
 
-MSG_NO_ROLE = "Доступ запрещён. Для входа в панель FALCONS необходима роль TICKET STAFF. Обратись к администрации."
+MSG_NO_ROLE = "Доступ запрещён. Для входа в панель FALCONS нужна роль TICKET STAFF или выше (MODERATOR, COLLER, DEPUTY, LEADER). Обратись к администрации."
 MSG_NOT_IN_GUILD = "Доступ запрещён: ты не состоишь на Discord-сервере FALCONS."
 MSG_UNAVAILABLE = "Проверка роли временно недоступна. Попробуй позже."
 MSG_NOT_CONFIGURED = "Проверка ролей не настроена. Обратись к администрации."
-MSG_REVOKED = "Доступ закрыт: у тебя больше нет роли TICKET STAFF."
+MSG_REVOKED = "Доступ закрыт: у тебя больше нет роли TICKET STAFF или выше."
 MSG_RECHECK = "Для безопасности нужно войти заново."
 
 @app.after_request
@@ -260,6 +268,10 @@ def _get_guild_stats(guild_id):
 def index():
     return send_from_directory(".", "index.html")
 
+@app.get("/panel")
+def panel_page():
+    return send_from_directory(".", "panel.html")
+
 @app.get("/wipe.png")
 def wipe_image():
     resp = send_from_directory(".", "wipe.png")
@@ -300,11 +312,25 @@ def discord_login():
               "response_type": "code", "scope": "identify guilds.members.read", "state": state}
     return redirect("https://discord.com/oauth2/authorize?" + urlencode(params))
 
+def _allowed_staff_roles():
+    ids = set(DEFAULT_STAFF_ROLE_IDS) | set(PANEL_ROLE_IDS)
+    if TICKET_STAFF_ROLE_ID:
+        ids.add(TICKET_STAFF_ROLE_ID)
+    return ids
+
 def _check_panel_access(uid, access_token):
     if uid in PANEL_ADMIN_IDS:
         return True, None
-    if not GUILD_ID or not TICKET_STAFF_ROLE_ID:
+    if not GUILD_ID or not _allowed_staff_roles():
         return False, MSG_NOT_CONFIGURED
+    # Bot knows the real role hierarchy: TICKET STAFF and everything above it.
+    if BOT_API_SECRET:
+        try:
+            ok, status, body = _bot_post("/bot/check-staff", {"guild_id": GUILD_ID, "user_id": uid})
+            if ok and isinstance(body, dict) and body.get("staff"):
+                return True, None
+        except Exception:
+            pass
     if not access_token:
         return False, MSG_UNAVAILABLE
     try:
@@ -322,7 +348,7 @@ def _check_panel_access(uid, access_token):
         return False, MSG_UNAVAILABLE
     if not isinstance(roles, list):
         return False, MSG_UNAVAILABLE
-    if TICKET_STAFF_ROLE_ID in {str(x) for x in roles}:
+    if _allowed_staff_roles() & {str(x) for x in roles}:
         return True, None
     return False, MSG_NO_ROLE
 
@@ -387,10 +413,10 @@ def discord_callback():
     session.pop("verified_at", None)
     if not allowed:
         session["auth_notice"] = reason
-        return redirect("/")
+        return redirect("/panel")
     session["user"] = profile
     session["verified_at"] = int(time.time())
-    return redirect("/")
+    return redirect("/panel")
 
 @app.post("/api/update-stats")
 def update_stats():
