@@ -264,13 +264,21 @@ def _get_guild_stats(guild_id):
             (guild_id,)).fetchone()
     return row
 
+def _html(name):
+    resp = send_from_directory(".", name)
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
+
 @app.get("/")
 def index():
-    return send_from_directory(".", "index.html")
+    return _html("index.html")
 
 @app.get("/panel")
 def panel_page():
-    return send_from_directory(".", "panel.html")
+    # Панель — только для вошедших. Без сессии всегда показываем лендинг.
+    if not session.get("user") and not session.get("auth_notice"):
+        return redirect("/")
+    return _html("panel.html")
 
 @app.get("/wipe.png")
 def wipe_image():
