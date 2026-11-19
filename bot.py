@@ -1,4 +1,4 @@
-﻿import io
+import io
 import base64
 import os
 import json
@@ -613,13 +613,14 @@ async def push_staff(guild):
     if GUILD_ID and guild.id != GUILD_ID:
         return
     try:
-        role = guild.get_role(TICKET_STAFF_ROLE_ID)
-        if role is None:
-            return
         entries = []
-        for m in role.members:
-            if m.bot:
+        seen = set()
+        for m in guild.members:
+            if m.bot or m.id in seen:
                 continue
+            if not has_staff_perms(m):
+                continue
+            seen.add(m.id)
             top = m.top_role
             label = top.name.strip() if (top is not None and top.name and top != guild.default_role) else None
             entries.append({"id": str(m.id), "role": label})
@@ -3963,6 +3964,33 @@ async def http_meeting(request):
     log.info("Собрание запущено с сайта: guild %s, войс %s, запустил %s", guild.id, voice.id, actor.id)
     return aiohttp_web.json_response({"ok": True})
 
+async def http_check_staff(request):
+    if not _check_secret(request):
+        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    guild = _resolve_guild(data.get("guild_id"))
+    if guild is None:
+        return aiohttp_web.json_response({"ok": False, "error": "guild not found"}, status=404)
+    try:
+        uid = int(data.get("user_id") or 0)
+    except (TypeError, ValueError):
+        return aiohttp_web.json_response({"ok": False, "error": "invalid user_id"}, status=400)
+    member = guild.get_member(uid)
+    if member is None:
+        try:
+            member = await guild.fetch_member(uid)
+        except Exception:
+            member = None
+    staff = has_staff_perms(member)
+    return aiohttp_web.json_response({
+        "ok": True,
+        "staff": bool(staff),
+        "top_role": (member.top_role.name if member is not None else None),
+    })
+
 async def http_send_chat(request):
     if not _check_secret(request):
         return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401)
@@ -4085,6 +4113,8 @@ async def start_bot_http():
     app.router.add_post("/bot/meeting", http_meeting)
     app.router.add_get("/bot/voice-channels", http_voice_channels)
     app.router.add_post("/bot/wipe", http_announce_wipe)
+    app.router.add_get("/bot/check-staff", http_check_staff)
+    app.router.add_post("/bot/check-staff", http_check_staff)
     app.router.add_post("/bot/chat", http_send_chat)
     app.router.add_get("/bot/text-channels", http_text_channels)
     runner = aiohttp_web.AppRunner(app)
