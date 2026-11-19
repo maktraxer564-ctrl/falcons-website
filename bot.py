@@ -533,6 +533,9 @@ def has_staff_perms(member):
             return True
         if "dep" in name and "lead" in name:
             return True
+    # Любая роль по иерархии выше TICKET STAFF тоже даёт доступ.
+    if staff_role is not None and member.top_role is not None and member.top_role.position >= staff_role.position:
+        return True
     return False
 
 def get_staff_role(guild):
