@@ -302,13 +302,24 @@ def health():
         out["bot_status"] = status
     return out
 
+PANEL_PUBLIC_HOSTS = {
+    "falcons-panel.onrender.com",
+    "falcons-panel.maktraxer564.workers.dev",
+}
+
+def _oauth_redirect_uri():
+    host = (request.host or "").split(":")[0].strip().lower()
+    if host in PANEL_PUBLIC_HOSTS:
+        return f"https://{host}/auth/discord/callback"
+    return REDIRECT_URI
+
 @app.get("/auth/discord")
 def discord_login():
-    if not CLIENT_ID or not REDIRECT_URI:
+    if not CLIENT_ID or not _oauth_redirect_uri():
         return "Discord OAuth is not configured yet.", 503
     state = secrets.token_urlsafe(24)
     session["oauth_state"] = state
-    params = {"client_id": CLIENT_ID, "redirect_uri": REDIRECT_URI,
+    params = {"client_id": CLIENT_ID, "redirect_uri": _oauth_redirect_uri(),
               "response_type": "code", "scope": "identify guilds.members.read", "state": state}
     return redirect("https://discord.com/oauth2/authorize?" + urlencode(params))
 
@@ -389,12 +400,12 @@ def discord_callback():
     code, state = request.args.get("code"), request.args.get("state")
     if not code or not state or state != session.pop("oauth_state", None):
         abort(400, "Invalid OAuth state.")
-    if not CLIENT_ID or not CLIENT_SECRET or not REDIRECT_URI:
+    if not CLIENT_ID or not CLIENT_SECRET or not _oauth_redirect_uri():
         return "Discord OAuth env missing.", 503
     token_response = requests.post(f"{API}/oauth2/token", data={
         "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET,
         "grant_type": "authorization_code", "code": code,
-        "redirect_uri": REDIRECT_URI
+        "redirect_uri": _oauth_redirect_uri()
     }, headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=15)
     if not token_response.ok:
         return "Discord token exchange failed.", 502
