@@ -5,7 +5,7 @@ import secrets
 import sqlite3
 import json
 import re
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from pathlib import Path
 
 import requests
@@ -315,19 +315,50 @@ PANEL_PUBLIC_HOSTS = {
     "falcons-panel.maktraxer564.workers.dev",
 }
 
-def _oauth_redirect_uri():
-    host = (request.host or "").split(":")[0].strip().lower()
-    if host in PANEL_PUBLIC_HOSTS:
+def _host_from(value):
+    value = (value or "").split(",")[0].strip().lower()
+    if not value:
+        return ""
+    try:
+        host = urlparse(value if "//" in value else "//" + value).hostname or ""
+    except ValueError:
+        return ""
+    host = host.split(":")[0]
+    return host if host in PANEL_PUBLIC_HOSTS else ""
+
+def _public_host():
+    """Домен, который видит браузер (учитываем прокси Cloudflare)."""
+    candidates = [
+        request.headers.get("X-Forwarded-Host"),
+        request.headers.get("CF-Connecting-Host"),
+        request.headers.get("Origin"),
+        request.headers.get("Referer"),
+        request.host,
+    ]
+    for value in candidates:
+        host = _host_from(value)
+        if host:
+            return host
+    return ""
+
+def _redirect_uri_for(host):
+    if host:
         return f"https://{host}/auth/discord/callback"
     return REDIRECT_URI
 
+def _oauth_redirect_uri():
+    # На callback берём домен, с которого логин начинался — прокси может подменить Host.
+    return _redirect_uri_for(session.get("oauth_host") or _public_host())
+
 @app.get("/auth/discord")
 def discord_login():
-    if not CLIENT_ID or not _oauth_redirect_uri():
+    host = _public_host()
+    if not CLIENT_ID or not _redirect_uri_for(host):
         return "Discord OAuth is not configured yet.", 503
     state = secrets.token_urlsafe(24)
     session["oauth_state"] = state
-    params = {"client_id": CLIENT_ID, "redirect_uri": _oauth_redirect_uri(),
+    session["oauth_host"] = host
+    params = {"client_id": CLIENT_ID, "redirect_uri": _redirect_uri_for(host),
               "response_type": "code", "scope": "identify guilds.members.read", "state": state}
     return redirect("https://discord.com/oauth2/authorize?" + urlencode(params))
 
