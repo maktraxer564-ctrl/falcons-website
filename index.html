@@ -1,1159 +1,995 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FALCONS — Панель управления</title>
-<link rel="manifest" href="/manifest.json"><link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#070811"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="FALCONS">
-<style>
-:root{--bg:#070811;--panel:#0c0d19;--line:#242239;--muted:#9294b3;--text:#eef0ff;--purple:#782cff;--purple2:#a35cff;--green:#21e6a0;--red:#ff4d6d}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 65% 0%,#20103b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.4 Inter,Segoe UI,Arial,sans-serif}
-button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:245px 1fr;min-height:100vh}
-.side{padding:22px 15px;border-right:1px solid var(--line);background:#080914;display:flex;flex-direction:column}
-.brand{display:flex;align-items:center;gap:12px;padding:0 12px 28px}.bird{font-size:35px;color:var(--purple2);filter:drop-shadow(0 0 12px #782cff)}
-.brand b{font-size:22px;letter-spacing:2px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}
-.nav{display:grid;gap:7px}.nav button{border:0;color:#bcbdd6;background:transparent;text-align:left;padding:13px 14px;border-radius:10px;display:flex;gap:12px;align-items:center}
-.nav button:hover,.nav button.active{background:linear-gradient(100deg,#4e1a9e,#29144f);color:white}
-.ico{width:21px;text-align:center;font-size:18px}
-.sidefoot{margin-top:auto;border:1px solid var(--line);border-radius:12px;padding:15px;color:var(--muted);font-size:12px}
-.main{min-width:0}.top{height:67px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 28px;background:#090914c9}
-.pill{padding:10px 13px;border:1px solid #38265a;border-radius:9px;background:#111020;color:#eee}
-.avatar{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#3b1769;border:1px solid #a35cff;overflow:hidden}
-.avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.content{padding:27px;max-width:1600px;margin:auto}
-.hero{padding:26px;border-radius:16px;border:1px solid #292044;background:linear-gradient(110deg,#111020f2 0%,#151025e8 50%,#241044c9 100%);position:relative;overflow:hidden;margin-bottom:20px}
-.hero:after{content:'🦅';position:absolute;right:38px;top:-34px;font-size:155px;opacity:.13;transform:rotate(-12deg)}
-h1{margin:0 0 7px;font-size:29px}h1 span{color:var(--purple2)}p{margin:0;color:var(--muted)}
-.stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:14px;margin-bottom:16px}
-.card{background:linear-gradient(145deg,#0e0f1c,#090a14);border:1px solid var(--line);border-radius:13px;padding:18px;min-width:0}
-.stat-icon{color:var(--purple2);font-size:23px}.label{color:#a6a7c3;font-size:12px;margin-top:12px}
-.num{font-size:28px;font-weight:700;margin:2px 0}.sub{color:var(--muted);font-size:11px}
-.grid{display:grid;grid-template-columns:1.35fr .9fr .8fr;gap:15px}
-.card h2{font-size:16px;margin:0 0 18px}
-.rowitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #1d1d30;flex-wrap:wrap}
-.rowitem:last-child{border-bottom:0}
-.tag{font-size:11px;border-radius:20px;padding:5px 9px;background:#321765;color:#d8c5ff;text-decoration:none;white-space:nowrap}
-a.tag:hover{background:#4a2390}
-.btn{border:0;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;color:#fff}
-.btn.accept{background:#1a7a4f}.btn.accept:hover{background:#22a86a}
-.btn.reject{background:#7a1a2c}.btn.reject:hover{background:#a8223a}
-.btn.call{background:#2a3a8a}.btn.call:hover{background:#3d52b8}
-.btn.close{background:#a01836}.btn.close:hover{background:#c72449}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.ticket-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.quick button{width:100%;text-align:left;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:11px;margin:4px 0}
-.quick button:hover{border-color:var(--purple2);background:#1b1031}
-.page{display:none}.page.active{display:block}
-.setting{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line);gap:10px}
-.setting:last-child{border-bottom:0}
-.empty{margin:16px 0 4px;padding:18px;border:1px dashed #2d2a47;border-radius:10px;color:#7f809d;font-size:12px;line-height:1.5}
-.mutednote{font-size:11px;color:#7f809d;margin-top:20px}
-.loginwrap{min-height:100vh;display:grid;place-items:center;padding:20px}
-.logincard{width:100%;max-width:380px;text-align:center;padding:30px}
-.loginbtn{display:inline-block;background:linear-gradient(100deg,#4e1a9e,#782cff);color:#fff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:10px}
-.loginbtn:hover{filter:brightness(1.12)}
-.toast{position:fixed;right:22px;bottom:22px;background:#1a1230;border:1px solid #7540c8;border-radius:10px;padding:13px 18px;display:none;box-shadow:0 10px 35px #0008;z-index:9999;max-width:400px}
-.dim{color:#6b6c88}
-.tk-stale{color:#ffbd59;font-size:11px;margin:4px 0 8px}
-.activity{display:flex;align-items:flex-end;gap:8px;height:180px;padding:14px 6px 0;border-bottom:1px solid #29263d;background:repeating-linear-gradient(to bottom,transparent 0 39px,#211f32 40px);margin-bottom:8px}
-.act-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
-.act-bar{width:100%;background:linear-gradient(#a85aff,#5520c8);border-radius:5px 5px 0 0;box-shadow:0 0 12px #6b25ca55;min-height:2px;transition:.3s}
-.act-bar:hover{filter:brightness(1.2)}
-.act-num{font-size:12px;font-weight:700;color:#e8e5ff}
-.act-day{font-size:11px;color:#9294b3}
-[hidden]{display:none!important}
-button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
-.tag.st-ok{background:#0f3b2c;color:#6ff2c0}.tag.st-no{background:#2a2540;color:#a9a6c9}
-.q-row{display:flex;gap:8px;align-items:center;margin-top:10px}
-.q-input{flex:1;min-width:0;background:#111020;border:1px solid #25213c;color:#e8e5ff;border-radius:8px;padding:10px 12px;font:inherit}
-.q-input:focus{border-color:var(--purple2);outline:none}
-.punish-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:6px}
-.punish-form .q-input{width:100%}
-.inv-actions{display:flex;gap:6px;flex-wrap:wrap}
-.setting input[type=checkbox]{width:18px;height:18px;accent-color:var(--purple2);cursor:pointer}
-.setting input[type=checkbox]:disabled{opacity:.5;cursor:not-allowed}
-@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr 1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}.side{padding:12px;border-right:0;border-bottom:1px solid var(--line)}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.sidefoot{display:none}.content{padding:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}.hero:after{right:0;font-size:100px}h1{font-size:23px}}
-:root{--bg:#0b0e11;--panel:#11161b;--line:#232c33;--muted:#8c999f;--text:#f2f5f6;--purple:#54c49d;--purple2:#9ce6cd;--green:#69d6a5;--red:#ef7b77}
-body{background:radial-gradient(ellipse at 70% -10%,#17332b 0,transparent 34%),var(--bg);font-family:'DM Sans','Segoe UI',Arial,sans-serif}
-.app{grid-template-columns:252px minmax(0,1fr)}
-.side{position:sticky;top:0;height:100vh;padding:26px 16px 18px;border-right:1px solid var(--line);background:#0e1215}
-.brand{gap:12px;padding:3px 11px 32px}.bird{height:38px;width:38px;border-radius:12px;background:var(--purple2);color:#0a1713;display:grid;place-items:center;font-size:21px;filter:none}.brand b{font-size:16px;letter-spacing:2.3px}.brand small{letter-spacing:1.6px}
-.nav{gap:4px}.nav button{position:relative;color:#9aa7ac;padding:10px 12px;border-radius:9px;font-size:13px}.nav button:hover{background:#17201f;color:#e9f4ef}.nav button.active{background:linear-gradient(100deg,#19342d,#15231f);color:var(--purple2)}.nav button.active:before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:24px;background:var(--purple);border-radius:4px}
-.ico{width:19px;font-size:16px}.sidefoot{border-color:var(--line);border-radius:12px;background:#11161b}
-.top{height:72px;border-color:var(--line);padding:0 clamp(20px,4vw,54px);background:#0c1013}.pill{border-color:var(--line);border-radius:9px;background:#11171b;color:#dbe5e2}.pill:hover{border-color:#3c6657}#guildSelect{font-size:12px}
-.content{max-width:1500px;padding:36px clamp(20px,4vw,54px) 60px}.hero{padding:27px;border-radius:13px;border-color:#294038;background:linear-gradient(110deg,#111b19f2 0%,#15211ee8 55%,#18352bc9 100%);margin-bottom:17px}.hero:after{content:'F';font-family:Arial,sans-serif;font-weight:800;color:var(--purple2);right:32px;top:-37px;font-size:170px;opacity:.07;transform:none}h1{font-family:'Manrope','Segoe UI',sans-serif;font-size:clamp(26px,3vw,36px);letter-spacing:-1px}h1 span{color:var(--purple2)}
-.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:17px}.card{background:var(--panel);border-color:var(--line);border-radius:13px;padding:18px}.stat-icon{color:var(--purple2)}.label{color:#a6b2b4}.num{font-family:'Manrope','Segoe UI',sans-serif;font-size:27px;letter-spacing:-.6px}.sub{color:var(--muted)}
-.grid{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr) minmax(250px,.8fr);gap:15px}.card h2{font-family:'Manrope','Segoe UI',sans-serif;font-size:14px;font-weight:650;margin-bottom:15px}.rowitem{border-color:#20282d}.tag{background:#183127;color:var(--purple2)}a.tag:hover{background:#23483a}.btn{border-radius:8px}.btn.accept{background:#1a7a4f}.btn.reject{background:#753b3b}.btn.call{background:#294850}.btn.close{background:#923947}.quick button{background:#141c1c;border-color:#26352f;color:#e3ece9}.quick button:hover{border-color:var(--purple);background:#17251f}
-.empty{border-color:#30413a;color:#92a39e}.mutednote{color:#81918c}.loginbtn{background:linear-gradient(100deg,#27634f,#54c49d);color:#07130e}.toast{background:#14211d;border-color:#39705b}.activity{height:205px;border-color:#273137;background:repeating-linear-gradient(to bottom,transparent 0 49px,#20292e 50px)}.act-bar{background:linear-gradient(180deg,#a2e8cf,#3f9b79);box-shadow:0 0 12px #58c49d2b;border-radius:6px 6px 2px 2px}.act-num{color:#c5d5d0}.act-day{color:#849197}.tag.st-ok{background:#183127;color:#9ce6cd}.tag.st-no{background:#292a28;color:#c5b996}
-.q-input{background:#11171b;border-color:#263238;color:var(--text);border-radius:9px}.q-input:focus{border-color:var(--purple);box-shadow:0 0 0 3px #54c49d20}.setting{border-color:#20282d}.setting input[type=checkbox]{accent-color:var(--purple)}
-@media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-column:1/-1}}
-@media(max-width:760px){.app{grid-template-columns:1fr}.side{position:relative;height:auto;padding:12px 14px 10px;border-right:0;border-bottom:1px solid var(--line)}.side .brand{padding:0 4px 12px}.brand .bird{width:30px;height:30px;font-size:17px}.brand b{font-size:14px}.nav{display:flex;overflow:auto;gap:5px}.nav button{white-space:nowrap;padding:8px 10px;font-size:11px}.nav button.active:before{display:none}.sidefoot{display:none}.content{padding:24px 16px 45px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid{grid-template-columns:1fr}.quick{grid-column:auto}.hero:after{right:0;font-size:100px}.top{height:62px;padding:0 16px}.activity{height:175px}}
-</style></head><body>
-
-<div class="loginwrap" id="loginScreen" hidden>
-  <div class="card logincard">
-    <div class="brand" style="justify-content:center;padding:0 0 18px"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
-    <p id="loginMsg">Войдите через Discord, чтобы открыть панель.</p>
-    <a class="loginbtn" href="/auth/discord">Войти через Discord</a>
-  </div>
-</div>
-
-<div class="app" id="app" hidden>
-<aside class="side">
-  <div class="brand"><div class="bird">➤</div><div><b>FALCONS</b><small>ПАНЕЛЬ УПРАВЛЕНИЯ</small></div></div>
-  <nav class="nav" id="nav">
-    <button class="active" data-page="home"><span class="ico">⌂</span>Главная</button>
-    <button data-page="tickets"><span class="ico">▤</span>Тикеты</button>
-    <button data-page="apps"><span class="ico">▣</span>Заявки в клан</button>
-    <button data-page="logs"><span class="ico">◷</span>Логи</button>
-    <button data-page="members"><span class="ico">♟</span>Роли и участники</button>
-    <button data-page="invites"><span class="ico">↗</span>Инвайты</button>
-    <button data-page="moderation"><span class="ico">⬡</span>Модерация</button>
-    <button data-page="meeting"><span class="ico">🚨</span>Собрание</button>
-    <button data-page="wipe"><span class="ico">📝</span>Вайп</button>
-    <button data-page="botchat"><span class="ico">💬</span>BOT-CHAT</button>
-    <button data-page="stats"><span class="ico">▥</span>Статистика</button>
-    <button data-page="settings"><span class="ico">⚙</span>Настройки</button>
-    <button data-page="qsettings"><span class="ico">⚙</span>Настройки анкет</button>
-    <button data-page="roles"><span class="ico">♛</span>Роли и права</button>
-  </nav>
-  <div class="sidefoot">🦅 <b style="color:#eee">Falcons Bot</b><br><br>Панель<br><span style="color:#a35cff">♥</span> Сделано для Falcons</div>
-</aside>
-<main class="main">
-<header class="top">
-  <div class="avatar" id="avatar">?</div>
-  <div><b id="userName">…</b><div class="sub" id="userRole">Вход через Discord</div></div>
-  <select id="guildSelect" class="pill" style="display:none;max-width:280px" onchange="changeGuild(this.value)" title="Выбор сервера"></select>
-  <span class="pill" id="localClock" title="Твоё локальное время" style="padding:8px 14px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap">--:--:--</span>
-  <button class="pill" onclick="logout()">Выйти</button>
-</header>
-<div class="content">
-<section class="page active" id="home">
-  <div class="hero"><h1>Добро пожаловать,</h1><h1><span id="heroName">…</span></h1><p>Панель управления Discord-сервером FALCONS</p></div>
-  <div class="stats">
-    <div class="card"><div class="stat-icon">♟</div><div class="label">Участников</div><div class="num" id="s-total">—</div><div class="sub">данные бота</div></div>
-    <div class="card"><div class="stat-icon">●</div><div class="label">Онлайн</div><div class="num" id="s-online">—</div><div class="sub">данные бота</div></div>
-    <div class="card"><div class="stat-icon">♛</div><div class="label">Клан</div><div class="num" id="s-clan">—</div><div class="sub">данные бота</div></div>
-    <div class="card"><div class="stat-icon">▤</div><div class="label">Открытые тикеты</div><div class="num" id="s-tickets">—</div><div class="sub" id="s-tickets-sub">ожидание</div></div>
-    <div class="card"><div class="stat-icon">▣</div><div class="label">Заявки в клан</div><div class="num" id="s-apps">—</div><div class="sub" id="s-apps-sub">ожидание</div></div>
-    <div class="card"><div class="stat-icon">↗</div><div class="label">Рекрутеров</div><div class="num dim" id="s-invites">—</div><div class="sub" id="s-invites-sub">данные бота</div></div>
-  </div>
-  <div class="card" style="margin-bottom:15px">
-    <h2>📊 Активность за 7 дней</h2>
-    <div class="activity" id="activityChart"><div class="empty">Загрузка…</div></div>
-    <div class="sub" id="activityNote">Сколько человек зашло на сервер каждый день.</div>
-  </div>
-  <div class="grid">
-    <div class="card"><h2>▤ Последние тикеты</h2><div id="recent-tickets"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('tickets')">Все тикеты →</button></div>
-    <div class="card"><h2>▣ Последние заявки</h2><div id="recent-apps"><div class="empty">Загрузка…</div></div><button class="pill" style="width:100%;margin-top:10px" onclick="showPage('apps')">Все заявки →</button></div>
-    <div class="card quick"><h2>ϟ Быстрые действия</h2>
-      <button onclick="showPage('tickets')">▤ Открыть тикеты</button>
-      <button onclick="showPage('apps')">▣ Заявки в клан</button>
-      <button onclick="showPage('logs')">◷ Логи стаффа</button>
-    </div>
-  </div>
-  <div class="mutednote" id="statsNote">Данные обновляются ботом раз в 10 минут.</div>
-</section>
-
-<section class="page" id="tickets">
-  <div class="hero"><h1>Тикеты</h1><p>Все открытые обращения на сервере</p></div>
-  <div class="card" id="ticketsList"><div class="empty">Загрузка…</div></div>
-</section>
-
-<section class="page" id="apps">
-  <div class="hero"><h1>Заявки в клан</h1><p>Тикеты категории «Набор в клан»</p></div>
-  <div class="card" id="appsList"><div class="empty">Загрузка…</div></div>
-</section>
-
-<section class="page" id="logs">
-  <div class="hero"><h1>Логи стаффа</h1><p>История действий администрации</p></div>
-  <div class="card" id="logsList"><div class="empty">Загрузка…</div></div>
-</section>
-
-<section class="page" id="members">
-  <div class="hero"><h1>Роли и участники</h1><p>Состав сервера</p></div>
-  <div class="card">
-    <div class="setting"><div><b>Участников на сервере</b><div class="sub">данные бота</div></div><b id="m-total">—</b></div>
-    <div class="setting"><div><b>Онлайн сейчас</b><div class="sub">данные бота</div></div><b id="m-online">—</b></div>
-    <div class="setting"><div><b>Участников клана</b><div class="sub">по роли клана</div></div><b id="m-clan">—</b></div>
-  </div>
-  <div class="mutednote">Управление ролями из панели пока не реализовано. Всё делается командами бота в Discord.</div>
-</section>
-
-<section class="page" id="invites">
-  <div class="hero"><h1>Инвайты и рекрутинг</h1><p>Топ рекрутеров по активным приглашениям</p></div>
-  <div class="card" id="invitesList"><div class="empty">Загрузка…</div></div>
-  <div class="mutednote">Кнопка «Выдать награду» повторно выдаёт роли за достигнутые пороги приглашений.</div>
-</section>
-
-<section class="page" id="moderation">
-  <div class="hero"><h1>Модерация</h1><p>Наказания и история игрока</p></div>
-  <div class="card" style="margin-bottom:15px">
-    <h2>⬡ Выдать наказание</h2>
-    <div class="punish-form">
-      <div><div class="sub">Действие</div>
-        <select id="pun-action" class="q-input">
-          <option value="warn">Предупреждение</option>
-          <option value="timeout">Таймаут</option>
-          <option value="kick">Кик</option>
-          <option value="ban">Бан</option>
-        </select></div>
-      <div><div class="sub">Discord ID игрока</div>
-        <input id="pun-user" class="q-input" placeholder="123456789012345678" inputmode="numeric"></div>
-      <div id="pun-minutes-wrap"><div class="sub">Минуты (для таймаута)</div>
-        <input id="pun-minutes" class="q-input" type="number" min="1" max="40320" value="60"></div>
-    </div>
-    <div class="q-row">
-      <input id="pun-reason" class="q-input" placeholder="Причина (игрок получит её в ЛС)" maxlength="500">
-      <button class="btn reject" id="pun-go">Применить</button>
-    </div>
-    <div class="mutednote">Наказание выполняет бот от твоего имени. Нужны права Ticket Staff.</div>
-  </div>
-  <div class="card">
-    <h2>◷ Наказания игрока</h2>
-    <div class="q-row">
-      <input id="hist-user" class="q-input" placeholder="Discord ID игрока" inputmode="numeric">
-      <button class="pill" id="hist-go">Показать</button>
-    </div>
-    <div id="hist-list" style="margin-top:10px"></div>
-  </div>
-</section>
-
-<section class="page" id="meeting">
-  <div class="hero"><h1>🚨 Собрание клана</h1><p>Массовое оповещение: пинг в канал и ЛС участникам клана</p></div>
-  <div class="card">
-    <h2>🔊 Куда собираемся</h2>
-    <div class="q-row">
-      <select id="meeting-channel" class="q-input"><option value="">Загрузка…</option></select>
-      <button class="btn reject" id="meeting-go">ОБЪЯВИТЬ СОБРАНИЕ</button>
-    </div>
-    <div class="mutednote">Бот пингует @everyone 3 раза в течение 2 минут и пишет в ЛС участникам клана, которые онлайн и ещё не в войсе.</div>
-  </div>
-</section>
-
-<section class="page" id="wipe">
-  <div class="hero"><h1>📝 Объявление о вайпе</h1><p>Опубликуй объявление с датой, временем и сбором ответов в Discord.</p></div>
-  <div class="card">
-    <div class="punish-form">
-      <div><div class="sub">Заголовок</div><input id="wipe-title" class="q-input" maxlength="256" placeholder="Например: Вайп Rust Way Chill 2"></div>
-      <div><div class="sub">Rust-сервер</div><input id="wipe-server" class="q-input" maxlength="100" placeholder="Название сервера"></div>
-      <div><div class="sub">Канал объявления</div><select id="wipe-channel" class="q-input"><option value="">Загрузка…</option></select></div>
-      <div><div class="sub">Кого тегать</div><select id="wipe-mention" class="q-input"><option value="main">@main (роль)</option><option value="everyone">@everyone</option><option value="none">Не тегать</option></select></div>
-      <div><div class="sub">Дата</div><input id="wipe-date" class="q-input" type="date"></div>
-      <div><div class="sub">Время (Москва)</div><input id="wipe-time" class="q-input" type="time"></div>
-    </div>
-    <div style="margin-top:12px"><div class="sub">Фото для объявления (ссылка)</div><input id="wipe-image" class="q-input" maxlength="400" placeholder="https://... — картинка прикрепится к объявлению (в Discord можно просто прикрепить файл через /wipe)"></div>
-    <div style="margin-top:12px"><div class="sub">Описание</div><textarea id="wipe-description" class="q-input" maxlength="3500" rows="4" style="width:100%;resize:vertical" placeholder="Подробности вайпа"></textarea></div>
-    <div class="setting"><div><b>Просить участников указать причину</b><div class="sub">Добавить кнопку для комментария рядом с ответами</div></div><input type="checkbox" id="wipe-reason"></div>
-    <div class="q-row"><button class="btn reject" id="wipe-go">Опубликовать вайп</button></div>
-    <div class="mutednote">В Discord будут кнопки «Принял», «Не смогу» и «Опоздаю». Повторный ответ обновит предыдущий.</div>
-  </div>
-</section>
-
-<section class="page" id="botchat">
-  <div class="hero"><h1>💬 BOT-CHAT</h1><p>Напиши текст, прикрепи скрины — бот опубликует в выбранный канал.</p></div>
-  <div class="card">
-    <div class="punish-form">
-      <div><div class="sub">Канал Discord</div><select id="bc-channel" class="q-input"><option value="">Загрузка…</option></select></div>
-    </div>
-    <div style="margin-top:12px"><div class="sub">Текст сообщения</div><textarea id="bc-text" class="q-input" maxlength="2000" rows="5" style="width:100%;resize:vertical" placeholder="Что написать в Discord?"></textarea></div>
-    <div style="margin-top:12px"><div class="sub">Скрины / фото (до 10 файлов, каждый ≤ 8 МБ, всего ≤ 24 МБ)</div><input id="bc-files" type="file" multiple accept="image/*" style="width:100%"></div>
-    <div class="sub" id="bc-files-note" style="margin-top:6px"></div>
-    <div class="q-row"><button class="btn reject" id="bc-go">Отправить в Discord</button></div>
-    <div class="mutednote">Сообщение придёт от имени бота FLCN в выбранный канал. Текст и картинки публикуются как обычное сообщение.</div>
-  </div>
-</section>
-
-<section class="page" id="stats">
-  <div class="hero"><h1>Статистика</h1><p>Обзор активности и состава сервера</p></div>
-  <div class="card">
-    <div class="setting"><div><b>Участников</b></div><b id="st-total">—</b></div>
-    <div class="setting"><div><b>Онлайн</b></div><b id="st-online">—</b></div>
-    <div class="setting"><div><b>Клан</b></div><b id="st-clan">—</b></div>
-    <div class="setting"><div><b>Обновлено</b></div><b id="st-updated">—</b></div>
-  </div>
-  <div class="card" style="margin-top:15px">
-    <h2>📈 Онлайн за 7 дней</h2>
-    <div class="activity" id="analyticsChart"><div class="empty">Загрузка…</div></div>
-    <div class="sub" id="analyticsNote">Средний онлайн по дням.</div>
-  </div>
-  <div class="card" style="margin-top:15px">
-    <h2>🤖 Статус бота</h2>
-    <div class="setting"><div><b>Бот</b><div class="sub">Discord-подключение</div></div><span class="tag st-no" id="st-bot">проверка…</span></div>
-    <div class="setting"><div><b>Задержка</b></div><b id="st-bot-latency">—</b></div>
-    <div class="setting"><div><b>Серверы</b></div><b id="st-bot-guilds">—</b></div>
-  </div>
-</section>
-
-<section class="page" id="settings">
-  <div class="hero"><h1>Настройки</h1><p>Подключение и параметры панели</p></div>
-  <div class="card">
-    <div class="setting"><div><b>Вход через Discord</b><div class="sub">OAuth2 · работает</div></div><span class="tag st-ok">Работает</span></div>
-    <div class="setting"><div><b>Твоя роль в панели</b></div><b id="st-panel-role">—</b></div>
-    <div class="setting"><div><b>ID пользователя</b></div><b id="st-uid" class="dim">—</b></div>
-  </div>
-  <div class="card" style="margin-top:15px">
-    <h2>👋 Приветствие и прощание</h2>
-    <div class="setting">
-      <div><b>Приветствие новых участников</b><div class="sub">сообщение при входе на сервер</div></div>
-      <input type="checkbox" id="set-welcome">
-    </div>
-    <div class="setting">
-      <div><b>Прощание при выходе</b><div class="sub">сообщение, когда участник покидает сервер</div></div>
-      <input type="checkbox" id="set-goodbye">
-    </div>
-    <div class="q-row">
-      <input id="set-welcome-text" class="q-input" maxlength="500" placeholder="Текст приветствия">
-      <button class="pill" id="set-welcome-save">Сохранить</button>
-    </div>
-    <div class="q-row">
-      <input id="set-goodbye-text" class="q-input" maxlength="500" placeholder="Текст прощания">
-      <button class="pill" id="set-goodbye-save">Сохранить</button>
-    </div>
-    <div class="mutednote" id="set-note">Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).</div>
-  </div>
-</section>
-
-<section class="page" id="qsettings">
-  <div class="hero"><h1>Настройки анкет</h1><p>Вопросы, которые бот задаёт при создании тикета</p></div>
-  <div class="card">
-    <div class="setting">
-      <div><b>Категория</b><div class="sub">clan / partner / question / report / other</div></div>
-      <select id="q-category" class="pill">
-        <option value="clan">Набор в клан</option>
-        <option value="partner">Партнёрство</option>
-        <option value="question">Вопрос по клану</option>
-        <option value="report">Жалоба на игрока</option>
-        <option value="other">Другое обращение</option>
-      </select>
-    </div>
-    <div id="q-list"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-      <button class="pill" id="q-add">+ Добавить вопрос</button>
-      <button class="btn accept" id="q-save">Сохранить</button>
-      <button class="pill" id="q-reload">Перезагрузить конфиг</button>
-    </div>
-    <div class="mutednote">Изменения применяются к новым тикетам. Открытые тикеты не меняются.</div>
-  </div>
-</section>
-
-<section class="page" id="roles">
-  <div class="hero"><h1>Роли и права доступа</h1><p>Разграничение доступа к панели</p></div>
-  <div class="card">
-    <div class="setting"><div><b>OWNER</b><div class="sub">полный доступ к панели и боту</div></div><span class="tag st-ok">Работает</span></div>
-    <div class="setting"><div><b>TICKET STAFF</b><div class="sub">доступ к тикетам и заявкам</div></div><span class="tag st-ok">Работает</span></div>
-    <div class="setting"><div><b>DEP LEADER</b><div class="sub">используется ботом для прав в тикетах</div></div><span class="tag st-no">Только в боте</span></div>
-    <div class="setting"><div><b>Обычные участники</b><div class="sub">без доступа к панели</div></div><span class="tag st-ok">Работает</span></div>
-  </div>
-</section>
-
-</div></main></div>
-<div class="toast" id="toast"></div>
-
-<script>
-const $=id=>document.getElementById(id);
-let ME={user:null,staff:false,tickets:null,stats:null,panelRole:null,inviteLeaderboard:[]};
-
-function toast(msg,isError){
-  const t=$('toast');t.textContent=msg;
-  t.style.borderColor=isError?'#a8223a':'#7540c8';
-  t.style.display='block';
-  clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500);
-}
-
-const CAT_LABEL={clan:'Набор в клан',partner:'Партнёрство',question:'Вопрос по клану',report:'Жалоба на игрока',other:'Другое'};
-const MOD_LABEL={warn:'Предупреждение',timeout:'Таймаут',untimeout:'Снятие таймаута',kick:'Кик',ban:'Бан',unban:'Разбан'};
-const fmt=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ru-RU'):'—';};
-const fmtTs=ts=>{if(!ts)return '';const d=new Date(ts<1e12?ts*1000:ts);return isNaN(d)?'':d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
-
-function tickClock(){
-  const el=$('localClock');if(!el)return;
-  const d=new Date();
-  const t=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  let tz='';
-  try{
-    const parts=new Intl.DateTimeFormat('ru-RU',{timeZoneName:'short'}).formatToParts(d);
-    const p=parts.find(p=>p.type==='timeZoneName');
-    tz=p&&p.value?p.value:'';
-  }catch(e){}
-  el.textContent='🕐 '+t+(tz?' · '+tz:'');
-}
-setInterval(tickClock,1000);
-tickClock();
-
-function showLogin(msg){
-  $('app').hidden=true;$('loginScreen').hidden=false;
-  if(msg)$('loginMsg').textContent=msg;
-}
-function showApp(user){
-  const name=user.global_name||user.username||'Пользователь';
-  $('userName').textContent=name;
-  $('heroName').textContent=name;
-  const av=$('avatar');av.textContent='';
-  if(user.avatar_url&&/^https:\/\//.test(user.avatar_url)){
-    const img=document.createElement('img');img.src=user.avatar_url;img.alt='';
-    img.onerror=()=>{av.textContent=name.charAt(0).toUpperCase();};
-    av.appendChild(img);
-  }else av.textContent=name.charAt(0).toUpperCase();
-  $('loginScreen').hidden=true;$('app').hidden=false;
-}
-
-function renderStats(stats,updatedAt){
-  const s=stats||{total:0,online:0,clan:0};
-  const live=updatedAt!=null;
-  const set=(id,v)=>{const el=$(id);if(el)el.textContent=live?fmt(v):'—';};
-  set('s-total',s.total);set('s-online',s.online);set('s-clan',s.clan);
-  set('m-total',s.total);set('m-online',s.online);set('m-clan',s.clan);
-  set('st-total',s.total);set('st-online',s.online);set('st-clan',s.clan);
-  const st=$('st-updated');if(st)st.textContent=updatedAt?fmtTs(updatedAt):'—';
-  if($('statsNote'))$('statsNote').textContent=updatedAt
-    ? 'Данные обновлены: '+fmtTs(updatedAt)
-    : 'Данные ещё не приходили от бота.';
-}
-
-function renderActivity(joins7d,serverTime){
-    const el=$('activityChart');
-    if(!el)return;
-    el.textContent='';
-    if(!Array.isArray(joins7d)||joins7d.length!==7){
-        el.appendChild(emptyNode('Данные о заходах пока не собраны. Появятся когда бот начнёт считать новых участников.'));
-        if($('activityNote'))$('activityNote').textContent='Сколько человек зашло на сервер каждый день.';
-        return;
-    }
-    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-    const tsNum=Number(serverTime);
-    const nowTs=Number.isFinite(tsNum)&&tsNum>0?tsNum:Math.floor(Date.now()/1000);
-    const todayIdx=((new Date(nowTs*1000).getDay())+6)%7;
-    const week=[];
-    for(let i=0;i<7;i++){
-        week.push(i<=todayIdx?joins7d[6-(todayIdx-i)]:0);
-    }
-    const max=Math.max(1,...week);
-    week.forEach((val,i)=>{
-        const col=document.createElement('div');col.className='act-col';
-        const num=document.createElement('div');num.className='act-num';num.textContent=val;
-        const bar=document.createElement('div');bar.className='act-bar';
-        bar.style.height=Math.max(2,Math.round((val/max)*130))+'px';
-        if(val===0)bar.style.background='#2a2540';
-        const day=document.createElement('div');day.className='act-day';day.textContent=dayNames[i];
-        col.append(num,bar,day);el.appendChild(col);
-    });
-    const total=joins7d.reduce((a,b)=>a+b,0);
-    if($('activityNote'))$('activityNote').textContent='Всего за 7 дней: '+total+' новых участников.';
-}
-
-function ticketRow(t,opts){
-  opts=opts||{};
-  const row=document.createElement('div');row.className='rowitem';
-  const left=document.createElement('div');left.style.minWidth='180px';
-  const b=document.createElement('b');b.textContent='#'+t.number+' · '+(t.owner_name||'?');
-  const sub=document.createElement('div');sub.className='sub';
-  sub.textContent=(CAT_LABEL[t.category]||t.category)+' · '+fmtTs(t.created_at);
-  left.append(b,sub);row.appendChild(left);
-  const right=document.createElement('div');
-  if(opts.guild&&/^\d+$/.test(String(opts.guild))&&/^\d+$/.test(String(t.channel_id))){
-    const a=document.createElement('a');a.className='tag';
-    a.href='https://discord.com/channels/'+opts.guild+'/'+t.channel_id;
-    a.target='_blank';a.rel='noopener noreferrer';a.textContent='Discord';
-    right.appendChild(a);
-  }
-  if(opts.actions){
-    const actions=document.createElement('div');actions.className='ticket-actions';
-    const mk=(label,cls,fn)=>{const btn=document.createElement('button');btn.className='btn '+cls;btn.textContent=label;btn.onclick=()=>fn(btn);return btn;};
-    if(t.category==='clan'){
-      actions.appendChild(mk('Принять','accept',b=>ticketAction('accept',t.channel_id,null,b)));
-      actions.appendChild(mk('Обзвон','call',b=>ticketAction('call',t.channel_id,null,b)));
-      actions.appendChild(mk('Отклонить','reject',b=>{
-        const reason=prompt('Причина отказа:');
-        if(reason===null)return;
-        if(!reason.trim())return toast('Причина обязательна',true);
-        ticketAction('reject',t.channel_id,reason.trim(),b);
-      }));
-    }
-    actions.appendChild(mk('Закрыть','close',b=>ticketAction('close',t.channel_id,null,b)));
-    right.appendChild(actions);
-  }
-  row.appendChild(right);
-  return row;
-}
-
-async function ticketAction(kind,channelId,reason,btn){
-  if(btn){btn.disabled=true;var old=btn.textContent;btn.textContent='…';}
-  try{
-    const body={channel_id:String(channelId)};
-    if(reason)body.reason=reason;
-    const r=await fetch('/api/ticket/'+kind,{method:'POST',credentials:'same-origin',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.ok){throw new Error(j.error||('HTTP '+r.status));}
-    toast('Готово: '+kind);
-    await reloadMe();
-  }catch(e){
-    toast('Ошибка: '+e.message,true);
-    if(btn){btn.disabled=false;btn.textContent=old;}
-  }
-}
-
-function emptyNode(text){const d=document.createElement('div');d.className='empty';d.textContent=text;return d;}
-
-function renderInvites(){
-  const el=$('invitesList');if(!el)return;
-  el.textContent='';
-  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
-  const rows=Array.isArray(ME.inviteLeaderboard)?ME.inviteLeaderboard:[];
-  if($('s-invites'))$('s-invites').textContent=rows.length?fmt(rows.length):'—';
-  if($('s-invites-sub'))$('s-invites-sub').textContent=rows.length?'топ по активным':'данные бота';
-  if(!rows.length)return el.appendChild(emptyNode('Данных о приглашениях пока нет. Бот собирает их автоматически.'));
-  rows.forEach(r=>{
-    const row=document.createElement('div');row.className='rowitem';
-    const left=document.createElement('div');left.style.minWidth='180px';
-    const b=document.createElement('b');b.textContent=r.user_name||('ID: '+r.user_id);
-    const sub=document.createElement('div');sub.className='sub';
-    sub.textContent='Активных: '+fmt(r.active)+' · Всего: '+fmt(r.invites);
-    left.append(b,sub);row.appendChild(left);
-    const right=document.createElement('div');right.className='inv-actions';
-    const btn=document.createElement('button');btn.className='btn accept';btn.textContent='Выдать награду';
-    btn.onclick=()=>rewardInviter(r.user_id,btn);
-    right.appendChild(btn);row.appendChild(right);
-    el.appendChild(row);
-  });
-}
-
-async function rewardInviter(userId,btn){
-  if(!ME.staff)return toast('Доступ только для стаффа панели',true);
-  if(btn)btn.disabled=true;
-  try{
-    const r=await fetch('/api/invites/reward',{method:'POST',credentials:'same-origin',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(userId)})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-    toast(Array.isArray(j.awarded)&&j.awarded.length?('Выдано: '+j.awarded.join(', ')):'Новых наград нет');
-  }catch(e){
-    toast('Ошибка: '+e.message,true);
-  }finally{
-    if(btn)btn.disabled=false;
-  }
-}
-
-function fillTicketsList(el,filterFn,opts){
-  if(!el)return;
-  el.textContent='';
-  if(!ME.staff)return el.appendChild(emptyNode('Доступ только для стаффа панели.'));
-  const tk=ME.tickets;
-  if(!tk||tk.updated_at==null)return el.appendChild(emptyNode('Ожидание данных от бота…'));
-  let items=Array.isArray(tk.items)?tk.items:[];
-  if(filterFn)items=items.filter(filterFn);
-  if(!items.length)return el.appendChild(emptyNode('Открытых тикетов нет.'));
-  const stale=(Date.now()/1000)-tk.updated_at>25*60;
-  if(stale){
-    const w=document.createElement('div');w.className='tk-stale';
-    w.textContent='Данные устарели, обновлено: '+fmtTs(tk.updated_at);
-    el.appendChild(w);
-  }
-  items.forEach(t=>el.appendChild(ticketRow(t,Object.assign({guild:tk.guild_id},opts||{}))));
-}
-
-function renderTickets(){
-  const tk=ME.tickets;
-  const items=(tk&&Array.isArray(tk.items))?tk.items:[];
-  const clanCount=items.filter(t=>t.category==='clan').length;
-  const live=tk&&tk.updated_at!=null;
-  if($('s-tickets'))$('s-tickets').textContent=live?fmt(items.length):'—';
-  if($('s-tickets-sub'))$('s-tickets-sub').textContent=live?'данные бота':'ожидание';
-  if($('s-apps'))$('s-apps').textContent=live?fmt(clanCount):'—';
-  if($('s-apps-sub'))$('s-apps-sub').textContent=live?'данные бота':'ожидание';
-  fillTicketsList($('recent-tickets'),null,{actions:false});
-  fillTicketsList($('recent-apps'),t=>t.category==='clan',{actions:false});
-  fillTicketsList($('ticketsList'),null,{actions:true});
-  fillTicketsList($('appsList'),t=>t.category==='clan',{actions:true});
-}
-
-async function renderLogs(){
-  const el=$('logsList');if(!el)return;
-  el.textContent='';el.appendChild(emptyNode('Загрузка…'));
-  try{
-    const r=await fetch('/api/logs?limit=100',{credentials:'same-origin'});
-    if(!r.ok){el.textContent='';return el.appendChild(emptyNode('Логи недоступны.'));}
-    const j=await r.json();
-    const logs=(j&&j.logs)||[];
-    el.textContent='';
-    if(!logs.length)return el.appendChild(emptyNode('Пока пусто.'));
-    logs.forEach(l=>{
-      const row=document.createElement('div');row.className='rowitem';
-      const left=document.createElement('div');
-      const b=document.createElement('b');b.textContent=l.action||'—';
-      const sub=document.createElement('div');sub.className='sub';
-      sub.textContent=[fmtTs(l.ts),l.actor_name,l.target_name,l.details].filter(Boolean).join(' · ');
-      left.append(b,sub);row.appendChild(left);
-      el.appendChild(row);
-    });
-  }catch(e){el.textContent='';el.appendChild(emptyNode('Ошибка загрузки логов.'));}
-}
-
-function qRow(text){
-    const row=document.createElement('div');row.className='q-row';
-    const input=document.createElement('input');input.className='q-input';input.value=text||'';
-    input.placeholder='Текст вопроса…';input.maxLength=500;
-    const del=document.createElement('button');del.className='btn reject';del.textContent='Удалить';
-    del.onclick=()=>row.remove();
-    row.append(input,del);
-    return row;
-}
-
-function renderQuestionRows(list){
-    const el=$('q-list');
-    if(!el)return;
-    el.textContent='';
-    (list||[]).forEach(q=>el.appendChild(qRow(q)));
-}
-
-async function loadQuestions(){
-    const el=$('q-list');
-    if(!el)return;
-    if(!ME.staff){
-        el.textContent='';
-        el.appendChild(emptyNode('Доступ только для стаффа панели.'));
-        return;
-    }
-    const cat=$('q-category').value;
-    el.textContent='';
-    el.appendChild(emptyNode('Загрузка…'));
-    try{
-        const r=await fetch('/api/questions',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        renderQuestionRows((j.questions&&j.questions[cat])||[]);
-    }catch(e){
-        el.textContent='';
-        el.appendChild(emptyNode('Не удалось загрузить вопросы: '+e.message));
-    }
-}
-
-async function saveQuestions(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
-    const cat=$('q-category').value;
-    const inputs=[...document.querySelectorAll('#q-list .q-input')];
-    const values=inputs.map(i=>i.value.trim());
-    if(!values.length||values.some(v=>!v))return toast('Заполни все вопросы или удали пустые',true);
-    if(values.length>30)return toast('Максимум 30 вопросов',true);
-    const btn=$('q-save');btn.disabled=true;
-    try{
-        const r=await fetch('/api/questions',{method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({category:cat,questions:values})});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Сохранено: '+values.length+' вопросов');
-    }catch(e){
-        toast('Ошибка: '+e.message,true);
-    }finally{
-        btn.disabled=false;
-    }
-}
-
-async function reloadConfig(){
-    if(ME.panelRole!=='owner')return toast('Перезагрузка конфига доступна только OWNER',true);
-    const btn=$('q-reload');btn.disabled=true;
-    try{
-        const r=await fetch('/api/reload-config',{method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},body:'{}'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Конфиг перезагружен');
-    }catch(e){
-        toast('Ошибка: '+e.message,true);
-    }finally{
-        btn.disabled=false;
-    }
-}
-
-function initQSettings(){
-    const sel=$('q-category');
-    if(!sel)return;
-    if(!sel._init){
-        sel._init=true;
-        $('q-add').onclick=()=>{
-            const el=$('q-list');
-            const emp=el.querySelector('.empty');
-            if(emp)emp.remove();
-            el.appendChild(qRow(''));
-        };
-        sel.onchange=loadQuestions;
-        $('q-save').onclick=saveQuestions;
-        $('q-reload').onclick=reloadConfig;
-    }
-    const rb=$('q-reload');
-    if(rb)rb.disabled=ME.panelRole!=='owner';
-    loadQuestions();
-}
-
-function initModeration(){
-    const go=$('pun-go');
-    if(!go)return;
-    if(!go._init){
-        go._init=true;
-        $('pun-action').onchange=()=>{
-            const wrap=$('pun-minutes-wrap');
-            if(wrap)wrap.style.visibility=$('pun-action').value==='timeout'?'visible':'hidden';
-        };
-        $('pun-action').onchange();
-        go.onclick=punishAction;
-        $('hist-go').onclick=loadPunishments;
-    }
-}
-
-async function punishAction(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
-    const action=$('pun-action').value;
-    const userId=$('pun-user').value.trim();
-    const reason=$('pun-reason').value.trim();
-    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
-    if(!reason)return toast('Причина обязательна',true);
-    const body={action:action,user_id:userId,reason:reason};
-    if(action==='timeout'){
-        const m=parseInt($('pun-minutes').value,10);
-        if(!(m>=1&&m<=40320))return toast('Минуты: от 1 до 40320',true);
-        body.duration_minutes=m;
-    }
-    const btn=$('pun-go');btn.disabled=true;
-    try{
-        const r=await fetch('/api/punish',{method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Наказание применено');
-        $('pun-reason').value='';
-    }catch(e){
-        toast('Ошибка: '+e.message,true);
-    }finally{
-        btn.disabled=false;
-    }
-}
-
-async function loadPunishments(){
-    const el=$('hist-list');if(!el)return;
-    const userId=$('hist-user').value.trim();
-    if(!/^\d{5,25}$/.test(userId))return toast('Укажи корректный Discord ID игрока',true);
-    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
-    try{
-        const r=await fetch('/api/punishments?user_id='+encodeURIComponent(userId)+'&limit=10',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        el.textContent='';
-        const head=document.createElement('div');head.className='sub';
-        head.textContent='Предупреждений: '+fmt(j.warns||0)+(j.user_name?(' · '+j.user_name):'');
-        el.appendChild(head);
-        const rows=Array.isArray(j.punishments)?j.punishments:[];
-        if(!rows.length)return el.appendChild(emptyNode('Наказаний нет.'));
-        rows.forEach(p=>{
-            const row=document.createElement('div');row.className='rowitem';
-            const left=document.createElement('div');
-            const b=document.createElement('b');b.textContent=MOD_LABEL[p.action]||p.action;
-            const sub=document.createElement('div');sub.className='sub';
-            sub.textContent=[fmtTs(p.ts),p.reason||'без причины','мод: '+(p.mod_name||'?')].join(' · ');
-            left.append(b,sub);row.appendChild(left);
-            el.appendChild(row);
-        });
-    }catch(e){
-        el.textContent='';el.appendChild(emptyNode('Ошибка: '+e.message));
-    }
-}
-
-async function loadBotStatus(){
-    const el=$('st-bot');if(!el)return;
-    try{
-        const r=await fetch('/api/bot-status',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        if(j.online){
-            el.textContent='Работает';el.className='tag st-ok';
-            const b=j.bot||{};
-            const lat=$('st-bot-latency');if(lat)lat.textContent=b.latency_ms!=null?(b.latency_ms+' мс'):'—';
-            const g=$('st-bot-guilds');if(g)g.textContent=Array.isArray(b.guilds)?b.guilds.length:'—';
-        }else{
-            el.textContent='Оффлайн';el.className='tag st-no';
-            const lat=$('st-bot-latency');if(lat)lat.textContent='—';
-            const g=$('st-bot-guilds');if(g)g.textContent='—';
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FALCON Optimizer | Максимальная производительность</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;600;800&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            background-image: linear-gradient(to bottom, rgba(5,5,5,0.92), rgba(5,5,5,1)), url('https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #ffffff;
+            overflow-x: hidden;
+            cursor: none;
         }
-    }catch(e){
-        el.textContent='Оффлайн';el.className='tag st-no';
-    }
-}
+        
+        h1, h2, h3, .logo-text { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+        
+        /* --- КАСТОМНЫЙ КУРСОР --- */
+        #cursor {
+            position: fixed; top: 0; left: 0;
+            width: 20px; height: 20px;
+            border: 2px solid #dc2626;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.1s, width 0.2s, height 0.2s, background 0.2s;
+            transform: translate(-50%, -50%);
+        }
+        #cursor.hovered {
+            width: 50px; height: 50px;
+            background: rgba(220, 38, 38, 0.2);
+            border-color: transparent;
+        }
+        @media (max-width: 768px) { #cursor { display: none; } body { cursor: auto; } }
 
-async function loadAnalytics(){
-    const el=$('analyticsChart');if(!el)return;
-    el.textContent='';el.appendChild(emptyNode('Загрузка…'));
-    try{
-        const r=await fetch('/api/analytics',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        renderAnalytics(j.points||[]);
-    }catch(e){
-        el.textContent='';el.appendChild(emptyNode('Аналитика недоступна: '+e.message));
-    }
-}
+        /* --- СЕТКА И СКАНЛАЙНЫ --- */
+        .bg-grid {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0; pointer-events: none;
+        }
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25) 100%);
+            background-size: 100% 4px;
+            z-index: 40; pointer-events: none; opacity: 0.6;
+        }
+        .scanline-move {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100%;
+            background: linear-gradient(to bottom, transparent 0%, rgba(220, 38, 38, 0.05) 50%, transparent 100%);
+            background-size: 100% 400px;
+            z-index: 41; pointer-events: none;
+            animation: scanMove 8s linear infinite;
+        }
+        @keyframes scanMove { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
 
-function renderAnalytics(points){
-    const el=$('analyticsChart');if(!el)return;
-    el.textContent='';
-    if(!Array.isArray(points)||!points.length){
-        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
-        if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням.';
-        return;
-    }
-    const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-    const byDay={};
-    points.forEach(p=>{
-        const d=new Date(Number(p.ts)*1000);
-        if(isNaN(d))return;
-        const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-        (byDay[key]=byDay[key]||[]).push(Number(p.online)||0);
-    });
-    const days=Object.keys(byDay).sort().slice(-7);
-    if(!days.length){
-        el.appendChild(emptyNode('Данных пока мало. Бот записывает статистику раз в 10 минут.'));
-        return;
-    }
-    const week=days.map(k=>({k:k,avg:Math.round(byDay[k].reduce((a,b)=>a+b,0)/byDay[k].length)}));
-    const max=Math.max(1,...week.map(d=>d.avg));
-    week.forEach(d=>{
-        const col=document.createElement('div');col.className='act-col';
-        const num=document.createElement('div');num.className='act-num';num.textContent=d.avg;
-        const bar=document.createElement('div');bar.className='act-bar';
-        bar.style.height=Math.max(2,Math.round((d.avg/max)*130))+'px';
-        if(d.avg===0)bar.style.background='#2a2540';
-        const parts=d.k.split('-');
-        const idx=((new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2])).getDay())+6)%7;
-        const day=document.createElement('div');day.className='act-day';day.textContent=dayNames[idx];
-        col.append(num,bar,day);el.appendChild(col);
-    });
-    const avgAll=Math.round(week.reduce((a,d)=>a+d.avg,0)/week.length);
-    if($('analyticsNote'))$('analyticsNote').textContent='Средний онлайн по дням (запись раз в 10 минут). Среднее за период: '+avgAll+'.';
-}
+        /* --- ЭКРАН ЗАГРУЗКИ (ХАКЕР) --- */
+        #hacker-loader {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 99999;
+            display: flex; flex-direction: column;
+            font-family: 'Fira Code', monospace; color: #0f0;
+            transition: all 0.8s cubic-bezier(0.7, 0, 0.3, 1);
+            overflow: hidden;
+        }
+        .cmd-header {
+            background: #1e1e1e; color: #ccc; padding: 5px 10px; font-size: 12px;
+            display: flex; justify-content: space-between; border-bottom: 1px solid #333;
+        }
+        .cmd-body {
+            background: #0c0c0c; flex-grow: 1; padding: 20px; overflow: hidden;
+            font-size: 14px; line-height: 1.4; text-shadow: 0 0 5px rgba(0, 255, 0, 0.6);
+            display: flex; flex-direction: column; justify-content: flex-end;
+        }
+        #hacker-loader.collapse {
+            transform: scale(0) rotate(720deg);
+            opacity: 0; filter: blur(20px);
+            border-radius: 50%; pointer-events: none;
+        }
+        #main-site { opacity: 0; transition: opacity 1.5s ease-in; }
+        #main-site.show { opacity: 1; }
 
-function initSettings(){
-    const w=$('set-welcome');
-    if(!w)return;
-    if(!w._init){
-        w._init=true;
-        w.onchange=()=>saveSetting('welcome_enabled',w.checked,w);
-        $('set-goodbye').onchange=()=>saveSetting('goodbye_enabled',$('set-goodbye').checked,$('set-goodbye'));
-        $('set-welcome-save').onclick=()=>saveTextSetting('welcome_text','set-welcome-text',$('set-welcome-save'));
-        $('set-goodbye-save').onclick=()=>saveTextSetting('goodbye_text','set-goodbye-text',$('set-goodbye-save'));
-    }
-    loadSettings();
-}
+        /* --- ОСТАЛЬНЫЕ СТИЛИ --- */
+        .glass { background: rgba(18, 18, 18, 0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); position: relative; overflow: hidden; }
+        .card-spotlight::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y), rgba(220, 38, 38, 0.15), transparent 40%); opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 0; }
+        .card-spotlight:hover::before { opacity: 1; }
+        .card-spotlight > * { position: relative; z-index: 1; }
 
-async function loadSettings(){
-    const w=$('set-welcome');if(!w)return;
-    const g=$('set-goodbye');
-    const wt=$('set-welcome-text');
-    const gt=$('set-goodbye-text');
-    const ws=$('set-welcome-save');
-    const gs=$('set-goodbye-save');
-    if(ME.panelRole!=='owner'){
-        w.disabled=true;g.disabled=true;wt.disabled=true;gt.disabled=true;ws.disabled=true;gs.disabled=true;
-        if($('set-note'))$('set-note').textContent='Менять эти настройки может только OWNER.';
-        return;
-    }
-    if($('set-note'))$('set-note').textContent='Переменные: {mention}, {name}, {username}, {server}. Пустое поле — текст по умолчанию из .env. Каналы задаются там же (WELCOME_CHANNEL_ID, GOODBYE_CHANNEL_ID).';
-    try{
-        const r=await fetch('/api/bot-settings',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        const s=j.settings||{};
-        w.checked=!!s.welcome_enabled;
-        g.checked=!!s.goodbye_enabled;
-        wt.value=s.welcome_text||'';
-        gt.value=s.goodbye_text||'';
-        w.disabled=false;g.disabled=false;wt.disabled=false;gt.disabled=false;ws.disabled=false;gs.disabled=false;
-    }catch(e){
-        toast('Настройки недоступны: '+e.message,true);
-    }
-}
+        .glitch { position: relative; display: inline-block; }
+        .glitch::before, .glitch::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050505; }
+        .glitch::before { left: 2px; text-shadow: -2px 0 red; clip: rect(24px, 550px, 90px, 0); animation: glitch-anim-2 3s infinite linear alternate-reverse; }
+        .glitch::after { left: -2px; text-shadow: -2px 0 blue; clip: rect(85px, 550px, 140px, 0); animation: glitch-anim 2.5s infinite linear alternate-reverse; }
+        @keyframes glitch-anim { 0% { clip: rect(11px, 9999px, 93px, 0); } 20% { clip: rect(62px, 9999px, 15px, 0); } 40% { clip: rect(43px, 9999px, 88px, 0); } 60% { clip: rect(92px, 9999px, 3px, 0); } 80% { clip: rect(5px, 9999px, 65px, 0); } 100% { clip: rect(75px, 9999px, 35px, 0); } }
+        @keyframes glitch-anim-2 { 0% { clip: rect(65px, 9999px, 100px, 0); } 20% { clip: rect(12px, 9999px, 55px, 0); } 40% { clip: rect(85px, 9999px, 20px, 0); } 60% { clip: rect(35px, 9999px, 78px, 0); } 80% { clip: rect(90px, 9999px, 10px, 0); } 100% { clip: rect(45px, 9999px, 60px, 0); } }
 
-async function saveTextSetting(key,inputId,btn){
-    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
-    const input=$(inputId);
-    const body={};body[key]=input?input.value.trim():'';
-    if(btn)btn.disabled=true;
-    try{
-        const r=await fetch('/api/bot-settings',{method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        const s=j.settings||{};
-        if(input)input.value=s[key]||'';
-        toast('Сохранено');
-    }catch(e){
-        toast('Ошибка: '+e.message,true);
-    }finally{
-        if(btn)btn.disabled=false;
-    }
-}
+        .flicker { animation: flicker 4s infinite alternate; }
+        @keyframes flicker { 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { text-shadow: 0 0 10px rgba(220,38,38,0.8), 0 0 20px rgba(220,38,38,0.5); opacity: 1; } 20%, 22%, 24%, 55% { text-shadow: none; opacity: 0.5; } }
 
-async function saveSetting(key,value,el){
-    if(ME.panelRole!=='owner')return toast('Менять настройки бота может только OWNER',true);
-    if(el)el.disabled=true;
-    try{
-        const body={};body[key]=!!value;
-        const r=await fetch('/api/bot-settings',{method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Сохранено');
-    }catch(e){
-        toast('Ошибка: '+e.message,true);
-        if(el)el.checked=!value;
-    }finally{
-        if(el)el.disabled=false;
-    }
-}
+        .red-btn { background: linear-gradient(90deg, #dc2626 0%, #991b1b 100%); box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3); transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .red-btn::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent); transform: rotate(45deg); transition: 0.5s; opacity: 0; }
+        .red-btn:hover::after { left: 100%; opacity: 1; }
+        .red-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(220, 38, 38, 0.8); }
 
-async function loadVoiceChannels(){
-    const sel=$('meeting-channel');if(!sel)return;
-    sel.innerHTML='';
-    const load=document.createElement('option');load.value='';load.textContent='Загрузка…';sel.appendChild(load);
-    try{
-        const r=await fetch('/api/voice-channels',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        const chs=Array.isArray(j.channels)?j.channels:[];
-        sel.innerHTML='';
-        if(!chs.length){const e=document.createElement('option');e.value='';e.textContent='Нет голосовых каналов';sel.appendChild(e);return;}
-        chs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='🔊 '+c.name;sel.appendChild(o);});
-    }catch(e){
-        sel.innerHTML='';
-        const er=document.createElement('option');er.value='';er.textContent='Ошибка загрузки';sel.appendChild(er);
-        toast('Ошибка: '+e.message,true);
-    }
-}
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(to right, transparent, #ef4444, transparent); box-shadow: 0 0 20px #ef4444; animation: scan 4s linear infinite; z-index: 10; pointer-events: none; opacity: 0.5; }
+        @keyframes scan { 0% { top: 0%; opacity: 0; } 10% { opacity: 0.8; } 90% { opacity: 0.8; } 100% { top: 100%; opacity: 0; } }
 
-function initMeeting(){
-    const go=$('meeting-go');
-    if(!go)return;
-    if(!go._init){
-        go._init=true;
-        go.onclick=announceMeeting;
-    }
-    go.disabled=!ME.staff;
-    loadVoiceChannels();
-}
+        .tilt-card { transition: transform 0.1s ease-out; transform-style: preserve-3d; }
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
 
-async function loadTextChannels(){
-    const sel=$('wipe-channel');if(!sel)return;
-    sel.innerHTML='';
-    try{
-        const r=await fetch('/api/text-channels',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        const channels=Array.isArray(j.channels)?j.channels:[];
-        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
-        channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
-    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
-}
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .faq-icon { transform: rotate(45deg); }
+        .faq-icon { transition: transform 0.3s; }
 
-function initWipe(){
-    const go=$('wipe-go');if(!go)return;
-    if(!go._init){go._init=true;go.onclick=publishWipeFromPanel;}
-    go.disabled=!ME.staff;
-    loadTextChannels();
-}
+        .bar-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; position: relative; }
+        .bar-fill.updating { box-shadow: 0 0 15px rgba(239, 68, 68, 0.8), 0 0 30px rgba(239, 68, 68, 0.4); filter: brightness(1.5); }
 
-async function publishWipeFromPanel(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
-    const data={title:$('wipe-title').value.trim(),description:$('wipe-description').value.trim(),
-        server:$('wipe-server').value.trim(),channel_id:$('wipe-channel').value,
-        date:$('wipe-date').value,time:$('wipe-time').value,ask_for_reason:$('wipe-reason').checked,
-        mention:($('wipe-mention')?$('wipe-mention').value:'main'),image_url:($('wipe-image')?$('wipe-image').value.trim():'')};
-    if(!data.channel_id||!data.title||!data.description||!data.date||!data.time)return toast('Заполни заголовок, описание, канал, дату и время',true);
-    if(!confirm('Опубликовать объявление о вайпе в выбранный канал?'))return;
-    const btn=$('wipe-go');btn.disabled=true;
-    try{
-        const r=await fetch('/api/wipe',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Объявление о вайпе опубликовано');
-        $('wipe-title').value='';$('wipe-description').value='';$('wipe-server').value='';$('wipe-reason').checked=false;if($('wipe-image'))$('wipe-image').value='';
-    }catch(e){toast('Ошибка: '+e.message,true);}
-    finally{btn.disabled=!ME.staff;}
-}
+        .custom-select-wrapper { position: relative; user-select: none; width: 100%; z-index: 50; }
+        .custom-select-trigger { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #121212; border: 2px solid #dc2626; border-radius: 12px; cursor: pointer; font-weight: 700; color: white; transition: all 0.3s; box-shadow: 0 0 20px rgba(220, 38, 38, 0.2); }
+        .custom-select-trigger:hover { background: #1a1a1a; box-shadow: 0 0 30px rgba(220, 38, 38, 0.4); }
+        .custom-options { position: absolute; display: block; top: 100%; left: 0; right: 0; background: #121212; border: 1px solid #27272a; border-radius: 12px; margin-top: 8px; z-index: 100; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.8); overflow: hidden; }
+        .custom-select-wrapper.open .custom-options { opacity: 1; visibility: visible; transform: translateY(0); }
+        .custom-option { padding: 16px 24px; cursor: pointer; transition: all 0.2s; font-weight: 600; color: #a1a1aa; border-bottom: 1px solid #27272a; white-space: nowrap; }
+        .custom-option:last-child { border-bottom: none; }
+        .custom-option:hover { background: rgba(220, 38, 38, 0.1); color: white; padding-left: 32px; }
+        .custom-option.selected { background: rgba(220, 38, 38, 0.2); color: #ef4444; border-left: 4px solid #dc2626; }
+        
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0.4; }
+        
+        .typewriter-cursor { display: inline-block; width: 3px; background-color: #ef4444; animation: blink 1s step-end infinite; vertical-align: bottom; }
+        @keyframes blink { 50% { opacity: 0; } }
 
-async function loadBotChatChannels(){
-    const sel=$('bc-channel');if(!sel)return;
-    sel.innerHTML='';
-    try{
-        const r=await fetch('/api/text-channels',{credentials:'same-origin'});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        const channels=Array.isArray(j.channels)?j.channels:[];
-        if(!channels.length){sel.innerHTML='<option value="">Нет текстовых каналов</option>';return;}
-        channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='# '+c.name;sel.appendChild(o);});
-    }catch(e){sel.innerHTML='<option value="">Не удалось загрузить каналы</option>';toast('Ошибка: '+e.message,true);}
-}
+        /* --- НОВОЕ: ЖИВОЕ ОКНО ПРИЛОЖЕНИЯ --- */
+        .app-window {
+            margin: 60px auto 0; max-width: 900px; width: 100%; border-radius: 16px; position: relative;
+            background: linear-gradient(180deg, #151515, #0a0a0a);
+            border: 1px solid rgba(220, 38, 38, 0.3); overflow: hidden;
+            box-shadow: 0 40px 120px rgba(0,0,0,.7), 0 0 90px rgba(220, 38, 38, 0.15);
+        }
+        .win-bar {
+            display: flex; align-items: center; gap: 8px; padding: 12px 18px;
+            border-bottom: 1px solid #27272a; background: rgba(0,0,0,.4);
+        }
+        .win-bar i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+        .win-title { margin-left: 14px; font-size: 11px; letter-spacing: .1em; color: #a1a1aa; text-transform: uppercase; }
+        .win-body { display: grid; grid-template-columns: 200px 1fr; min-height: 320px; }
+        .win-side {
+            border-right: 1px solid #27272a; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px;
+            background: rgba(0,0,0,.2);
+        }
+        .side-item {
+            display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+            font-size: 12px; color: #a1a1aa; transition: .25s; cursor: pointer;
+        }
+        .side-item .ico { width: 14px; height: 14px; border-radius: 4px; background: rgba(220, 38, 38, 0.2); }
+        .side-item.active { background: rgba(220, 38, 38, 0.15); color: #fff; box-shadow: inset 2px 0 0 #dc2626; }
+        .side-item:hover { background: rgba(255,255,255,.05); color: #fff; }
+        .win-main { padding: 20px; }
+        .win-main h4 { font-size: 11px; letter-spacing: .2em; color: #a1a1aa; font-weight: 600; margin-bottom: 16px; text-transform: uppercase; }
+        .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .metric {
+            background: #111; border: 1px solid #27272a; border-radius: 10px; padding: 14px;
+        }
+        .metric span { font-size: 10px; letter-spacing: .1em; color: #a1a1aa; text-transform: uppercase; }
+        .metric b { display: block; font-size: 22px; margin-top: 4px; font-weight: 800; font-family: 'Oswald', sans-serif; }
+        .metric .bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,.1); margin-top: 10px; overflow: hidden; }
+        .metric .bar i { display: block; height: 100%; border-radius: 4px; width: 0; transition: width 1s ease; background: linear-gradient(90deg, #dc2626, #ef4444); }
+        .metric.green b { color: #22c55e; }
+        .metric.green .bar i { background: linear-gradient(90deg, #16a34a, #22c55e); }
+        .graph-window {
+            margin-top: 16px; border: 1px solid #27272a; border-radius: 10px; padding: 14px; background: #111;
+            height: 110px; display: flex; align-items: flex-end; gap: 4px;
+        }
+        .graph-window i { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #dc2626, rgba(220,38,38,.2)); height: 10%; transition: height .4s; opacity: 0.8; }
 
-async function sendBotChat(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
-    const channel_id=$('bc-channel').value;
-    const content=$('bc-text').value.trim();
-    const inp=$('bc-files');
-    const list=inp?Array.from(inp.files||[]):[];
-    if(!channel_id)return toast('Выбери канал',true);
-    if(!content&&!list.length)return toast('Напиши текст или прикрепи файл',true);
-    const files=[];
-    let total=0;
-    for(const f of list){
-        if(f.size>8*1024*1024)return toast('Файл '+f.name+' больше 8 МБ',true);
-        total+=f.size;
-        if(total>24*1024*1024)return toast('Суммарно файлы больше 24 МБ',true);
-        const bytes=new Uint8Array(await f.arrayBuffer());
-        let bin='';const chunk=0x8000;
-        for(let i=0;i<bytes.length;i+=chunk){bin+=String.fromCharCode.apply(null,bytes.subarray(i,Math.min(i+chunk,bytes.length)));}
-        files.push({name:f.name,data:btoa(bin)});
-    }
-    if(!confirm('Отправить сообщение в выбранный канал Discord?'))return;
-    const btn=$('bc-go');btn.disabled=true;
-    try{
-        const r=await fetch('/api/botchat',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel_id,content,files})});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Сообщение отправлено в Discord');
-        $('bc-text').value='';if(inp)inp.value='';const n=$('bc-files-note');if(n)n.textContent='';
-    }catch(e){toast('Ошибка: '+e.message,true);}
-    finally{btn.disabled=!ME.staff;}
-}
+        /* --- НОВОЕ: БЕГУЩАЯ СТРОКА --- */
+        .marquee {
+            overflow: hidden; border-top: 1px solid rgba(220, 38, 38, 0.2); border-bottom: 1px solid rgba(220, 38, 38, 0.2);
+            padding: 16px 0; background: rgba(220, 38, 38, 0.03); margin: 40px 0; position: relative; z-index: 10;
+        }
+        .marquee-track { display: flex; gap: 40px; white-space: nowrap; animation: scrollText 20s linear infinite; width: max-content; }
+        .marquee-track span { font-size: 12px; letter-spacing: .2em; color: #a1a1aa; text-transform: uppercase; font-family: 'Oswald', sans-serif; }
+        .marquee-track span b { color: #dc2626; margin: 0 10px; }
+        @keyframes scrollText { to { transform: translateX(-50%); } }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative overflow-x-hidden">
 
-function initBotChat(){
-    const go=$('bc-go');if(!go)return;
-    if(!go._init){go._init=true;go.onclick=sendBotChat;}
-    go.disabled=!ME.staff;
-    const inp=$('bc-files');
-    if(inp&&!inp._init){inp._init=true;inp.onchange=()=>{const n=$('bc-files-note');if(n){const fs=Array.from(inp.files||[]);n.textContent=fs.length?(fs.length+' файл(ов) · '+Math.round(fs.reduce((a,f)=>a+f.size,0)/1024)+' КБ'):'';}};}
-    loadBotChatChannels();
-}
+    <div id="cursor"></div>
+    <div class="bg-grid"></div>
+    <div class="scanlines"></div>
+    <div class="scanline-move"></div>
 
-async function announceMeeting(){
-    if(!ME.staff)return toast('Доступ только для стаффа панели',true);
-    const sel=$('meeting-channel');
-    const ch=sel?sel.value:'';
-    if(!ch)return toast('Выбери голосовой канал',true);
-    const label=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:ch;
-    if(!confirm('Объявить собрание клана?\n'+label))return;
-    const btn=$('meeting-go');btn.disabled=true;
-    try{
-        const r=await fetch('/api/meeting',{method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},body:JSON.stringify({voice_channel_id:ch})});
-        const j=await r.json().catch(()=>({}));
-        if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-        toast('Собрание объявлено. Рассылка идёт в фоне.');
-    }catch(e){
-        toast('Ошибка: '+e.message,true);
-    }finally{
-        btn.disabled=false;
-    }
-}
+    <!-- ЭКРАН ЗАГРУЗКИ -->
+    <div id="hacker-loader">
+        <div class="cmd-header">
+            <span>FALCON_OPTIMIZER.exe</span>
+            <span>cmd.exe</span>
+        </div>
+        <div class="cmd-body" id="terminal"></div>
+    </div>
 
-function showPage(id){
-    document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
-    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
-    if(id==='logs')renderLogs();
-    if(id==='qsettings')initQSettings();
-    if(id==='invites')renderInvites();
-    if(id==='moderation')initModeration();
-    if(id==='meeting')initMeeting();
-    if(id==='wipe')initWipe();
-    if(id==='botchat')initBotChat();
-    if(id==='stats'){loadBotStatus();loadAnalytics();}
-    if(id==='settings')initSettings();
-}
+    <!-- ОБЕРТКА ВСЕГО САЙТА -->
+    <div id="main-site" class="w-full flex flex-col min-h-screen relative">
+        <canvas id="bg-canvas"></canvas>
 
-document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+        <!-- Шапка -->
+        <nav class="glass sticky top-0 z-50 px-6 md:px-12 py-4 flex justify-between items-center !rounded-none !border-t-0 !border-l-0 !border-r-0 border-b border-zinc-800">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-red-600 rounded flex items-center justify-center shadow-[0_0_15px_rgba(220,38,38,0.8)]">
+                    <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <span class="logo-text text-2xl font-bold tracking-widest text-white">FALCON<span class="text-red-600 flicker">.</span></span>
+            </div>
+            
+            <div class="hidden md:flex gap-8 text-sm font-semibold tracking-wide text-zinc-400">
+                <a href="#features" class="hover:text-white transition">ФУНКЦИИ</a>
+                <a href="#performance" class="hover:text-white transition">FPS БУСТ</a>
+                <a href="#preview" class="hover:text-white transition">ИНТЕРФЕЙС</a>
+                <a href="#pricing" class="hover:text-white transition">ТАРИФЫ</a>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="#pricing" class="red-btn text-white font-bold py-2 px-6 rounded uppercase tracking-wider text-sm hidden sm:block">Скачать</a>
+                <a href="/panel" class="glass hover:bg-white/5 text-white font-bold py-2 px-6 rounded uppercase tracking-wider text-sm border border-zinc-700 transition">Войти</a>
+            </div>
+        </nav>
 
-function applyMe(d){
-  ME.user=d.user||null;ME.staff=!!d.is_staff;ME.tickets=d.tickets||null;ME.panelRole=d.panel_role||null;
-  ME.inviteLeaderboard=Array.isArray(d.invite_leaderboard)?d.invite_leaderboard:[];
-  renderStats(d.stats,d.stats_updated_at);
-  renderActivity(d.joins_7d,d.server_time);
-  renderTickets();
-  renderInvites();
-  if($('st-panel-role'))$('st-panel-role').textContent=ME.panelRole||'—';
-  if($('st-uid'))$('st-uid').textContent=ME.user?ME.user.id:'—';
-  if($('userRole'))$('userRole').textContent=((ME.panelRole==='owner')?'OWNER':(ME.panelRole||'STAFF').toUpperCase())+' · Discord';
-}
+        <!-- Главный экран -->
+        <header class="flex-grow flex flex-col items-center justify-center text-center px-4 pt-24 pb-12 relative z-10">
+            <div class="glass px-4 py-1.5 rounded-full text-xs font-bold text-red-500 tracking-widest mb-8 border border-red-500/30 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                V 1.0.0 // СИСТЕМА ГОТОВА
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold leading-none mb-6 tracking-tight glitch" data-text="ТВОЯ СИСТЕМА.">
+                ТВОЯ СИСТЕМА.<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-800 neon-text glitch" data-text="НА МАКСИМУМ.">НА МАКСИМУМ.</span>
+            </h1>
+            
+            <p class="text-zinc-400 text-base md:text-lg mb-10 max-w-2xl mx-auto font-light h-12 md:h-8">
+                <span id="typewriter-text"></span><span class="typewriter-cursor">&nbsp;</span>
+            </p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4 w-full max-w-md mb-16">
+                <a href="#pricing" class="red-btn text-white font-bold py-4 px-8 rounded-lg w-full uppercase tracking-wider text-center">Скачать бесплатно</a>
+                <a href="#pricing" class="glass hover:bg-white/5 text-white font-bold py-4 px-8 rounded-lg w-full uppercase tracking-wider transition border border-zinc-700 text-center">Купить PRO за 299₽</a>
+            </div>
 
-async function reloadMe(){
-  const r=await fetch('/api/me',{credentials:'same-origin'});
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  return r.json();
-}
+            <!-- ЖИВОЕ ОКНО ПРИЛОЖЕНИЯ -->
+            <div class="app-window tilt-card">
+                <div class="win-bar">
+                    <i style="background:#ef4444"></i><i style="background:#f59e0b"></i><i style="background:#22c55e"></i>
+                    <span class="win-title">FALCON Optimizer — Home</span>
+                </div>
+                <div class="win-body">
+                    <div class="win-side">
+                        <div class="side-item active"><span class="ico"></span>Главная</div>
+                        <div class="side-item"><span class="ico"></span>CPU / GPU</div>
+                        <div class="side-item"><span class="ico"></span>Память</div>
+                        <div class="side-item"><span class="ico"></span>Сеть</div>
+                        <div class="side-item"><span class="ico"></span>Процессы</div>
+                        <div class="side-item"><span class="ico"></span>Game Mode</div>
+                    </div>
+                    <div class="win-main">
+                        <h4>Состояние системы</h4>
+                        <div class="metrics">
+                            <div class="metric"><span>CPU</span><b class="cpu-val">—</b><div class="bar"><i class="bar-cpu"></i></div></div>
+                            <div class="metric"><span>GPU</span><b class="gpu-val">—</b><div class="bar"><i class="bar-gpu"></i></div></div>
+                            <div class="metric green"><span>RAM</span><b class="ram-val">—</b><div class="bar"><i class="bar-ram"></i></div></div>
+                        </div>
+                        <div class="graph-window" id="graph">
+                            <!-- JS заполнит это -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-async function loadGuilds(){
-  try{
-    const r=await fetch('/api/guilds',{credentials:'same-origin'});
-    const j=await r.json().catch(()=>({}));
-    const sel=$('guildSelect');
-    if(!sel||!r.ok||!j.ok)return;
-    const gs=Array.isArray(j.guilds)?j.guilds:[];
-    sel.innerHTML='';
-    gs.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name+' · '+g.members;sel.appendChild(o);});
-    if(j.guild_id)sel.value=j.guild_id;
-    sel.style.display=gs.length>1?'inline-block':'none';
-  }catch(e){}
-}
+        <!-- БЕГУЩАЯ СТРОКА -->
+        <div class="marquee">
+            <div class="marquee-track">
+                <span>Game Mode <b>•</b></span><span>Power Plan <b>•</b></span><span>GPU Tuning <b>•</b></span>
+                <span>Network Optimizer <b>•</b></span><span>RAM Clean <b>•</b></span><span>TCP Tuning <b>•</b></span>
+                <span>Game Presets <b>•</b></span><span>Boost-Ups <b>•</b></span><span>Startup Manager <b>•</b></span>
+                <span>Game Mode <b>•</b></span><span>Power Plan <b>•</b></span><span>GPU Tuning <b>•</b></span>
+                <span>Network Optimizer <b>•</b></span><span>RAM Clean <b>•</b></span><span>TCP Tuning <b>•</b></span>
+                <span>Game Presets <b>•</b></span><span>Boost-Ups <b>•</b></span><span>Startup Manager <b>•</b></span>
+            </div>
+        </div>
 
-async function changeGuild(id){
-  if(!id)return;
-  try{
-    const r=await fetch('/api/select-guild',{method:'POST',credentials:'same-origin',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify({guild_id:id})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));
-    location.reload();
-  }catch(e){
-    toast('Ошибка: '+e.message,true);
-    loadGuilds();
-  }
-}
+        <!-- Блок с функциями -->
+        <section id="features" class="reveal py-24 px-6 md:px-12 max-w-6xl mx-auto w-full relative z-10 border-t border-zinc-800/50">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">ПОЧЕМУ FALCON?</h2>
+                <p class="text-zinc-400">Безопасные твики, которые реально работают.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass card-spotlight tilt-card p-8 rounded-2xl border border-zinc-800 hover:border-red-500/50 duration-300 group">
+                    <div class="w-12 h-12 bg-red-600/10 rounded-xl flex items-center justify-center mb-6 text-red-500 group-hover:scale-110 group-hover:bg-red-600/20 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Разгрузка ЦП</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">Отключаем фоновые службы Windows и Xbox Game Bar, чтобы процессор занимался только игрой.</p>
+                </div>
+                <div class="glass card-spotlight tilt-card p-8 rounded-2xl border border-zinc-800 hover:border-red-500/50 duration-300 group">
+                    <div class="w-12 h-12 bg-red-600/10 rounded-xl flex items-center justify-center mb-6 text-red-500 group-hover:scale-110 group-hover:bg-red-600/20 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Сетевые твики (Ping)</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">Отключение Nagle's Algorithm и настройка TcpAckFrequency. Снижение пинга и устранение микро-фризов.</p>
+                </div>
+                <div class="glass card-spotlight tilt-card p-8 rounded-2xl border border-zinc-800 hover:border-red-500/50 duration-300 group">
+                    <div class="w-12 h-12 bg-red-600/10 rounded-xl flex items-center justify-center mb-6 text-red-500 group-hover:scale-110 group-hover:bg-red-600/20 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Полная безопасность</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">Перед применением любых твиков утилита автоматически создает точку восстановления Windows.</p>
+                </div>
+            </div>
 
-let CSRF='';
-const __nativeFetch=window.fetch;
-window.fetch=function(input,init){
-  init=init?Object.assign({},init):{};
-  const m=String(init.method||'GET').toUpperCase();
-  if(m==='POST'){
-    init.headers=Object.assign({},init.headers||{});
-    init.headers['X-CSRF-Token']=CSRF;
-  }
-  return __nativeFetch.call(this,input,init);
-};
-async function loadCsrf(){
-  try{
-    const r=await __nativeFetch('/api/csrf',{credentials:'same-origin'});
-    if(r.ok){const j=await r.json().catch(()=>({}));CSRF=j.token||'';}
-  }catch(e){}
-}
+            <!-- Анимированные счетчики -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 text-center">
+                <div class="glass p-6 rounded-xl border border-zinc-800">
+                    <b class="block text-4xl font-bold text-white mb-2 counter" data-target="15">0</b>
+                    <span class="text-zinc-400 text-xs uppercase tracking-widest">Твиков</span>
+                </div>
+                <div class="glass p-6 rounded-xl border border-zinc-800">
+                    <b class="block text-4xl font-bold text-red-500 mb-2 counter" data-target="70">0</b>
+                    <span class="text-zinc-400 text-xs uppercase tracking-widest">+ FPS</span>
+                </div>
+                <div class="glass p-6 rounded-xl border border-zinc-800">
+                    <b class="block text-4xl font-bold text-white mb-2 counter" data-target="100">0</b>
+                    <span class="text-zinc-400 text-xs uppercase tracking-widest">% Бэкап</span>
+                </div>
+                <div class="glass p-6 rounded-xl border border-zinc-800">
+                    <b class="block text-4xl font-bold text-green-500 mb-2 counter" data-target="0">0</b>
+                    <span class="text-zinc-400 text-xs uppercase tracking-widest">Банов</span>
+                </div>
+            </div>
+        </section>
 
-async function init(){
-  try{
-    const data=await reloadMe();
-    if(!data.authenticated||!data.user){showLogin(data.notice||undefined);return;}
-    showApp(data.user);applyMe(data);loadGuilds();loadCsrf();
-    setInterval(async()=>{
-      try{
-        const d=await reloadMe();
-        if(d.authenticated)applyMe(d);
-        else showLogin(d.notice||'Сессия завершена.');
-      }catch(e){}
-    },60000);
-  }catch(e){
-    console.error(e);
-    showLogin('Не удалось связаться с сервером. Обнови страницу.');
-  }
-}
+        <!-- Блок До/После (FPS) -->
+        <section id="performance" class="reveal py-32 px-6 md:px-12 max-w-6xl mx-auto w-full relative z-10 border-t border-zinc-800/50">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">FPS ЛАБОРАТОРИЯ</h2>
+                <p class="text-zinc-400 text-lg mb-8">Выбери игру и своё железо — посчитай реальный прирост.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                    <!-- Выбор игры -->
+                    <div class="custom-select-wrapper" id="game-dropdown">
+                        <div class="custom-select-trigger" id="game-trigger">
+                            <span id="game-label">Rust</span>
+                            <svg class="w-6 h-6 text-red-500 flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                        <div class="custom-options">
+                            <div class="custom-option selected" data-value="rust">Rust</div>
+                            <div class="custom-option" data-value="cs2">Counter-Strike 2</div>
+                            <div class="custom-option" data-value="valorant">Valorant</div>
+                        </div>
+                    </div>
 
-async function logout(){
-  try{await fetch('/auth/logout',{method:'POST',credentials:'same-origin'});}catch(e){}
-  location.reload();
-}
+                    <!-- Выбор железа -->
+                    <div class="custom-select-wrapper" id="hardware-dropdown">
+                        <div class="custom-select-trigger" id="hw-trigger">
+                            <span id="hw-label">Средняя (AMD Ryzen 5 5600 + RTX 3060)</span>
+                            <svg class="w-6 h-6 text-red-500 flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                        <div class="custom-options">
+                            <div class="custom-option" data-value="low">Слабая (Ryzen 3 3100 + RTX 3050)</div>
+                            <div class="custom-option selected" data-value="mid">Средняя (Ryzen 5 5600 + RTX 3060)</div>
+                            <div class="custom-option" data-value="high">Мощная (Ryzen 7 7800X3D + RTX 4070)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
+                <!-- До -->
+                <div class="glass card-spotlight p-8 rounded-3xl border border-zinc-800 relative">
+                    <h3 class="text-xl font-bold mb-6 text-zinc-300 text-center">ДО ОПТИМИЗАЦИИ</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-zinc-500 font-semibold"><span>МИН</span><span id="b-min">0</span></div>
+                            <div class="w-full bg-zinc-900 rounded-full h-2"><div id="b-min-bar" class="bg-zinc-600 h-2 rounded-full bar-fill" style="width: 0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-white font-bold"><span>СРЕД</span><span id="b-avg">0</span></div>
+                            <div class="w-full bg-zinc-900 rounded-full h-2"><div id="b-avg-bar" class="bg-zinc-400 h-2 rounded-full bar-fill" style="width: 0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-zinc-500 font-semibold"><span>МАКС</span><span id="b-max">0</span></div>
+                            <div class="w-full bg-zinc-900 rounded-full h-2"><div id="b-max-bar" class="bg-zinc-600 h-2 rounded-full bar-fill" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- После -->
+                <div class="glass card-spotlight p-8 rounded-3xl border border-red-500/50 relative shadow-[0_0_30px_rgba(220,38,38,0.15)]">
+                    <div class="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-lg z-20">С PRO-ВЕРСИЕЙ</div>
+                    <h3 class="text-xl font-bold mb-6 text-white text-center">ПОСЛЕ</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-red-400 font-semibold"><span>МИН</span><span id="a-min">0</span></div>
+                            <div class="w-full bg-zinc-900 rounded-full h-2"><div id="a-min-bar" class="bg-gradient-to-r from-red-600 to-red-400 h-2 rounded-full bar-fill" style="width: 0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-white font-bold"><span>СРЕД</span><span id="a-avg">0</span></div>
+                            <div class="w-full bg-zinc-900 rounded-full h-2"><div id="a-avg-bar" class="bg-gradient-to-r from-red-500 to-red-300 h-2 rounded-full bar-fill" style="width: 0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-red-400 font-semibold"><span>МАКС</span><span id="a-max">0</span></div>
+                            <div class="w-full bg-zinc-900 rounded-full h-2"><div id="a-max-bar" class="bg-gradient-to-r from-red-600 to-red-400 h-2 rounded-full bar-fill" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-document.addEventListener('DOMContentLoaded',init);
-</script></body></html>
+            <div class="mt-12 text-center">
+                <div class="inline-block glass px-8 py-4 rounded-xl border border-red-500/30">
+                    <span class="text-zinc-400 text-sm uppercase tracking-widest mr-4">Средний прирост:</span>
+                    <span class="text-3xl font-bold text-green-400" id="total-gain">+0 FPS</span>
+                </div>
+            </div>
+        </section>
 
+        <!-- Блок с превью интерфейса -->
+        <section id="preview" class="reveal py-20 px-6 md:px-12 max-w-5xl mx-auto w-full relative z-10 border-t border-zinc-800/50">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">ИНТЕРФЕЙС</h2>
+                <p class="text-zinc-400">Выглядит как премиум-софт. Работает как швейцарские часы.</p>
+            </div>
+            
+            <div class="glass card-spotlight p-2 rounded-2xl border border-zinc-800 relative shadow-[0_0_50px_rgba(220,38,38,0.1)]">
+                <div class="scan-line"></div>
+                
+                <div class="bg-[#0a0a0a] w-full h-[350px] md:h-[500px] rounded-xl flex overflow-hidden border border-zinc-800 relative">
+                    <div class="w-1/4 bg-[#0f0f0f] border-r border-zinc-800 p-4 hidden md:flex flex-col gap-2">
+                        <div class="h-8 bg-zinc-800/50 rounded w-full mb-4"></div>
+                        <div class="h-8 bg-red-900/20 border border-red-500/30 rounded w-full flex items-center px-3 text-xs text-red-500 font-bold">ОПТИМИЗАЦИЯ</div>
+                        <div class="h-8 bg-zinc-800/20 rounded w-full flex items-center px-3 text-xs text-zinc-500">ОЧИСТКА</div>
+                        <div class="h-8 bg-zinc-800/20 rounded w-full flex items-center px-3 text-xs text-zinc-500">НАСТРОЙКИ</div>
+                    </div>
+                    <div class="w-full md:w-3/4 p-6 md:p-8 flex flex-col gap-4 bg-gradient-to-br from-[#0a0a0a] to-[#150808]">
+                        <h3 class="text-2xl font-bold font-sans text-white mb-4">Оптимизация Windows</h3>
+                        <div class="flex justify-between items-center bg-[#121212] p-4 rounded-lg border border-zinc-800">
+                            <div>
+                                <div class="text-sm font-bold text-white">Отключить Телеметрию</div>
+                                <div class="text-xs text-zinc-500 mt-1">Блокирует сбор данных Microsoft</div>
+                            </div>
+                            <div class="w-10 h-5 bg-red-600 rounded-full relative cursor-pointer"><div class="toggle-dot"></div></div>
+                        </div>
+                        <div class="flex justify-between items-center bg-[#121212] p-4 rounded-lg border border-zinc-800">
+                            <div>
+                                <div class="text-sm font-bold text-white">Очистка ОЗУ</div>
+                                <div class="text-xs text-zinc-500 mt-1">Освобождение оперативной памяти</div>
+                            </div>
+                            <div class="w-10 h-5 bg-red-600 rounded-full relative cursor-pointer"><div class="toggle-dot"></div></div>
+                        </div>
+                        <div class="flex justify-between items-center bg-[#121212] p-4 rounded-lg border border-zinc-800">
+                            <div>
+                                <div class="text-sm font-bold text-zinc-400">Сетевые твики (Ping)</div>
+                                <div class="text-xs text-zinc-600 mt-1">Требуется перезагрузка</div>
+                            </div>
+                            <div class="w-10 h-5 bg-zinc-700 rounded-full relative cursor-pointer"><div class="toggle-dot" style="right: 22px; background-color: #a1a1aa;"></div></div>
+                        </div>
+                        <div class="mt-auto flex justify-end">
+                            <div class="bg-red-600 text-white text-sm font-bold px-6 py-2 rounded cursor-pointer shadow-lg shadow-red-900/50">Применить</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Блок Как это работает -->
+        <section id="how-it-works" class="reveal py-24 px-6 md:px-12 max-w-5xl mx-auto w-full relative z-10 border-t border-zinc-800/50">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">КАК ЭТО РАБОТАЕТ</h2>
+                <p class="text-zinc-400">Проще, чем заварить пельмени.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center relative">
+                <div class="hidden md:block absolute top-10 left-1/6 right-1/6 h-0.5 bg-zinc-800 -z-10"></div>
+                
+                <div class="flex flex-col items-center group">
+                    <div class="w-20 h-20 bg-[#121212] border-2 border-red-600 rounded-full flex items-center justify-center text-3xl font-bold font-sans text-white mb-6 shadow-[0_0_20px_rgba(220,38,38,0.3)] group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(220,38,38,0.6)] transition duration-300">1</div>
+                    <h3 class="text-xl font-bold mb-2 text-white">Скачай</h3>
+                    <p class="text-zinc-400 text-sm">Загрузи бесплатную версию и установи на ПК.</p>
+                </div>
+                <div class="flex flex-col items-center group">
+                    <div class="w-20 h-20 bg-[#121212] border-2 border-red-600 rounded-full flex items-center justify-center text-3xl font-bold font-sans text-white mb-6 shadow-[0_0_20px_rgba(220,38,38,0.3)] group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(220,38,38,0.6)] transition duration-300">2</div>
+                    <h3 class="text-xl font-bold mb-2 text-white">Проверь</h3>
+                    <p class="text-zinc-400 text-sm">Запусти встроенный бенчмарк и проверь драйвера.</p>
+                </div>
+                <div class="flex flex-col items-center group">
+                    <div class="w-20 h-20 bg-[#121212] border-2 border-red-600 rounded-full flex items-center justify-center text-3xl font-bold font-sans text-white mb-6 shadow-[0_0_20px_rgba(220,38,38,0.3)] group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(220,38,38,0.6)] transition duration-300">3</div>
+                    <h3 class="text-xl font-bold mb-2 text-white">Бустани</h3>
+                    <p class="text-zinc-400 text-sm">Активируй PRO и примени безопасные твики.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Блок с тарифами -->
+        <section id="pricing" class="reveal py-24 px-6 md:px-12 max-w-5xl mx-auto w-full relative z-10 border-t border-zinc-800/50">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">ВЫБЕРИ СВОЙ ПЛАН</h2>
+                <p class="text-zinc-400">Узнай всё о своем ПК бесплатно или прокачай его на максимум.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="glass card-spotlight p-8 rounded-2xl border border-zinc-800 flex flex-col">
+                    <h3 class="text-2xl font-bold mb-2 text-white">FREE</h3>
+                    <p class="text-zinc-400 mb-6 text-sm">Диагностика и тесты. Без вмешательства в систему.</p>
+                    <div class="text-4xl font-bold mb-8 text-white">0 <span class="text-lg text-zinc-500">₽</span></div>
+                    <ul class="space-y-3 mb-8 flex-grow">
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Просмотр характеристик ПК</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Бенчмарк-тест системы (FPS)</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Проверка актуальности драйверов</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Мониторинг температур</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-500 mt-4 pt-4 border-t border-zinc-800"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> <span class="line-through">Нет твиков для FPS</span></li>
+                    </ul>
+                    <a href="#" class="w-full py-3 rounded-lg border border-zinc-600 text-white font-bold hover:bg-zinc-800 transition text-center">Скачать бесплатно</a>
+                </div>
+
+                <div class="glass card-spotlight p-8 rounded-2xl border border-red-500/50 relative flex flex-col shadow-[0_0_30px_rgba(220,38,38,0.15)]">
+                    <div class="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl z-20">МАКСИМАЛЬНЫЙ БУСТ</div>
+                    <h3 class="text-2xl font-bold mb-2 text-red-500">PRO</h3>
+                    <p class="text-zinc-400 mb-6 text-sm">Реальный прирост FPS и снижение пинга.</p>
+                    <div class="text-4xl font-bold mb-8 text-white">299 <span class="text-lg text-zinc-500">₽</span></div>
+                    <ul class="space-y-3 mb-8 flex-grow">
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <b>Всё из тарифа FREE</b></li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Отключение Xbox Game Bar и DVR</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Сетевые твики (Nagle's Algorithm)</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Включение HAGS (видеокарта)</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Отключение телеметрии</li>
+                        <li class="flex items-center gap-2 text-sm text-zinc-300"><svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Глубокая очистка ОЗУ и диска</li>
+                    </ul>
+                    <a href="#" class="red-btn w-full py-3 rounded-lg text-white font-bold text-center">Купить PRO</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ (Частые вопросы) -->
+        <section id="faq" class="reveal py-24 px-6 md:px-12 max-w-4xl mx-auto w-full relative z-10 border-t border-zinc-800/50 mb-10">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">ЧАСТЫЕ ВОПРОСЫ</h2>
+                <p class="text-zinc-400">Всё, что вы хотели знать, но боялись спросить.</p>
+            </div>
+
+            <div class="space-y-4">
+                <details class="glass rounded-xl border border-zinc-800 p-4 group">
+                    <summary class="flex justify-between items-center font-bold text-lg text-white">
+                        Это безопасно для моего компьютера?
+                        <span class="faq-icon text-red-500 text-2xl">+</span>
+                    </summary>
+                    <div class="text-zinc-400 mt-4 text-sm leading-relaxed">
+                        Да. Программа не взламывает систему и не изменяет файлы игр. Она использует официальные функции Windows (реестр, службы, настройки сети). Перед применением любых твиков утилита <b>автоматически создает точку восстановления</b>, чтобы вы могли откатить всё назад в один клик.
+                    </div>
+                </details>
+
+                <details class="glass rounded-xl border border-zinc-800 p-4 group">
+                    <summary class="flex justify-between items-center font-bold text-lg text-white">
+                        Дадут ли мне бан в Rust или CS2?
+                        <span class="faq-icon text-red-500 text-2xl">+</span>
+                    </summary>
+                    <div class="text-zinc-400 mt-4 text-sm leading-relaxed">
+                        Нет. Античиты (Easy Anti-Cheat, VAC) банят за изменение памяти игры или чтение данных с сервера. Наш оптимизатор работает исключительно на уровне операционной системы Windows, улучшая работу процессора и видеокарты. Файлы игр остаются нетронутыми.
+                    </div>
+                </details>
+
+                <details class="glass rounded-xl border border-zinc-800 p-4 group">
+                    <summary class="flex justify-between items-center font-bold text-lg text-white">
+                        Это разовая покупка?
+                        <span class="faq-icon text-red-500 text-2xl">+</span>
+                    </summary>
+                    <div class="text-zinc-400 mt-4 text-sm leading-relaxed">
+                        Да, вы платите 299 рублей один раз и получаете PRO-версию навсегда. Все будущие обновления твиков и новые функции для повышения FPS также будут доступны вам бесплатно.
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Подвал -->
+        <footer class="glass !rounded-none !border-b-0 !border-l-0 !border-r-0 border-t border-zinc-800 py-10 mt-auto relative z-10">
+            <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <span class="logo-text text-lg font-bold tracking-widest text-white">FALCON<span class="text-red-600">.</span></span>
+                </div>
+                <p class="text-zinc-500 text-sm text-center">© 2026 FALCON Optimizer. Все права защищены.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="text-zinc-400 hover:text-red-500 transition">Discord</a>
+                    <a href="#" class="text-zinc-400 hover:text-red-500 transition">Telegram</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Скрипты -->
+    <script>
+        // --- КАСТОМНЫЙ КУРСОР ---
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+        document.querySelectorAll('a, button, select, .tilt-card, .custom-select-trigger').forEach(el => {
+            el.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+            el.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+        });
+
+        // --- ЛОГИКА ТЕРМИНАЛА ---
+        const terminal = document.getElementById('terminal');
+        const hackerLoader = document.getElementById('hacker-loader');
+        const mainSite = document.getElementById('main-site');
+        const body = document.body;
+
+        body.style.overflow = 'hidden'; 
+
+        const initialLines = [
+            "Initializing FALCON Core...",
+            "Bypassing security protocols...",
+            "Access Granted. Launching..."
+        ];
+        
+        let currentLine = 0;
+        let charIndex = 0;
+        
+        function typeInitialLines() {
+            if (currentLine < initialLines.length) {
+                const text = initialLines[currentLine];
+                
+                if (charIndex === 0) {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'cmd-line text-green-500';
+                    lineDiv.id = `line-${currentLine}`;
+                    terminal.appendChild(lineDiv);
+                }
+
+                const lineDiv = document.getElementById(`line-${currentLine}`);
+                
+                if (charIndex < text.length) {
+                    lineDiv.innerText += text.charAt(charIndex);
+                    charIndex++;
+                    setTimeout(typeInitialLines, 10); 
+                } else {
+                    currentLine++;
+                    charIndex = 0;
+                    setTimeout(typeInitialLines, 100);
+                }
+            } else {
+                startSpam();
+            }
+        }
+
+        function startSpam() {
+            const spamChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;':\",./<>?";
+            const spamWords = ["HACK", "INJECT", "BYPASS", "ROOT", "KERNEL", "0x00FF", "SYSTEM", "OVERFLOW", "EXEC", "PING_0ms"];
+            
+            const spamInterval = setInterval(() => {
+                let spamLine = "";
+                for(let i=0; i<15; i++) {
+                    if(Math.random() > 0.7) {
+                        spamLine += spamWords[Math.floor(Math.random() * spamWords.length)] + " ";
+                    } else {
+                        spamLine += spamChars[Math.floor(Math.random() * spamChars.length)];
+                    }
+                }
+                
+                const spamDiv = document.createElement('div');
+                spamDiv.className = 'cmd-line text-green-500 opacity-60 text-xs';
+                spamDiv.innerText = spamLine + " " + spamLine + " " + spamLine + " " + spamLine;
+                terminal.appendChild(spamDiv);
+                
+                terminal.scrollTop = terminal.scrollHeight;
+                
+                if (terminal.childElementCount > 100) {
+                    terminal.removeChild(terminal.firstChild);
+                }
+            }, 20); 
+
+            setTimeout(() => {
+                clearInterval(spamInterval);
+                
+                const finalDiv = document.createElement('div');
+                finalDiv.className = 'cmd-line text-white font-bold text-xl';
+                finalDiv.innerText = "SYSTEM COMPROMISED. WELCOME.";
+                terminal.appendChild(finalDiv);
+                terminal.scrollTop = terminal.scrollHeight;
+
+                setTimeout(() => {
+                    hackerLoader.classList.add('collapse');
+                    body.style.overflow = 'auto'; 
+                    
+                    setTimeout(() => {
+                        hackerLoader.remove();
+                        mainSite.classList.add('show');
+                        
+                        initSiteScripts();
+                    }, 800);
+                    
+                }, 500);
+
+            }, 2000);
+        }
+
+        setTimeout(typeInitialLines, 500);
+
+        // --- ОСТАЛЬНЫЕ СКРИПТЫ ---
+        function initSiteScripts() {
+            const textToType = "Премиальный оптимизатор для Windows. Снимаем нагрузку с процессора и настраиваем сеть для максимального FPS без лагов.";
+            const typeWriterElement = document.getElementById("typewriter-text");
+            let i = 0;
+            
+            function typeWriter() {
+                if (i < textToType.length) {
+                    typeWriterElement.innerHTML += textToType.charAt(i);
+                    i++;
+                    setTimeout(typeWriter, 30);
+                }
+            }
+            setTimeout(typeWriter, 500);
+
+            const reveals = document.querySelectorAll(".reveal");
+            const revealOnScroll = new IntersectionObserver(function(entries, observer) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("active");
+                        observer.unobserve(entry.target); 
+                    }
+                });
+            }, { threshold: 0.1 });
+            reveals.forEach(reveal => { revealOnScroll.observe(reveal); });
+
+            // --- АНИМИРОВАННЫЕ СЧЕТЧИКИ ---
+            const counters = document.querySelectorAll('.counter');
+            const counterObserver = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const el = entry.target;
+                        const target = +el.dataset.target;
+                        let current = 0;
+                        const step = target / 40; 
+                        
+                        const updateCounter = () => {
+                            current += step;
+                            if (current < target) {
+                                el.innerText = Math.ceil(current);
+                                requestAnimationFrame(updateCounter);
+                            } else {
+                                el.innerText = target;
+                            }
+                        };
+                        updateCounter();
+                        obs.unobserve(el);
+                    }
+                });
+            }, { threshold: 0.5 });
+            counters.forEach(c => counterObserver.observe(c));
+
+            // --- ЖИВОЕ ОКНО ---
+            const g = document.getElementById('graph');
+            for(let i=0;i<30;i++){ const b=document.createElement('i'); b.style.height=(20+Math.random()*70)+'%'; g.appendChild(b); }
+            setInterval(()=>{
+                const bars = g.children;
+                for(let i=0;i<bars.length-1;i++) bars[i].style.height = bars[i+1].style.height;
+                bars[bars.length-1].style.height = (20+Math.random()*70)+'%';
+            }, 800);
+
+            let cpu = 27, gpu = 41, ram = 58;
+            setInterval(()=>{
+                cpu = Math.max(12, Math.min(88, cpu + (Math.random()-.5)*9));
+                gpu = Math.max(20, Math.min(97, gpu + (Math.random()-.5)*12));
+                ram = Math.max(38, Math.min(84, ram + (Math.random()-.5)*4));
+                document.querySelector('.cpu-val').textContent = Math.round(cpu) + '%';
+                document.querySelector('.gpu-val').textContent = Math.round(gpu) + '%';
+                document.querySelector('.ram-val').textContent = Math.round(ram) + '%';
+                document.querySelector('.bar-cpu').style.width = cpu+'%';
+                document.querySelector('.bar-gpu').style.width = gpu+'%';
+                document.querySelector('.bar-ram').style.width = ram+'%';
+            }, 1400);
+
+            // --- ДВОЙНОЙ ВЫПАДАЮЩИЙ СПИСОК + FPS ЛАБ ---
+            function setupSelect(wrapperId, triggerId, labelId, onChange) {
+                const wrapper = document.getElementById(wrapperId);
+                const trigger = document.getElementById(triggerId);
+                const label = document.getElementById(labelId);
+                const options = wrapper.querySelectorAll('.custom-option');
+
+                trigger.addEventListener('click', () => {
+                    wrapper.classList.toggle('open');
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
+                });
+
+                options.forEach(option => {
+                    option.addEventListener('click', function() {
+                        options.forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+                        label.innerText = this.innerText;
+                        wrapper.classList.remove('open');
+                        if(onChange) onChange();
+                    });
+                });
+            }
+
+            const fpsData = {
+                rust: {
+                    low: { b: { min: 30, avg: 55, max: 85 }, a: { min: 55, avg: 100, max: 150 }, g: "+45 FPS" },
+                    mid: { b: { min: 60, avg: 100, max: 150 }, a: { min: 100, avg: 170, max: 250 }, g: "+70 FPS" },
+                    high: { b: { min: 110, avg: 180, max: 260 }, a: { min: 170, avg: 260, max: 380 }, g: "+100 FPS" }
+                },
+                cs2: {
+                    low: { b: { min: 45, avg: 75, max: 110 }, a: { min: 70, avg: 140, max: 200 }, g: "+65 FPS" },
+                    mid: { b: { min: 90, avg: 150, max: 220 }, a: { min: 140, avg: 240, max: 330 }, g: "+90 FPS" },
+                    high: { b: { min: 200, avg: 300, max: 420 }, a: { min: 280, avg: 420, max: 560 }, g: "+120 FPS" }
+                },
+                valorant: {
+                    low: { b: { min: 140, avg: 200, max: 280 }, a: { min: 180, avg: 280, max: 380 }, g: "+80 FPS" },
+                    mid: { b: { min: 240, avg: 340, max: 460 }, a: { min: 320, avg: 440, max: 600 }, g: "+100 FPS" },
+                    high: { b: { min: 400, avg: 560, max: 720 }, a: { min: 520, avg: 720, max: 950 }, g: "+160 FPS" }
+                }
+            };
+
+            const MAX = 1000;
+            let selectedGame = 'rust';
+            let selectedHw = 'mid';
+
+            const els = {
+                bMin: document.getElementById('b-min'), bAvg: document.getElementById('b-avg'), bMax: document.getElementById('b-max'),
+                bMinBar: document.getElementById('b-min-bar'), bAvgBar: document.getElementById('b-avg-bar'), bMaxBar: document.getElementById('b-max-bar'),
+                aMin: document.getElementById('a-min'), aAvg: document.getElementById('a-avg'), aMax: document.getElementById('a-max'),
+                aMinBar: document.getElementById('a-min-bar'), aAvgBar: document.getElementById('a-avg-bar'), aMaxBar: document.getElementById('a-max-bar'),
+                gain: document.getElementById('total-gain')
+            };
+
+            function animateValue(obj, start, end, duration, suffix = "") {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    const easeOutProgress = 1 - Math.pow(1 - progress, 4);
+                    obj.innerHTML = Math.floor(easeOutProgress * (end - start) + start) + suffix;
+                    if (progress < 1) window.requestAnimationFrame(step);
+                    else obj.innerHTML = end + suffix;
+                };
+                window.requestAnimationFrame(step);
+            }
+
+            function updateFPS() {
+                const d = fpsData[selectedGame][selectedHw];
+                animateValue(els.bMin, 0, d.b.min, 600);
+                animateValue(els.bAvg, 0, d.b.avg, 600);
+                animateValue(els.bMax, 0, d.b.max, 600);
+                animateValue(els.aMin, 0, d.a.min, 600);
+                animateValue(els.aAvg, 0, d.a.avg, 600);
+                animateValue(els.aMax, 0, d.a.max, 600);
+                
+                els.bMinBar.style.width = (d.b.min / MAX * 100) + '%';
+                els.bAvgBar.style.width = (d.b.avg / MAX * 100) + '%';
+                els.bMaxBar.style.width = (d.b.max / MAX * 100) + '%';
+                els.aMinBar.style.width = (d.a.min / MAX * 100) + '%';
+                els.aAvgBar.style.width = (d.a.avg / MAX * 100) + '%';
+                els.aMaxBar.style.width = (d.a.max / MAX * 100) + '%';
+
+                const gainAmount = d.a.avg - d.b.avg;
+                els.gain.innerText = `+${gainAmount} FPS (Средний)`;
+            }
+
+            setupSelect('game-dropdown', 'game-trigger', 'game-label', () => {
+                selectedGame = document.querySelector('#game-dropdown .custom-option.selected').dataset.value;
+                updateFPS();
+            });
+
+            setupSelect('hardware-dropdown', 'hw-trigger', 'hw-label', () => {
+                selectedHw = document.querySelector('#hardware-dropdown .custom-option.selected').dataset.value;
+                updateFPS();
+            });
+
+            updateFPS();
+
+            // --- ЭФФЕКТЫ КАРТОЧЕК ---
+            document.querySelectorAll('.card-spotlight').forEach(card => {
+                card.onmousemove = e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+                };
+            });
+
+            document.querySelectorAll('.tilt-card').forEach(card => {
+                card.onmousemove = e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const rotateX = ((y - centerY) / centerY) * -10;
+                    const rotateY = ((x - centerX) / centerX) * 10;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+                };
+                card.onmouseleave = () => {
+                    card.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)`;
+                };
+            });
+
+            // --- ЧАСТИЦЫ С ЛИНИЯМИ ---
+            const canvas = document.getElementById('bg-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let w, h;
+
+            function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * w;
+                    this.y = Math.random() * h;
+                    this.size = Math.random() * 2 + 0.5;
+                    this.speedX = Math.random() * 1 - 0.5;
+                    this.speedY = Math.random() * 1 - 0.5;
+                    this.opacity = Math.random() * 0.5 + 0.1;
+                }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x > w) this.x = 0;
+                    if (this.x < 0) this.x = w;
+                    if (this.y > h) this.y = 0;
+                    if (this.y < 0) this.y = h;
+                }
+                draw() {
+                    ctx.fillStyle = `rgba(239, 68, 68, ${this.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            for (let i = 0; i < 80; i++) {
+                particles.push(new Particle());
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, w, h);
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+                // Рисуем линии между близкими частицами
+                for(let i=0; i<particles.length; i++) {
+                    for(let j=i+1; j<particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < 120) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = `rgba(239, 68, 68, ${0.15 - dist/1000})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    }
+                }
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
